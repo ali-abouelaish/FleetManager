@@ -88,12 +88,12 @@ export function CardSkeleton() {
   )
 }
 
-export function FormSkeleton() {
+export function FormSkeleton({ fields = 5 }: { fields?: number }) {
   return (
     <div className="rounded-lg border bg-white p-6 shadow-sm" role="status" aria-label="Loading form...">
       <Skeleton className="mb-6 h-8 w-1/4" />
       <div className="space-y-6">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: fields }).map((_, i) => (
           <div key={i} className="space-y-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-10 w-full" />
