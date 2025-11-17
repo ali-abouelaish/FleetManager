@@ -111,7 +111,7 @@ export default async function ViewVehiclePage({
                       : 'bg-green-100 text-green-800'
                   }`}
                 >
-                  {vehicle.off_the_road ? 'Off Road' : vehicle.spare_vehicle ? 'Spare' : 'Active'}
+                  {vehicle.off_the_road ? 'VOR' : vehicle.spare_vehicle ? 'Spare' : 'Active'}
                 </span>
               </dd>
             </div>

@@ -8,8 +8,17 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, MapPin, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+
+interface RoutePoint {
+  id: string
+  point_name: string
+  address: string
+  latitude: string
+  longitude: string
+  stop_order: number
+}
 
 export default function CreateRoutePage() {
   const router = useRouter()
@@ -23,6 +32,72 @@ export default function CreateRoutePage() {
     route_number: '',
     school_id: searchParams.get('school_id') || '',
   })
+
+  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([
+    {
+      id: crypto.randomUUID(),
+      point_name: '',
+      address: '',
+      latitude: '',
+      longitude: '',
+      stop_order: 1,
+    },
+  ])
+
+  const addRoutePoint = () => {
+    const nextOrder = routePoints.length + 1
+    setRoutePoints([
+      ...routePoints,
+      {
+        id: crypto.randomUUID(),
+        point_name: '',
+        address: '',
+        latitude: '',
+        longitude: '',
+        stop_order: nextOrder,
+      },
+    ])
+  }
+
+  const removeRoutePoint = (id: string) => {
+    const newPoints = routePoints.filter((point) => point.id !== id)
+    // Re-order remaining points
+    const reorderedPoints = newPoints.map((point, index) => ({
+      ...point,
+      stop_order: index + 1,
+    }))
+    setRoutePoints(reorderedPoints)
+  }
+
+  const updateRoutePoint = (id: string, field: keyof RoutePoint, value: string | number) => {
+    setRoutePoints(
+      routePoints.map((point) =>
+        point.id === id ? { ...point, [field]: value } : point
+      )
+    )
+  }
+
+  const movePointUp = (index: number) => {
+    if (index === 0) return
+    const newPoints = [...routePoints]
+    ;[newPoints[index - 1], newPoints[index]] = [newPoints[index], newPoints[index - 1]]
+    const reorderedPoints = newPoints.map((point, idx) => ({
+      ...point,
+      stop_order: idx + 1,
+    }))
+    setRoutePoints(reorderedPoints)
+  }
+
+  const movePointDown = (index: number) => {
+    if (index === routePoints.length - 1) return
+    const newPoints = [...routePoints]
+    ;[newPoints[index], newPoints[index + 1]] = [newPoints[index + 1], newPoints[index]]
+    const reorderedPoints = newPoints.map((point, idx) => ({
+      ...point,
+      stop_order: idx + 1,
+    }))
+    setRoutePoints(reorderedPoints)
+  }
 
   useEffect(() => {
     async function loadSchools() {
@@ -45,29 +120,58 @@ export default function CreateRoutePage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase
+      // Step 1: Create the route
+      const { data: routeData, error: routeError } = await supabase
         .from('routes')
         .insert([formData])
         .select()
+        .single()
 
-      if (error) throw error
+      if (routeError) throw routeError
 
-      if (data && data[0]) {
-        await fetch('/api/audit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            table_name: 'routes',
-            record_id: data[0].id,
-            action: 'CREATE',
-          }),
-        })
+      const routeId = routeData.id
+
+      // Step 2: Create route points (only ones with names filled in)
+      const validRoutePoints = routePoints.filter(
+        (point) => point.point_name.trim() !== ''
+      )
+
+      if (validRoutePoints.length > 0) {
+        const pointsToInsert = validRoutePoints.map((point) => ({
+          route_id: routeId,
+          point_name: point.point_name,
+          address: point.address || null,
+          latitude: point.latitude ? parseFloat(point.latitude) : null,
+          longitude: point.longitude ? parseFloat(point.longitude) : null,
+          stop_order: point.stop_order,
+        }))
+
+        const { error: pointsError } = await supabase
+          .from('route_points')
+          .insert(pointsToInsert)
+
+        if (pointsError) {
+          console.error('Error creating route points:', pointsError)
+          // Continue anyway - route is created
+        }
       }
+
+      // Step 3: Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'routes',
+          record_id: routeId,
+          action: 'CREATE',
+        }),
+      })
 
       router.push('/dashboard/routes')
       router.refresh()
     } catch (error: any) {
-      setError(error.message || 'An error occurred')
+      console.error('Error creating route:', error)
+      setError(error.message || 'An error occurred while creating the route')
     } finally {
       setLoading(false)
     }
@@ -83,15 +187,15 @@ export default function CreateRoutePage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Add New Route</h1>
+          <h1 className="text-3xl font-bold text-navy">Add New Route</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Fill in the information below to create a new route
+            Fill in the route information and add stops/pickup points
           </p>
         </div>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="bg-navy text-white">
           <CardTitle>Route Information</CardTitle>
         </CardHeader>
         <CardContent>
@@ -130,18 +234,168 @@ export default function CreateRoutePage() {
                 ))}
               </Select>
             </div>
-
-            <div className="flex justify-end space-x-4">
-              <Link href="/dashboard/routes">
-                <Button type="button" variant="secondary">
-                  Cancel
-                </Button>
-              </Link>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Route'}
-              </Button>
-            </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Route Points Section */}
+      <Card>
+        <CardHeader className="bg-navy text-white">
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center">
+              <MapPin className="mr-2 h-5 w-5" />
+              Route Stops / Pickup Points
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addRoutePoint}
+              className="bg-white text-navy hover:bg-gray-100"
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add Stop
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="space-y-2 mb-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-600">
+                Add pickup/dropoff points for this route. Use ↑↓ buttons to reorder stops.
+                Coordinates are optional but help with mapping.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {routePoints.map((point, index) => (
+              <Card key={point.id} className="border-2 border-gray-200">
+                <CardHeader className="bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-navy">
+                      Stop {point.stop_order}
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      {/* Reorder buttons */}
+                      <div className="flex flex-col space-y-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => movePointUp(index)}
+                          disabled={index === 0}
+                          className="h-5 px-2 text-gray-600 hover:text-navy"
+                          title="Move up"
+                        >
+                          ▲
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => movePointDown(index)}
+                          disabled={index === routePoints.length - 1}
+                          className="h-5 px-2 text-gray-600 hover:text-navy"
+                          title="Move down"
+                        >
+                          ▼
+                        </Button>
+                      </div>
+                      {/* Remove button */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeRoutePoint(point.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor={`point_name_${point.id}`}>
+                        Stop Name
+                      </Label>
+                      <Input
+                        id={`point_name_${point.id}`}
+                        value={point.point_name}
+                        onChange={(e) =>
+                          updateRoutePoint(point.id, 'point_name', e.target.value)
+                        }
+                        placeholder="e.g., School Main Gate, Home Pickup"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor={`address_${point.id}`}>Address</Label>
+                      <Input
+                        id={`address_${point.id}`}
+                        value={point.address}
+                        onChange={(e) =>
+                          updateRoutePoint(point.id, 'address', e.target.value)
+                        }
+                        placeholder="Full address..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`latitude_${point.id}`}>
+                        Latitude (Optional)
+                      </Label>
+                      <Input
+                        id={`latitude_${point.id}`}
+                        type="number"
+                        step="any"
+                        value={point.latitude}
+                        onChange={(e) =>
+                          updateRoutePoint(point.id, 'latitude', e.target.value)
+                        }
+                        placeholder="e.g., 51.5074"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`longitude_${point.id}`}>
+                        Longitude (Optional)
+                      </Label>
+                      <Input
+                        id={`longitude_${point.id}`}
+                        type="number"
+                        step="any"
+                        value={point.longitude}
+                        onChange={(e) =>
+                          updateRoutePoint(point.id, 'longitude', e.target.value)
+                        }
+                        placeholder="e.g., -0.1278"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Submit Buttons */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex justify-end space-x-4">
+            <Link href="/dashboard/routes">
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </Link>
+            <Button type="submit" onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Creating...' : 'Create Route'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

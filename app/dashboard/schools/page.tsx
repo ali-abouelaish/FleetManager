@@ -2,10 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye, Pencil } from 'lucide-react'
+import { Plus, Eye, Pencil, Map } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { SchoolsMap } from '@/components/maps/SchoolsMap'
 
 async function getSchools() {
   const supabase = await createClient()
@@ -74,7 +76,10 @@ async function SchoolsTable() {
   )
 }
 
-export default function SchoolsPage() {
+export default async function SchoolsPage() {
+  const schools = await getSchools()
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -92,9 +97,41 @@ export default function SchoolsPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={5} />}>
-        <SchoolsTable />
-      </Suspense>
+      {/* Map View */}
+      {schools.length > 0 && (
+        <Card>
+          <CardHeader className="bg-navy text-white">
+            <CardTitle className="flex items-center">
+              <Map className="mr-2 h-5 w-5" />
+              Schools Map View
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {apiKey ? (
+              <SchoolsMap schools={schools} apiKey={apiKey} />
+            ) : (
+              <div className="h-[500px] rounded-lg border bg-yellow-50 flex items-center justify-center">
+                <div className="text-center text-yellow-800 p-4">
+                  <p className="font-medium mb-2">⚠️ Google Maps API Key Required</p>
+                  <p className="text-sm">Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Table View */}
+      <Card>
+        <CardHeader className="bg-navy text-white">
+          <CardTitle>Schools List</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Suspense fallback={<TableSkeleton rows={5} columns={5} />}>
+            <SchoolsTable />
+          </Suspense>
+        </CardContent>
+      </Card>
     </div>
   )
 }

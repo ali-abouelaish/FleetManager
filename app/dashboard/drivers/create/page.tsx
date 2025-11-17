@@ -1,0 +1,800 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import { Select } from '@/components/ui/Select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ArrowLeft, Upload, Save, AlertCircle } from 'lucide-react'
+import Link from 'next/link'
+
+interface Employee {
+  id: number
+  full_name: string
+  role: string
+  employment_status: string
+}
+
+export default function CreateDriverPage() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [activeTab, setActiveTab] = useState<'basic' | 'certificates' | 'documents' | 'training'>('basic')
+
+  const [formData, setFormData] = useState({
+    employee_id: '',
+    tas_badge_number: '',
+    tas_badge_expiry_date: '',
+    taxi_badge_number: '',
+    taxi_badge_expiry_date: '',
+    dbs_expiry_date: '',
+    psv_license: false,
+    first_aid_certificate_expiry_date: '',
+    passport_expiry_date: '',
+    driving_license_expiry_date: '',
+    cpc_expiry_date: '',
+    utility_bill_date: '',
+    vehicle_insurance_expiry_date: '',
+    mot_expiry_date: '',
+    birth_certificate: false,
+    marriage_certificate: false,
+    photo_taken: false,
+    private_hire_badge: false,
+    paper_licence: false,
+    taxi_plate_photo: false,
+    logbook: false,
+    safeguarding_training_completed: false,
+    safeguarding_training_date: '',
+    tas_pats_training_completed: false,
+    tas_pats_training_date: '',
+    psa_training_completed: false,
+    psa_training_date: '',
+    additional_notes: '',
+  })
+
+  // File uploads state
+  const [fileUploads, setFileUploads] = useState<{[key: string]: File | null}>({
+    tas_badge_file: null,
+    taxi_badge_file: null,
+    dbs_file: null,
+    first_aid_file: null,
+    passport_file: null,
+    driving_license_file: null,
+    cpc_file: null,
+    utility_bill_file: null,
+    birth_cert_file: null,
+    marriage_cert_file: null,
+    photo_file: null,
+    private_hire_badge_file: null,
+    paper_licence_file: null,
+    taxi_plate_photo_file: null,
+    logbook_file: null,
+  })
+
+  useEffect(() => {
+    async function loadEmployees() {
+      // Fetch employees who are not already drivers
+      const { data: existingDrivers } = await supabase
+        .from('drivers')
+        .select('employee_id')
+
+      const driverIds = existingDrivers?.map(d => d.employee_id) || []
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, full_name, role, employment_status')
+        .eq('employment_status', 'Active')
+        .order('full_name')
+
+      if (!error && data) {
+        // Filter out employees who are already drivers
+        const availableEmployees = data.filter(emp => !driverIds.includes(emp.id))
+        setEmployees(availableEmployees)
+      }
+    }
+    loadEmployees()
+  }, [])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }))
+  }
+
+  const handleFileChange = (fieldName: string, file: File | null) => {
+    setFileUploads(prev => ({
+      ...prev,
+      [fieldName]: file
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!formData.employee_id) {
+      setError('Please select an employee')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Upload files to Supabase Storage if needed
+      // Note: You'll need to set up a 'driver-documents' bucket in Supabase
+      const fileUrls: {[key: string]: string} = {}
+      
+      for (const [key, file] of Object.entries(fileUploads)) {
+        if (file) {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${formData.employee_id}/${key}_${Date.now()}.${fileExt}`
+          
+          const { data, error } = await supabase.storage
+            .from('driver-documents')
+            .upload(fileName, file)
+
+          if (!error && data) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('driver-documents')
+              .getPublicUrl(fileName)
+            fileUrls[key] = publicUrl
+          }
+        }
+      }
+
+      // Insert driver record
+      const { error: insertError } = await supabase
+        .from('drivers')
+        .insert({
+          employee_id: parseInt(formData.employee_id),
+          tas_badge_number: formData.tas_badge_number || null,
+          tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
+          taxi_badge_number: formData.taxi_badge_number || null,
+          taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
+          dbs_expiry_date: formData.dbs_expiry_date || null,
+          psv_license: formData.psv_license,
+          first_aid_certificate_expiry_date: formData.first_aid_certificate_expiry_date || null,
+          passport_expiry_date: formData.passport_expiry_date || null,
+          driving_license_expiry_date: formData.driving_license_expiry_date || null,
+          cpc_expiry_date: formData.cpc_expiry_date || null,
+          utility_bill_date: formData.utility_bill_date || null,
+          vehicle_insurance_expiry_date: formData.vehicle_insurance_expiry_date || null,
+          mot_expiry_date: formData.mot_expiry_date || null,
+          birth_certificate: formData.birth_certificate,
+          marriage_certificate: formData.marriage_certificate,
+          photo_taken: formData.photo_taken,
+          private_hire_badge: formData.private_hire_badge,
+          paper_licence: formData.paper_licence,
+          taxi_plate_photo: formData.taxi_plate_photo,
+          logbook: formData.logbook,
+          safeguarding_training_completed: formData.safeguarding_training_completed,
+          safeguarding_training_date: formData.safeguarding_training_date || null,
+          tas_pats_training_completed: formData.tas_pats_training_completed,
+          tas_pats_training_date: formData.tas_pats_training_date || null,
+          psa_training_completed: formData.psa_training_completed,
+          psa_training_date: formData.psa_training_date || null,
+          additional_notes: formData.additional_notes || null,
+        })
+
+      if (insertError) throw insertError
+
+      router.push('/dashboard/drivers')
+    } catch (err: any) {
+      console.error('Error creating driver:', err)
+      setError(err.message || 'Failed to create driver')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Link href="/dashboard/drivers">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-navy">Add New Driver</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Register a new driver with all required certifications
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <Card className="border-l-4 border-red-500 bg-red-50">
+          <CardContent className="py-4">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Form sections">
+          {[
+            { id: 'basic', label: '👤 Basic Info', icon: '👤' },
+            { id: 'certificates', label: '📜 Certificates', icon: '📜' },
+            { id: 'documents', label: '📄 Documents', icon: '📄' },
+            { id: 'training', label: '🎓 Training', icon: '🎓' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`
+                border-b-2 px-1 py-4 text-sm font-medium transition-colors
+                ${activeTab === tab.id
+                  ? 'border-navy text-navy'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+              `}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Info Tab */}
+        {activeTab === 'basic' && (
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                <Label htmlFor="employee_id">
+                  Select Employee <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  id="employee_id"
+                  name="employee_id"
+                  value={formData.employee_id}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">-- Select Employee --</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.full_name} ({emp.role})
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Only active employees who are not already drivers are shown
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="psv_license">PSV License</Label>
+                  <div className="flex items-center mt-2">
+                    <input
+                      type="checkbox"
+                      id="psv_license"
+                      name="psv_license"
+                      checked={formData.psv_license}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                    />
+                    <label htmlFor="psv_license" className="ml-2 text-sm text-gray-700">
+                      Employee has PSV License
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="additional_notes">Additional Notes / HR Comments</Label>
+                <textarea
+                  id="additional_notes"
+                  name="additional_notes"
+                  value={formData.additional_notes}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-navy focus:outline-none focus:ring-navy sm:text-sm"
+                  placeholder="Any additional information about the driver..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Certificates Tab */}
+        {activeTab === 'certificates' && (
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Certificates & Expiry Dates</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              {/* Required Certificates Warning */}
+              <Card className="border-l-4 border-red-500 bg-red-50">
+                <CardContent className="py-4">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-sm font-medium text-red-800 mb-1">
+                        ⚠️ Required Certificates Policy
+                      </h3>
+                      <p className="text-sm text-red-700">
+                        <strong>Drivers MUST have these 3 certificates with dates set:</strong>
+                      </p>
+                      <ul className="text-sm text-red-700 mt-2 ml-4 list-disc">
+                        <li>TAS Badge expiry date</li>
+                        <li>Taxi Badge expiry date</li>
+                        <li>DBS Certificate expiry date</li>
+                      </ul>
+                      <p className="text-sm text-red-700 mt-2">
+                        <strong>Without all 3 dates, the driver will be flagged as "CANNOT WORK"</strong> and will not be authorized for routes.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* TAS Badge */}
+                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
+                  <h3 className="font-semibold text-navy flex items-center">
+                    TAS Badge
+                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
+                  </h3>
+                  <div>
+                    <Label htmlFor="tas_badge_number">Badge Number</Label>
+                    <Input
+                      id="tas_badge_number"
+                      name="tas_badge_number"
+                      value={formData.tas_badge_number}
+                      onChange={handleInputChange}
+                      placeholder="e.g., TAS12345"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tas_badge_expiry_date">
+                      Expiry Date <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="date"
+                      id="tas_badge_expiry_date"
+                      name="tas_badge_expiry_date"
+                      value={formData.tas_badge_expiry_date}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <p className="text-xs text-red-600 mt-1">⚠️ Required for driver to work</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="tas_badge_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="tas_badge_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('tas_badge_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Taxi Badge */}
+                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
+                  <h3 className="font-semibold text-navy flex items-center">
+                    Taxi Badge
+                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
+                  </h3>
+                  <div>
+                    <Label htmlFor="taxi_badge_number">Badge Number</Label>
+                    <Input
+                      id="taxi_badge_number"
+                      name="taxi_badge_number"
+                      value={formData.taxi_badge_number}
+                      onChange={handleInputChange}
+                      placeholder="e.g., TAXI67890"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="taxi_badge_expiry_date">
+                      Expiry Date <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="date"
+                      id="taxi_badge_expiry_date"
+                      name="taxi_badge_expiry_date"
+                      value={formData.taxi_badge_expiry_date}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <p className="text-xs text-red-600 mt-1">⚠️ Required for driver to work</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="taxi_badge_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="taxi_badge_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('taxi_badge_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* DBS Certificate */}
+                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
+                  <h3 className="font-semibold text-navy flex items-center">
+                    DBS Certificate
+                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
+                  </h3>
+                  <div>
+                    <Label htmlFor="dbs_expiry_date">
+                      Expiry Date <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="date"
+                      id="dbs_expiry_date"
+                      name="dbs_expiry_date"
+                      value={formData.dbs_expiry_date}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <p className="text-xs text-red-600 mt-1">⚠️ Required for driver to work</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="dbs_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="dbs_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('dbs_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* First Aid */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">First Aid Certificate</h3>
+                  <div>
+                    <Label htmlFor="first_aid_certificate_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="first_aid_certificate_expiry_date"
+                      name="first_aid_certificate_expiry_date"
+                      value={formData.first_aid_certificate_expiry_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="first_aid_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="first_aid_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('first_aid_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Passport */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">Passport</h3>
+                  <div>
+                    <Label htmlFor="passport_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="passport_expiry_date"
+                      name="passport_expiry_date"
+                      value={formData.passport_expiry_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="passport_file">Upload Copy</Label>
+                    <input
+                      type="file"
+                      id="passport_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('passport_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Driving License */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">Driving License</h3>
+                  <div>
+                    <Label htmlFor="driving_license_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="driving_license_expiry_date"
+                      name="driving_license_expiry_date"
+                      value={formData.driving_license_expiry_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="driving_license_file">Upload License</Label>
+                    <input
+                      type="file"
+                      id="driving_license_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('driving_license_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* CPC Certificate */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">CPC Certificate</h3>
+                  <div>
+                    <Label htmlFor="cpc_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="cpc_expiry_date"
+                      name="cpc_expiry_date"
+                      value={formData.cpc_expiry_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cpc_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="cpc_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('cpc_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Utility Bill */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">Utility Bill</h3>
+                  <div>
+                    <Label htmlFor="utility_bill_date">Date</Label>
+                    <Input
+                      type="date"
+                      id="utility_bill_date"
+                      name="utility_bill_date"
+                      value={formData.utility_bill_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="utility_bill_file">Upload Bill</Label>
+                    <input
+                      type="file"
+                      id="utility_bill_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('utility_bill_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Vehicle Insurance */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">Vehicle Insurance</h3>
+                  <div>
+                    <Label htmlFor="vehicle_insurance_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="vehicle_insurance_expiry_date"
+                      name="vehicle_insurance_expiry_date"
+                      value={formData.vehicle_insurance_expiry_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                {/* MOT */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">MOT</h3>
+                  <div>
+                    <Label htmlFor="mot_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="mot_expiry_date"
+                      name="mot_expiry_date"
+                      value={formData.mot_expiry_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Document Checklist</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                {[
+                  { name: 'birth_certificate', label: 'Birth Certificate', fileKey: 'birth_cert_file' },
+                  { name: 'marriage_certificate', label: 'Marriage Certificate', fileKey: 'marriage_cert_file' },
+                  { name: 'photo_taken', label: 'Photo Taken', fileKey: 'photo_file' },
+                  { name: 'private_hire_badge', label: 'Private Hire Badge', fileKey: 'private_hire_badge_file' },
+                  { name: 'paper_licence', label: 'Paper Licence', fileKey: 'paper_licence_file' },
+                  { name: 'taxi_plate_photo', label: 'Taxi Plate Photo', fileKey: 'taxi_plate_photo_file' },
+                  { name: 'logbook', label: 'Logbook', fileKey: 'logbook_file' },
+                ].map((doc) => (
+                  <div key={doc.name} className="space-y-3 p-4 border rounded-lg">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={doc.name}
+                        name={doc.name}
+                        checked={(formData as any)[doc.name]}
+                        onChange={handleInputChange}
+                        className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                      />
+                      <label htmlFor={doc.name} className="ml-2 text-sm font-medium text-gray-900">
+                        {doc.label}
+                      </label>
+                    </div>
+                    {doc.fileKey && (
+                      <div>
+                        <input
+                          type="file"
+                          id={doc.fileKey}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(doc.fileKey!, e.target.files?.[0] || null)}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Training Tab */}
+        {activeTab === 'training' && (
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Training & Compliance</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              <div className="grid gap-6 md:grid-cols-1">
+                {/* Safeguarding Training */}
+                <div className="space-y-4 p-6 border rounded-lg">
+                  <h3 className="text-lg font-semibold text-navy">Safeguarding Training</h3>
+                  <p className="text-sm text-gray-600">Mandatory child protection training</p>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="safeguarding_training_completed"
+                      name="safeguarding_training_completed"
+                      checked={formData.safeguarding_training_completed}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                    />
+                    <label htmlFor="safeguarding_training_completed" className="ml-2 text-sm font-medium text-gray-900">
+                      Training Completed
+                    </label>
+                  </div>
+                  {formData.safeguarding_training_completed && (
+                    <div>
+                      <Label htmlFor="safeguarding_training_date">Completion Date</Label>
+                      <Input
+                        type="date"
+                        id="safeguarding_training_date"
+                        name="safeguarding_training_date"
+                        value={formData.safeguarding_training_date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* TAS PATS Training */}
+                <div className="space-y-4 p-6 border rounded-lg">
+                  <h3 className="text-lg font-semibold text-navy">TAS PATS Training</h3>
+                  <p className="text-sm text-gray-600">Passenger Assistant Training Scheme</p>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="tas_pats_training_completed"
+                      name="tas_pats_training_completed"
+                      checked={formData.tas_pats_training_completed}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                    />
+                    <label htmlFor="tas_pats_training_completed" className="ml-2 text-sm font-medium text-gray-900">
+                      Training Completed
+                    </label>
+                  </div>
+                  {formData.tas_pats_training_completed && (
+                    <div>
+                      <Label htmlFor="tas_pats_training_date">Completion Date</Label>
+                      <Input
+                        type="date"
+                        id="tas_pats_training_date"
+                        name="tas_pats_training_date"
+                        value={formData.tas_pats_training_date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* PSA Training */}
+                <div className="space-y-4 p-6 border rounded-lg">
+                  <h3 className="text-lg font-semibold text-navy">PSA Training</h3>
+                  <p className="text-sm text-gray-600">Passenger Safety & Assistance</p>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="psa_training_completed"
+                      name="psa_training_completed"
+                      checked={formData.psa_training_completed}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                    />
+                    <label htmlFor="psa_training_completed" className="ml-2 text-sm font-medium text-gray-900">
+                      Training Completed
+                    </label>
+                  </div>
+                  {formData.psa_training_completed && (
+                    <div>
+                      <Label htmlFor="psa_training_date">Completion Date</Label>
+                      <Input
+                        type="date"
+                        id="psa_training_date"
+                        name="psa_training_date"
+                        value={formData.psa_training_date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Submit Button */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-end space-x-4">
+              <Link href="/dashboard/drivers">
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </Link>
+              <Button type="submit" disabled={loading || !formData.employee_id}>
+                <Save className="mr-2 h-4 w-4" />
+                {loading ? 'Creating...' : 'Create Driver'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </form>
+    </div>
+  )
+}
+

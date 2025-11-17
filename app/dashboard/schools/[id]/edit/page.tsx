@@ -9,14 +9,7 @@ import { Label } from '@/components/ui/Label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { use } from 'react'
-
-export default function EditSchoolPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = use(params)
+function EditSchoolPageClient({ id }: { id: string }) {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
@@ -188,5 +181,14 @@ export default function EditSchoolPage({
       </Card>
     </div>
   )
+}
+
+export default async function EditSchoolPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  return <EditSchoolPageClient id={id} />
 }
 

@@ -1,0 +1,68 @@
+=====================================
+  QUICK GUIDE: Get Google Maps API Key
+=====================================
+
+STEP 1: Go to Google Cloud Console
+→ https://console.cloud.google.com/
+
+STEP 2: Create Project
+→ Click "Select a project" (top of page)
+→ Click "NEW PROJECT"
+→ Name: "Fleet Management"
+→ Click "CREATE"
+
+STEP 3: Enable APIs (Do this TWICE)
+→ Left menu: "APIs & Services" → "Library"
+→ Search: "Maps JavaScript API"
+→ Click it → Click "ENABLE"
+→ Go back to Library
+→ Search: "Geocoding API"
+→ Click it → Click "ENABLE"
+
+STEP 4: Create API Key
+→ Left menu: "APIs & Services" → "Credentials"
+→ Click "+ CREATE CREDENTIALS" (at top)
+→ Select "API key"
+→ COPY THE KEY! (looks like: AIzaSyB1234...)
+
+STEP 5: Add to Your Project
+→ Open file: D:\Fleet\.env.local
+→ Add this line:
+
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=paste_your_key_here
+
+(Replace "paste_your_key_here" with the actual key)
+
+STEP 6: Restart Dev Server
+→ In terminal, press Ctrl+C to stop
+→ Type: npm run dev
+→ Press Enter
+
+STEP 7: Test It!
+→ Go to: http://localhost:3000/dashboard/schools
+→ You should see the map! 🗺️
+
+=====================================
+IMPORTANT NOTES:
+=====================================
+✓ File must be named: .env.local (with dot at start)
+✓ Must restart dev server after adding key
+✓ No spaces around the = sign
+✓ No quotes around the key
+✓ Free tier: $200/month credit (plenty for testing!)
+
+=====================================
+EXAMPLE .env.local FILE:
+=====================================
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+
+# Google Maps
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyB1234567890abcdefg
+
+=====================================
+
+Need help? See: ENV_SETUP_INSTRUCTIONS.md
+

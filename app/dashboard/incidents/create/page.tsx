@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Users, UserCog, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CreateIncidentPage() {
@@ -17,11 +17,11 @@ export default function CreateIncidentPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
+  const [passengers, setPassengers] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
   const [routes, setRoutes] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
-    employee_id: '',
     vehicle_id: '',
     route_id: '',
     incident_type: '',
@@ -29,15 +29,36 @@ export default function CreateIncidentPage() {
     resolved: false,
   })
 
+  const [selectedEmployees, setSelectedEmployees] = useState<number[]>([])
+  const [selectedPassengers, setSelectedPassengers] = useState<number[]>([])
+
+  const toggleEmployee = (employeeId: number) => {
+    setSelectedEmployees(prev =>
+      prev.includes(employeeId)
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    )
+  }
+
+  const togglePassenger = (passengerId: number) => {
+    setSelectedPassengers(prev =>
+      prev.includes(passengerId)
+        ? prev.filter(id => id !== passengerId)
+        : [...prev, passengerId]
+    )
+  }
+
   useEffect(() => {
     async function loadData() {
-      const [employeesResult, vehiclesResult, routesResult] = await Promise.all([
+      const [employeesResult, passengersResult, vehiclesResult, routesResult] = await Promise.all([
         supabase.from('employees').select('id, full_name').order('full_name'),
+        supabase.from('passengers').select('id, full_name, schools(name)').order('full_name'),
         supabase.from('vehicles').select('id, vehicle_identifier').order('vehicle_identifier'),
         supabase.from('routes').select('id, route_number').order('route_number')
       ])
 
       if (employeesResult.data) setEmployees(employeesResult.data)
+      if (passengersResult.data) setPassengers(passengersResult.data)
       if (vehiclesResult.data) setVehicles(vehiclesResult.data)
       if (routesResult.data) setRoutes(routesResult.data)
     }
@@ -51,21 +72,65 @@ export default function CreateIncidentPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.from('incidents').insert([formData]).select()
-      if (error) throw error
+      // Step 1: Create the incident
+      const { data: incidentData, error: incidentError } = await supabase
+        .from('incidents')
+        .insert([formData])
+        .select()
+        .single()
 
-      if (data && data[0]) {
-        await fetch('/api/audit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_name: 'incidents', record_id: data[0].id, action: 'CREATE' }),
-        })
+      if (incidentError) throw incidentError
+
+      const incidentId = incidentData.id
+
+      // Step 2: Link selected employees
+      if (selectedEmployees.length > 0) {
+        const employeeLinks = selectedEmployees.map(employeeId => ({
+          incident_id: incidentId,
+          employee_id: employeeId,
+        }))
+
+        const { error: employeesError } = await supabase
+          .from('incident_employees')
+          .insert(employeeLinks)
+
+        if (employeesError) {
+          console.error('Error linking employees:', employeesError)
+        }
       }
+
+      // Step 3: Link selected passengers
+      if (selectedPassengers.length > 0) {
+        const passengerLinks = selectedPassengers.map(passengerId => ({
+          incident_id: incidentId,
+          passenger_id: passengerId,
+        }))
+
+        const { error: passengersError } = await supabase
+          .from('incident_passengers')
+          .insert(passengerLinks)
+
+        if (passengersError) {
+          console.error('Error linking passengers:', passengersError)
+        }
+      }
+
+      // Step 4: Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'incidents',
+          record_id: incidentId,
+          action: 'CREATE',
+        }),
+      })
 
       router.push('/dashboard/incidents')
       router.refresh()
     } catch (error: any) {
-      setError(error.message || 'An error occurred')
+      console.error('Error creating incident:', error)
+      setError(error.message || 'An error occurred while creating the incident')
     } finally {
       setLoading(false)
     }
@@ -78,13 +143,13 @@ export default function CreateIncidentPage() {
           <Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Report New Incident</h1>
-          <p className="mt-2 text-sm text-gray-600">Fill in the details of the incident</p>
+          <h1 className="text-3xl font-bold text-navy">Report New Incident</h1>
+          <p className="mt-2 text-sm text-gray-600">Fill in the details and select involved parties</p>
         </div>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Incident Information</CardTitle></CardHeader>
+        <CardHeader className="bg-navy text-white"><CardTitle>Incident Information</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && <div className="rounded-md bg-red-50 p-4"><div className="text-sm text-red-800">{error}</div></div>}
@@ -102,21 +167,14 @@ export default function CreateIncidentPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="employee_id">Employee</Label>
-                <Select id="employee_id" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}>
-                  <option value="">Select employee</option>
-                  {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
-                </Select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="vehicle_id">Vehicle</Label>
                 <Select id="vehicle_id" value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}>
                   <option value="">Select vehicle</option>
                   {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicle_identifier || `Vehicle ${vehicle.id}`}</option>)}
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="route_id">Route</Label>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="route_id">Related Route</Label>
                 <Select id="route_id" value={formData.route_id} onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}>
                   <option value="">Select route</option>
                   {routes.map((route) => <option key={route.id} value={route.id}>{route.route_number || `Route ${route.id}`}</option>)}
@@ -130,15 +188,127 @@ export default function CreateIncidentPage() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <input type="checkbox" id="resolved" checked={formData.resolved} onChange={(e) => setFormData({ ...formData, resolved: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+              <input type="checkbox" id="resolved" checked={formData.resolved} onChange={(e) => setFormData({ ...formData, resolved: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy" />
               <Label htmlFor="resolved">Mark as Resolved</Label>
             </div>
-
-            <div className="flex justify-end space-x-4">
-              <Link href="/dashboard/incidents"><Button type="button" variant="secondary">Cancel</Button></Link>
-              <Button type="submit" disabled={loading}>{loading ? 'Submitting...' : 'Submit Report'}</Button>
-            </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Related Employees Section */}
+      <Card>
+        <CardHeader className="bg-navy text-white">
+          <CardTitle className="flex items-center">
+            <UserCog className="mr-2 h-5 w-5" />
+            Related Employees ({selectedEmployees.length} selected)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="space-y-2 mb-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-600">
+                Select all employees involved in or related to this incident (drivers, assistants, staff).
+              </p>
+            </div>
+          </div>
+
+          {employees.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">No employees available</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+              {employees.map((employee) => (
+                <div
+                  key={employee.id}
+                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                    selectedEmployees.includes(employee.id)
+                      ? 'border-navy bg-blue-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                  onClick={() => toggleEmployee(employee.id)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedEmployees.includes(employee.id)}
+                    onChange={() => toggleEmployee(employee.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">
+                      {employee.full_name}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Related Passengers Section */}
+      <Card>
+        <CardHeader className="bg-navy text-white">
+          <CardTitle className="flex items-center">
+            <Users className="mr-2 h-5 w-5" />
+            Related Passengers ({selectedPassengers.length} selected)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="space-y-2 mb-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-600">
+                Select all passengers involved in or affected by this incident.
+              </p>
+            </div>
+          </div>
+
+          {passengers.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">No passengers available</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+              {passengers.map((passenger: any) => (
+                <div
+                  key={passenger.id}
+                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                    selectedPassengers.includes(passenger.id)
+                      ? 'border-navy bg-blue-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                  onClick={() => togglePassenger(passenger.id)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPassengers.includes(passenger.id)}
+                    onChange={() => togglePassenger(passenger.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {passenger.full_name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {passenger.schools?.name || 'No school assigned'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Submit Buttons */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex justify-end space-x-4">
+            <Link href="/dashboard/incidents">
+              <Button type="button" variant="secondary">Cancel</Button>
+            </Link>
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Submitting...' : 'Submit Report'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
