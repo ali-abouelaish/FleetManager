@@ -25,6 +25,13 @@ interface VehicleLocationsMapProps {
   apiKey: string
 }
 
+// Extend Window interface to include google
+declare global {
+  interface Window {
+    google: typeof google
+  }
+}
+
 export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
@@ -39,19 +46,22 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
         const loader = new Loader({
           apiKey: apiKey,
           version: 'weekly',
-          libraries: ['places', 'marker'],
+          libraries: ['places'],
         })
 
-        const google = await loader.load()
+        // Load the Google Maps API
+        await loader.importLibrary('maps')
 
-        if (mapRef.current) {
-          const mapInstance = new google.maps.Map(mapRef.current, {
+        // Google Maps API is now available globally
+        if (!mapRef.current || !window.google) return
+
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
             center: { lat: 0, lng: 0 },
             zoom: 2,
             mapId: 'VEHICLE_LOCATIONS_MAP',
           })
 
-          const bounds = new google.maps.LatLngBounds()
+          const bounds = new window.google.maps.LatLngBounds()
           let markerCount = 0
 
           for (const location of locations) {
@@ -76,11 +86,11 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
             mapInstance.setCenter({ lat: 54.0, lng: -2.0 })
             mapInstance.setZoom(6)
           }
-        }
+
+        setLoading(false)
       } catch (error) {
         console.error('Failed to load Google Maps:', error)
         setMapError('Failed to load map. Please check your Google Maps API key.')
-      } finally {
         setLoading(false)
       }
     }
@@ -95,7 +105,7 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
   ) => {
     // Create custom icon for spare vehicles (green pin)
     const icon = {
-      path: google.maps.SymbolPath.CIRCLE,
+      path: window.google.maps.SymbolPath.CIRCLE,
       fillColor: '#10b981', // green-500
       fillOpacity: 1,
       strokeColor: '#059669', // green-600
@@ -103,11 +113,11 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
       scale: 10,
     }
 
-    const marker = new google.maps.Marker({
+    const marker = new window.google.maps.Marker({
       position,
       map,
       title: location.vehicles?.vehicle_identifier || location.location_name,
-      animation: google.maps.Animation.DROP,
+      animation: window.google.maps.Animation.DROP,
       icon,
     })
 
@@ -115,7 +125,7 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
     const lastUpdated = new Date(location.last_updated).toLocaleString()
 
     // Create info window
-    const infoWindow = new google.maps.InfoWindow({
+    const infoWindow = new window.google.maps.InfoWindow({
       content: `
         <div style="padding: 12px; min-width: 250px;">
           <h3 style="margin: 0 0 10px 0; font-weight: bold; color: #1e3a8a; font-size: 16px;">

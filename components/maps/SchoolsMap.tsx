@@ -18,6 +18,13 @@ interface SchoolsMapProps {
   apiKey: string
 }
 
+// Extend Window interface to include google
+declare global {
+  interface Window {
+    google: typeof google
+  }
+}
+
 export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<google.maps.Map | null>(null)
@@ -33,14 +40,17 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
           libraries: ['places', 'geocoding']
         })
 
-        const google = await loader.load()
+        // Load the Google Maps API
+        await loader.importLibrary('maps')
+        await loader.importLibrary('geocoding')
 
-        if (!mapRef.current) return
+        // Google Maps API is now available globally
+        if (!mapRef.current || !window.google) return
 
         // Default center (UK)
         const defaultCenter = { lat: 54.5, lng: -2.0 }
 
-        const mapInstance = new google.maps.Map(mapRef.current, {
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
           center: defaultCenter,
           zoom: 6,
           mapTypeControl: true,
@@ -51,8 +61,8 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
         setMap(mapInstance)
 
         // Geocode schools and add markers
-        const geocoder = new google.maps.Geocoder()
-        const bounds = new google.maps.LatLngBounds()
+        const geocoder = new window.google.maps.Geocoder()
+        const bounds = new window.google.maps.LatLngBounds()
         let markerCount = 0
 
         for (const school of schools) {
@@ -92,7 +102,7 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
           mapInstance.fitBounds(bounds)
           
           // Don't zoom in too much if only one marker
-          google.maps.event.addListenerOnce(mapInstance, 'bounds_changed', () => {
+          window.google.maps.event.addListenerOnce(mapInstance, 'bounds_changed', () => {
             const zoom = mapInstance.getZoom()
             if (zoom && zoom > 15) {
               mapInstance.setZoom(15)
@@ -116,15 +126,15 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
     position: google.maps.LatLng | google.maps.LatLngLiteral,
     school: School
   ) => {
-    const marker = new google.maps.Marker({
+    const marker = new window.google.maps.Marker({
       position,
       map,
       title: school.name,
-      animation: google.maps.Animation.DROP,
+      animation: window.google.maps.Animation.DROP,
     })
 
     // Create info window
-    const infoWindow = new google.maps.InfoWindow({
+    const infoWindow = new window.google.maps.InfoWindow({
       content: `
         <div style="padding: 12px; min-width: 220px;">
           <h3 style="margin: 0 0 10px 0; font-weight: bold; color: #1e3a8a; font-size: 16px;">
