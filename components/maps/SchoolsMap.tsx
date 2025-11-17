@@ -33,7 +33,7 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
           libraries: ['places', 'geocoding']
         })
 
-        await loader.load()
+        const google = await loader.load()
 
         if (!mapRef.current) return
 
