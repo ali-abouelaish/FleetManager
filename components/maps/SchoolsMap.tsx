@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader } from '@googlemaps/js-api-loader'
 
 interface School {
   id: number
@@ -34,15 +33,20 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
   useEffect(() => {
     const initMap = async () => {
       try {
-        const loader = new Loader({
-          apiKey: apiKey,
-          version: 'weekly',
-          libraries: ['places', 'geocoding']
-        })
-
-        // Load the Google Maps API
-        await loader.importLibrary('maps')
-        await loader.importLibrary('geocoding')
+        // Check if Google Maps is already loaded
+        if (!window.google) {
+          // Load Google Maps script manually
+          const script = document.createElement('script')
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geocoding&v=weekly`
+          script.async = true
+          script.defer = true
+          
+          await new Promise<void>((resolve, reject) => {
+            script.onload = () => resolve()
+            script.onerror = () => reject(new Error('Failed to load Google Maps'))
+            document.head.appendChild(script)
+          })
+        }
 
         // Google Maps API is now available globally
         if (!mapRef.current || !window.google) return
