@@ -17,7 +17,7 @@ interface Passenger {
   school_id: number
   schools: {
     name: string
-  }
+  }[] | null
 }
 
 export default function CreateParentContactPage() {
@@ -251,7 +251,7 @@ export default function CreateParentContactPage() {
                         {passenger.full_name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {passenger.schools?.name || 'No school assigned'}
+                        {passenger.schools?.[0]?.name || 'No school assigned'}
                       </p>
                     </div>
                   </div>
