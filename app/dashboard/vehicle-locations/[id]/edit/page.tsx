@@ -15,6 +15,7 @@ interface Vehicle {
   vehicle_identifier: string
   make: string
   model: string
+  registration: string | null
 }
 
 export default function EditVehicleLocationPage({

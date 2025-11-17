@@ -16,9 +16,9 @@ interface Vehicle {
   vehicle_identifier: string
   make: string
   model: string
-  registration: string
+  registration: string | null
   spare_vehicle: boolean
-  off_the_road: boolean
+  off_the_road: boolean | null
 }
 
 export default function CreateVehicleLocationPage() {
