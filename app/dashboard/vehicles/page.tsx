@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
@@ -6,67 +5,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Plus, Eye, Pencil } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
-import { VehicleStatusFilter } from './VehicleStatusFilter'
+import { VehicleSearchFilters } from './VehicleSearchFilters'
+import { getVehicles, VehicleFilters } from '@/lib/supabase/vehicles'
 
-type VehicleStatus = 'all' | 'active' | 'spare' | 'off-road'
-
-async function getVehicleCounts() {
-  const supabase = await createClient()
-  
-  const [
-    { count: totalCount },
-    { count: activeCount },
-    { count: spareCount },
-    { count: offRoadCount },
-  ] = await Promise.all([
-    supabase.from('vehicles').select('*', { count: 'exact', head: true }),
-    supabase.from('vehicles').select('*', { count: 'exact', head: true })
-      .eq('spare_vehicle', false)
-      .or('off_the_road.is.null,off_the_road.eq.false'),
-    supabase.from('vehicles').select('*', { count: 'exact', head: true })
-      .eq('spare_vehicle', true),
-    supabase.from('vehicles').select('*', { count: 'exact', head: true })
-      .eq('off_the_road', true),
-  ])
-
-  return {
-    all: totalCount || 0,
-    active: activeCount || 0,
-    spare: spareCount || 0,
-    'off-road': offRoadCount || 0,
-  }
-}
-
-async function getVehicles(status: VehicleStatus = 'all') {
-  const supabase = await createClient()
-  let query = supabase
-    .from('vehicles')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  // Apply filters based on status
-  if (status === 'active') {
-    query = query
-      .eq('spare_vehicle', false)
-      .or('off_the_road.is.null,off_the_road.eq.false')
-  } else if (status === 'spare') {
-    query = query.eq('spare_vehicle', true)
-  } else if (status === 'off-road') {
-    query = query.eq('off_the_road', true)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('Error fetching vehicles:', error)
-    return []
-  }
-
-  return data || []
-}
-
-async function VehiclesTable({ status }: { status: VehicleStatus }) {
-  const vehicles = await getVehicles(status)
+async function VehiclesTable({ 
+  filters 
+}: { 
+  filters: VehicleFilters 
+}) {
+  const vehicles = await getVehicles(filters)
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -138,10 +85,23 @@ async function VehiclesTable({ status }: { status: VehicleStatus }) {
 export default async function VehiclesPage({
   searchParams,
 }: {
-  searchParams: { status?: string }
+  searchParams: { 
+    search?: string
+    is_spare?: string
+    is_vor?: string
+    has_lift?: string
+  }
 }) {
-  const status = (searchParams.status as VehicleStatus) || 'all'
-  const counts = await getVehicleCounts()
+  // Build filters from search params
+  const filters: VehicleFilters = {
+    search: searchParams.search || undefined,
+    is_spare: (searchParams.is_spare as 'all' | 'yes' | 'no') || 'all',
+    is_vor: (searchParams.is_vor as 'all' | 'yes' | 'no') || 'all',
+    has_lift: (searchParams.has_lift as 'all' | 'yes' | 'no') || 'all',
+  }
+
+  // Create a unique key for Suspense based on all filter params
+  const suspenseKey = JSON.stringify(filters)
 
   return (
     <div className="space-y-6">
@@ -160,11 +120,11 @@ export default async function VehiclesPage({
         </Link>
       </div>
 
-      {/* Status Filter Tabs */}
-      <VehicleStatusFilter currentStatus={status} counts={counts} />
+      {/* Search and Filter Controls */}
+      <VehicleSearchFilters />
 
-      <Suspense key={status} fallback={<TableSkeleton rows={5} columns={8} />}>
-        <VehiclesTable status={status} />
+      <Suspense key={suspenseKey} fallback={<TableSkeleton rows={5} columns={8} />}>
+        <VehiclesTable filters={filters} />
       </Suspense>
     </div>
   )

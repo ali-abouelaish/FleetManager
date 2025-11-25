@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 type ExpiryPeriod = '30-days' | '14-days' | 'expired'
@@ -43,11 +43,13 @@ export function CertificateExpiryFilter({ currentPeriod, counts }: CertificateEx
   const pathname = usePathname()
 
   return (
-    <div className="border-b border-gray-200 bg-white rounded-t-lg">
+    <div className="border-b border-gray-200 bg-white">
       <nav className="-mb-px flex space-x-8 px-6" aria-label="Certificate expiry filter">
         {filterTabs.map((tab) => {
           const isActive = currentPeriod === tab.value
-          const href = tab.value === '30-days' ? pathname : `${pathname}?period=${tab.value}`
+          const href = tab.value === '30-days' 
+            ? pathname 
+            : `${pathname}?period=${tab.value}`
           const count = counts[tab.value] || 0
 
           return (

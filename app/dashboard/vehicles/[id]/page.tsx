@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
+import VORToggleButton from './VORToggleButton'
+import VehicleUpdates from './VehicleUpdates'
 
 async function getVehicle(id: string) {
   const supabase = await createClient()
@@ -49,12 +51,15 @@ export default async function ViewVehiclePage({
             <p className="mt-2 text-sm text-gray-600">Vehicle Details</p>
           </div>
         </div>
-        <Link href={`/dashboard/vehicles/${vehicle.id}/edit`}>
-          <Button>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-3">
+          <VORToggleButton vehicleId={vehicle.id} currentVORStatus={vehicle.off_the_road || false} />
+          <Link href={`/dashboard/vehicles/${vehicle.id}/edit`}>
+            <Button>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -74,6 +79,10 @@ export default async function ViewVehiclePage({
             <div>
               <dt className="text-sm font-medium text-gray-500">Registration</dt>
               <dd className="mt-1 text-sm text-gray-900">{vehicle.registration || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Plate Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{vehicle.plate_number || 'N/A'}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Make</dt>
@@ -183,16 +192,8 @@ export default async function ViewVehiclePage({
         </Card>
       </div>
 
-      {vehicle.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-900">{vehicle.notes}</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Vehicle Updates */}
+      <VehicleUpdates vehicleId={vehicle.id} />
     </div>
   )
 }

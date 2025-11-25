@@ -41,6 +41,47 @@ async function getEmployees() {
   return data || []
 }
 
+// Helper to get expired certificates for an employee
+function getExpiredCertificates(employee: any): string[] {
+  const today = new Date()
+  const expiredCerts: string[] = []
+  
+  const checkDate = (date: string | null, certName: string) => {
+    if (!date) return
+    const expiry = new Date(date)
+    if (expiry < today) {
+      expiredCerts.push(certName)
+    }
+  }
+  
+  // Check driver certificates (one-to-one relationship - single object, not array)
+  if (employee.drivers) {
+    const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
+    if (driver) {
+      checkDate(driver.tas_badge_expiry_date, 'TAS Badge')
+      checkDate(driver.taxi_badge_expiry_date, 'Taxi Badge')
+      checkDate(driver.dbs_expiry_date, 'DBS')
+      checkDate(driver.first_aid_certificate_expiry_date, 'First Aid')
+      checkDate(driver.passport_expiry_date, 'Passport')
+      checkDate(driver.driving_license_expiry_date, 'Driving License')
+      checkDate(driver.cpc_expiry_date, 'CPC')
+      checkDate(driver.vehicle_insurance_expiry_date, 'Vehicle Insurance')
+      checkDate(driver.mot_expiry_date, 'MOT')
+    }
+  }
+  
+  // Check PA certificates (one-to-one relationship - single object, not array)
+  if (employee.passenger_assistants) {
+    const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
+    if (pa) {
+      checkDate(pa.tas_badge_expiry_date, 'TAS Badge')
+      checkDate(pa.dbs_expiry_date, 'DBS')
+    }
+  }
+  
+  return expiredCerts
+}
+
 // Helper to check if any certificate is expired or expiring soon
 function getCertificateStatus(employee: any) {
   const today = new Date()
@@ -49,14 +90,12 @@ function getCertificateStatus(employee: any) {
   let hasExpired = false
   let expiringCritical = false
   let expiringWarning = false
-  const expiredCerts: string[] = []
   
-  const checkDate = (date: string | null, certName: string) => {
+  const checkDate = (date: string | null) => {
     if (!date) return
     const expiry = new Date(date)
     if (expiry < today) {
       hasExpired = true
-      expiredCerts.push(certName)
     } else if (expiry <= fourteenDays) {
       expiringCritical = true
     } else if (expiry.getTime() - today.getTime() <= 30 * 24 * 60 * 60 * 1000) {
@@ -64,41 +103,44 @@ function getCertificateStatus(employee: any) {
     }
   }
   
-  // Check driver certificates
-  if (employee.drivers && Array.isArray(employee.drivers) && employee.drivers.length > 0) {
-    const driver = employee.drivers[0]
-    checkDate(driver.tas_badge_expiry_date, 'TAS Badge')
-    checkDate(driver.taxi_badge_expiry_date, 'Taxi Badge')
-    checkDate(driver.dbs_expiry_date, 'DBS')
-    checkDate(driver.first_aid_certificate_expiry_date, 'First Aid')
-    checkDate(driver.passport_expiry_date, 'Passport')
-    checkDate(driver.driving_license_expiry_date, 'Driving License')
-    checkDate(driver.cpc_expiry_date, 'CPC')
-    checkDate(driver.vehicle_insurance_expiry_date, 'Vehicle Insurance')
-    checkDate(driver.mot_expiry_date, 'MOT')
+  // Check driver certificates (one-to-one relationship - single object, not array)
+  if (employee.drivers) {
+    const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
+    if (driver) {
+      checkDate(driver.tas_badge_expiry_date)
+      checkDate(driver.taxi_badge_expiry_date)
+      checkDate(driver.dbs_expiry_date)
+      checkDate(driver.first_aid_certificate_expiry_date)
+      checkDate(driver.passport_expiry_date)
+      checkDate(driver.driving_license_expiry_date)
+      checkDate(driver.cpc_expiry_date)
+      checkDate(driver.vehicle_insurance_expiry_date)
+      checkDate(driver.mot_expiry_date)
+    }
   }
   
-  // Check PA certificates
-  if (employee.passenger_assistants && Array.isArray(employee.passenger_assistants) && employee.passenger_assistants.length > 0) {
-    const pa = employee.passenger_assistants[0]
-    checkDate(pa.tas_badge_expiry_date, 'TAS Badge')
-    checkDate(pa.dbs_expiry_date, 'DBS')
+  // Check PA certificates (one-to-one relationship - single object, not array)
+  if (employee.passenger_assistants) {
+    const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
+    if (pa) {
+      checkDate(pa.tas_badge_expiry_date)
+      checkDate(pa.dbs_expiry_date)
+    }
   }
   
   if (hasExpired || employee.can_work === false) {
     return { 
       status: 'expired', 
       label: 'Expired', 
-      color: 'bg-red-100 text-red-800',
-      expiredCerts
+      color: 'bg-red-100 text-red-800'
     }
   } else if (expiringCritical) {
-    return { status: 'critical', label: '< 14 Days', color: 'bg-orange-100 text-orange-800', expiredCerts: [] }
+    return { status: 'critical', label: '< 14 Days', color: 'bg-orange-100 text-orange-800' }
   } else if (expiringWarning) {
-    return { status: 'warning', label: '< 30 Days', color: 'bg-yellow-100 text-yellow-800', expiredCerts: [] }
+    return { status: 'warning', label: '< 30 Days', color: 'bg-yellow-100 text-yellow-800' }
   }
   
-  return { status: 'valid', label: 'Valid', color: 'bg-green-100 text-green-800', expiredCerts: [] }
+  return { status: 'valid', label: 'Valid', color: 'bg-green-100 text-green-800' }
 }
 
 async function EmployeesTable() {
@@ -129,8 +171,9 @@ async function EmployeesTable() {
           ) : (
             employees.map((employee) => {
               const certStatus = getCertificateStatus(employee)
-              const isDriver = employee.drivers && Array.isArray(employee.drivers) && employee.drivers.length > 0
-              const isPA = employee.passenger_assistants && Array.isArray(employee.passenger_assistants) && employee.passenger_assistants.length > 0
+              const expiredCerts = getExpiredCertificates(employee)
+              const isDriver = employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers.length > 0 : true)
+              const isPA = employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants.length > 0 : true)
               
               return (
                 <TableRow key={employee.id}>
@@ -155,9 +198,9 @@ async function EmployeesTable() {
                           <XCircle className="mr-1 h-4 w-4" />
                           CANNOT WORK
                         </span>
-                        {certStatus.expiredCerts.length > 0 && (
+                        {expiredCerts.length > 0 && (
                           <div className="text-xs text-red-700 font-medium">
-                            Expired: {certStatus.expiredCerts.join(', ')}
+                            Expired: {expiredCerts.join(', ')}
                           </div>
                         )}
                       </div>

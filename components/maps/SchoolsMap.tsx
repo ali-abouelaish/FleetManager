@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { loadGoogleMapsScript } from '@/lib/google-maps-loader'
 
 interface School {
   id: number
@@ -29,27 +30,32 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  // Ensure component only renders on client
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
+    // Don't initialize until component is mounted on client
+    if (!mounted) return
+
+    let isMounted = true
+
     const initMap = async () => {
       try {
-        // Check if Google Maps is already loaded
-        if (!window.google) {
-          // Load Google Maps script manually
-          const script = document.createElement('script')
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geocoding&v=weekly`
-          script.async = true
-          script.defer = true
-          
-          await new Promise<void>((resolve, reject) => {
-            script.onload = () => resolve()
-            script.onerror = () => reject(new Error('Failed to load Google Maps'))
-            document.head.appendChild(script)
-          })
-        }
+        // Load Google Maps API (will prevent duplicates)
+        await loadGoogleMapsScript(apiKey, ['places', 'geocoding'])
 
         // Google Maps API is now available globally
-        if (!mapRef.current || !window.google) return
+        if (!mapRef.current || !window.google || !window.google.maps) {
+          if (isMounted) {
+            setError('Google Maps API failed to initialize')
+            setLoading(false)
+          }
+          return
+        }
 
         // Default center (UK)
         const defaultCenter = { lat: 54.5, lng: -2.0 }
@@ -114,16 +120,37 @@ export function SchoolsMap({ schools, apiKey }: SchoolsMapProps) {
           })
         }
 
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       } catch (err) {
         console.error('Error initializing map:', err)
-        setError('Failed to load map. Please check your Google Maps API key.')
-        setLoading(false)
+        if (isMounted) {
+          setError('Failed to load map. Please check your Google Maps API key.')
+          setLoading(false)
+        }
       }
     }
 
     initMap()
-  }, [schools, apiKey])
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
+  }, [schools, apiKey, mounted])
+
+  // Don't render until mounted on client
+  if (!mounted) {
+    return (
+      <div className="h-[500px] rounded-lg border bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading map...</p>
+        </div>
+      </div>
+    )
+  }
 
   const createMarker = (
     map: google.maps.Map,

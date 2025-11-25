@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Users, UserCog, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Users, UserCog, AlertCircle, Calendar } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
 export default function CreateIncidentPage() {
@@ -24,6 +25,7 @@ export default function CreateIncidentPage() {
   const [formData, setFormData] = useState({
     vehicle_id: '',
     route_id: '',
+    route_session_id: '',
     incident_type: '',
     description: '',
     resolved: false,
@@ -31,6 +33,8 @@ export default function CreateIncidentPage() {
 
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([])
   const [selectedPassengers, setSelectedPassengers] = useState<number[]>([])
+  const [routeSessions, setRouteSessions] = useState<any[]>([])
+  const [loadingSessions, setLoadingSessions] = useState(false)
 
   const toggleEmployee = (employeeId: number) => {
     setSelectedEmployees(prev =>
@@ -66,6 +70,90 @@ export default function CreateIncidentPage() {
     loadData()
   }, [supabase])
 
+  // Load route sessions when route_session_id changes
+  useEffect(() => {
+    if (formData.route_session_id) {
+      loadRouteSessionDetails(parseInt(formData.route_session_id))
+    }
+  }, [formData.route_session_id])
+
+  const loadRouteSessions = async () => {
+    setLoadingSessions(true)
+    const { data, error } = await supabase
+      .from('route_sessions')
+      .select(`
+        id,
+        session_date,
+        session_type,
+        route_id,
+        driver_id,
+        passenger_assistant_id,
+        routes(route_number)
+      `)
+      .order('session_date', { ascending: false })
+      .order('session_type', { ascending: true })
+      .limit(100)
+
+    if (!error && data) {
+      setRouteSessions(data.map((s: any) => ({
+        id: s.id,
+        label: `${formatDate(s.session_date)} - ${s.session_type} (${s.routes?.route_number || `Route ${s.route_id}`})`,
+        route_id: s.route_id,
+        driver_id: s.driver_id,
+        passenger_assistant_id: s.passenger_assistant_id,
+      })))
+    }
+    setLoadingSessions(false)
+  }
+
+  const loadRouteSessionDetails = async (sessionId: number) => {
+    const { data, error } = await supabase
+      .from('route_sessions')
+      .select(`
+        id,
+        route_id,
+        driver_id,
+        passenger_assistant_id,
+        routes(route_number)
+      `)
+      .eq('id', sessionId)
+      .single()
+
+    if (!error && data) {
+      // Auto-populate route_id
+      setFormData(prev => ({
+        ...prev,
+        route_id: data.route_id.toString(),
+      }))
+
+      // Auto-populate driver and PA in selected employees
+      const newEmployees = [...selectedEmployees]
+      if (data.driver_id && !newEmployees.includes(data.driver_id)) {
+        newEmployees.push(data.driver_id)
+      }
+      if (data.passenger_assistant_id && !newEmployees.includes(data.passenger_assistant_id)) {
+        newEmployees.push(data.passenger_assistant_id)
+      }
+      setSelectedEmployees(newEmployees)
+
+      // Get vehicle from vehicle_assignments for the driver
+      if (data.driver_id) {
+        const { data: vehicleData } = await supabase
+          .from('vehicle_assignments')
+          .select('vehicle_id')
+          .eq('employee_id', data.driver_id)
+          .maybeSingle()
+
+        if (vehicleData?.vehicle_id) {
+          setFormData(prev => ({
+            ...prev,
+            vehicle_id: vehicleData.vehicle_id.toString(),
+          }))
+        }
+      }
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -82,6 +170,14 @@ export default function CreateIncidentPage() {
       if (incidentError) throw incidentError
 
       const incidentId = incidentData.id
+
+      // If route_session_id is set, update the incident with it
+      if (formData.route_session_id) {
+        await supabase
+          .from('incidents')
+          .update({ route_session_id: parseInt(formData.route_session_id) })
+          .eq('id', incidentId)
+      }
 
       // Step 2: Link selected employees
       if (selectedEmployees.length > 0) {
@@ -166,15 +262,49 @@ export default function CreateIncidentPage() {
                   <option value="Other">Other</option>
                 </Select>
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="route_session_id">
+                    <Calendar className="inline mr-2 h-4 w-4" />
+                    Route Session (Optional - Auto-fills route, vehicle, and crew)
+                  </Label>
+                  {routeSessions.length === 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={loadRouteSessions}
+                      disabled={loadingSessions}
+                    >
+                      {loadingSessions ? 'Loading...' : 'Load Sessions'}
+                    </Button>
+                  )}
+                </div>
+                <Select 
+                  id="route_session_id" 
+                  value={formData.route_session_id} 
+                  onChange={(e) => setFormData({ ...formData, route_session_id: e.target.value })}
+                >
+                  <option value="">Select route session (optional)</option>
+                  {routeSessions.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {session.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecting a route session will automatically populate the route, vehicle, and crew members
+                </p>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="vehicle_id">Vehicle</Label>
+                <Label htmlFor="vehicle_id">Vehicle {formData.route_session_id && <span className="text-xs text-gray-500">(Auto-filled from session)</span>}</Label>
                 <Select id="vehicle_id" value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}>
                   <option value="">Select vehicle</option>
                   {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicle_identifier || `Vehicle ${vehicle.id}`}</option>)}
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="route_id">Related Route</Label>
+              <div className="space-y-2">
+                <Label htmlFor="route_id">Related Route {formData.route_session_id && <span className="text-xs text-gray-500">(Auto-filled from session)</span>}</Label>
                 <Select id="route_id" value={formData.route_id} onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}>
                   <option value="">Select route</option>
                   {routes.map((route) => <option key={route.id} value={route.id}>{route.route_number || `Route ${route.id}`}</option>)}

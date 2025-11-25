@@ -3,9 +3,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, FileDown } from 'lucide-react'
+import RoutePDFExport from './RoutePDFExport'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
+import RouteSessionsClient from './RouteSessionsClient'
 
 async function getRouteDetails(id: string) {
   const supabase = await createClient()
@@ -81,12 +83,15 @@ export default async function ViewRoutePage({
             <p className="mt-2 text-sm text-gray-600">Route Details & Assignments</p>
           </div>
         </div>
-        <Link href={`/dashboard/routes/${route.id}/edit`}>
-          <Button>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex space-x-2">
+          <RoutePDFExport routeId={route.id} routeNumber={route.route_number} />
+          <Link href={`/dashboard/routes/${route.id}/edit`}>
+            <Button>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -245,6 +250,9 @@ export default async function ViewRoutePage({
           )}
         </CardContent>
       </Card>
+
+      {/* Route Sessions & Attendance Section */}
+      <RouteSessionsClient routeId={parseInt(params.id)} passengers={passengers} />
     </div>
   )
 }

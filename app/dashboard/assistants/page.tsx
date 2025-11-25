@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Eye, Plus } from 'lucide-react'
+import { Eye, Plus, Pencil } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 async function getAssistants() {
@@ -105,9 +105,14 @@ async function AssistantsTable() {
                   <TableCell>{formatDate(assistant.tas_badge_expiry_date)}</TableCell>
                   <TableCell>{formatDate(assistant.dbs_expiry_date)}</TableCell>
                   <TableCell>
-                    <Link href={`/dashboard/employees/${assistant.employee_id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                    </Link>
+                    <div className="flex space-x-2">
+                      <Link href={`/dashboard/assistants/${assistant.id}`} prefetch={true}>
+                        <Button variant="ghost" size="sm" title="View PA Profile"><Eye className="h-4 w-4" /></Button>
+                      </Link>
+                      <Link href={`/dashboard/employees/${assistant.employee_id}`} prefetch={true}>
+                        <Button variant="ghost" size="sm" title="View Employee Profile"><Pencil className="h-4 w-4" /></Button>
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               )

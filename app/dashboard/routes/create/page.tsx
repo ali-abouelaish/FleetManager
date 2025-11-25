@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Plus, Trash2, MapPin, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { generateUUID } from '@/lib/utils'
 
 interface RoutePoint {
   id: string
@@ -35,7 +36,7 @@ export default function CreateRoutePage() {
 
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([
     {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       point_name: '',
       address: '',
       latitude: '',
@@ -49,7 +50,7 @@ export default function CreateRoutePage() {
     setRoutePoints([
       ...routePoints,
       {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         point_name: '',
         address: '',
         latitude: '',

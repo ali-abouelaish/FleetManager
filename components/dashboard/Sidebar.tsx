@@ -19,12 +19,15 @@ import {
   Phone,
   Calendar,
   Contact,
+  BarChart3,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'School Overview', href: '/dashboard/school-overview', icon: MapPin },
-  { name: 'Certificate Expiries', href: '/dashboard/certificates-expiry', icon: Calendar },
+  { name: 'Daily Summaries', href: '/dashboard/summaries', icon: BarChart3 },
+  { name: 'Employee Certificates', href: '/dashboard/certificates-expiry/employees', icon: Calendar },
+  { name: 'Vehicle Certificates', href: '/dashboard/certificates-expiry/vehicles', icon: Calendar },
   { name: 'Employees', href: '/dashboard/employees', icon: Users },
   { name: 'Drivers', href: '/dashboard/drivers', icon: UserCog },
   { name: 'Passenger Assistants', href: '/dashboard/assistants', icon: UserCheck },

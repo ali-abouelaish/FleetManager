@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
+import dynamic from 'next/dynamic'
+
+// Dynamically import the QR code component (client component)
+const PassengerAssistantQRCodeWrapper = dynamic(
+  () => import('../../passenger-assistants/[id]/qr-code'),
+  { ssr: false }
+)
 
 async function getEmployee(id: string) {
   const supabase = await createClient()
@@ -42,6 +49,7 @@ async function getEmployee(id: string) {
         additional_notes
       ),
       passenger_assistants (
+        id,
         tas_badge_number,
         tas_badge_expiry_date,
         dbs_expiry_date
@@ -136,6 +144,135 @@ export default async function ViewEmployeePage({
           </CardContent>
         </Card>
       )}
+
+      {/* Expired & Expiring Certificates Summary */}
+      {(() => {
+        const expiredCerts: Array<{ type: string; expiryDate: string; daysOverdue: number; badge?: string }> = []
+        const expiringCerts: Array<{ type: string; expiryDate: string; daysRemaining: number; badge?: string }> = []
+
+        const checkCert = (type: string, date: string | null, badge?: string) => {
+          if (!date) return
+          const daysRemaining = getDaysRemaining(date)
+          if (daysRemaining !== null) {
+            if (daysRemaining < 0) {
+              expiredCerts.push({ type, expiryDate: date, daysOverdue: Math.abs(daysRemaining), badge })
+            } else if (daysRemaining <= 30) {
+              expiringCerts.push({ type, expiryDate: date, daysRemaining, badge })
+            }
+          }
+        }
+
+        // Check driver certificates (handle both array and single object)
+        if (employee.drivers) {
+          const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
+          if (driver) {
+            checkCert('TAS Badge', driver.tas_badge_expiry_date, driver.tas_badge_number)
+            checkCert('Taxi Badge', driver.taxi_badge_expiry_date, driver.taxi_badge_number)
+            checkCert('DBS', driver.dbs_expiry_date)
+            checkCert('First Aid Certificate', driver.first_aid_certificate_expiry_date)
+            checkCert('Passport', driver.passport_expiry_date)
+            checkCert('Driving License', driver.driving_license_expiry_date)
+            checkCert('CPC', driver.cpc_expiry_date)
+            checkCert('Vehicle Insurance', driver.vehicle_insurance_expiry_date)
+            checkCert('MOT', driver.mot_expiry_date)
+          }
+        }
+
+        // Check PA certificates (handle both array and single object)
+        if (employee.passenger_assistants) {
+          const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
+          if (pa) {
+            checkCert('TAS Badge', pa.tas_badge_expiry_date, pa.tas_badge_number)
+            checkCert('DBS', pa.dbs_expiry_date)
+          }
+        }
+
+        // Debug: Log to see what we found (remove in production)
+        // console.log('Expired certs:', expiredCerts.length, 'Expiring certs:', expiringCerts.length)
+
+        if (expiredCerts.length === 0 && expiringCerts.length === 0) {
+          return null
+        }
+
+        return (
+          <div className="space-y-4">
+            {/* Expired Certificates */}
+            {expiredCerts.length > 0 && (
+              <Card className="border-l-4 border-red-500">
+                <CardHeader className="bg-red-50">
+                  <CardTitle className="flex items-center text-red-800">
+                    <XCircle className="mr-2 h-5 w-5" />
+                    Expired Certificates ({expiredCerts.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-3">
+                    {expiredCerts.map((cert, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-red-900">{cert.type}</p>
+                          {cert.badge && (
+                            <p className="text-xs text-red-700 mt-1">Badge: {cert.badge}</p>
+                          )}
+                          <p className="text-xs text-red-600 mt-1">Expired: {formatDate(cert.expiryDate)}</p>
+                        </div>
+                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-red-200 text-red-900">
+                          {cert.daysOverdue} days overdue
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Expiring Certificates */}
+            {expiringCerts.length > 0 && (
+              <Card className="border-l-4 border-orange-500">
+                <CardHeader className="bg-orange-50">
+                  <CardTitle className="flex items-center text-orange-800">
+                    <AlertTriangle className="mr-2 h-5 w-5" />
+                    Expiring Certificates ({expiringCerts.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-3">
+                    {expiringCerts.map((cert, idx) => {
+                      const isCritical = cert.daysRemaining <= 14
+                      return (
+                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${
+                          isCritical ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                        }`}>
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${isCritical ? 'text-orange-900' : 'text-yellow-900'}`}>
+                              {cert.type}
+                            </p>
+                            {cert.badge && (
+                              <p className={`text-xs mt-1 ${isCritical ? 'text-orange-700' : 'text-yellow-700'}`}>
+                                Badge: {cert.badge}
+                              </p>
+                            )}
+                            <p className={`text-xs mt-1 ${isCritical ? 'text-orange-600' : 'text-yellow-600'}`}>
+                              Expires: {formatDate(cert.expiryDate)}
+                            </p>
+                          </div>
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                            isCritical 
+                              ? 'bg-orange-200 text-orange-900' 
+                              : 'bg-yellow-200 text-yellow-900'
+                          }`}>
+                            {cert.daysRemaining} days remaining
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
+      })()}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -496,80 +633,63 @@ export default async function ViewEmployeePage({
         </>
       )}
 
-      {/* Passenger Assistant Certificates */}
+      {/* Passenger Assistant Certificates - Comprehensive View */}
       {employee.passenger_assistants && Array.isArray(employee.passenger_assistants) && employee.passenger_assistants.length > 0 && (
-        <Card className="md:col-span-2">
-          <CardHeader className="bg-navy text-white">
-            <CardTitle className="flex items-center">
-              👥 Passenger Assistant Certificates
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid gap-4 md:grid-cols-3">
-              {employee.passenger_assistants.map((pa: any, idx: number) => {
-                const tasBadgeDays = getDaysRemaining(pa.tas_badge_expiry_date)
-                const dbsDays = getDaysRemaining(pa.dbs_expiry_date)
-                
-                const tasBadgeStatus = getStatusBadge(tasBadgeDays)
-                const dbsStatus = getStatusBadge(dbsDays)
-                
-                return (
-                  <div key={idx} className="space-y-4">
-                    <div className="rounded-lg border p-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">TAS Badge</p>
-                      <p className="text-xs text-gray-500 mb-1">
-                        {pa.tas_badge_number || 'No badge number'}
-                      </p>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Expires: {formatDate(pa.tas_badge_expiry_date)}
-                      </p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${tasBadgeStatus.color}`}>
-                        {tasBadgeStatus.icon && <tasBadgeStatus.icon className="mr-1 h-3 w-3" />}
-                        {tasBadgeStatus.label}
-                      </span>
-                    </div>
-                    
-                    <div className="rounded-lg border p-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">DBS Certificate</p>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Expires: {formatDate(pa.dbs_expiry_date)}
-                      </p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${dbsStatus.color}`}>
-                        {dbsStatus.icon && <dbsStatus.icon className="mr-1 h-3 w-3" />}
-                        {dbsStatus.label}
-                      </span>
-                    </div>
+        <>
+          {employee.passenger_assistants.map((pa: any, idx: number) => (
+            <div key={idx} className="md:col-span-2 space-y-6">
+              <Card className="md:col-span-2">
+                <CardHeader className="bg-navy text-white">
+                  <CardTitle className="flex items-center">
+                    👥 Passenger Assistant Certificates & Expiry Dates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-navy">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Certificate Type</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Badge/Reference</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Expiry Date</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { label: 'TAS Badge', date: pa.tas_badge_expiry_date, ref: pa.tas_badge_number },
+                          { label: 'DBS Certificate', date: pa.dbs_expiry_date, ref: null },
+                        ].map((item, itemIdx) => {
+                          const daysRemaining = getDaysRemaining(item.date)
+                          const badge = getStatusBadge(daysRemaining)
+                          return (
+                            <tr key={itemIdx} className={`border-b ${itemIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
+                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.label}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{item.ref || '—'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{item.date ? formatDate(item.date) : 'Not set'}</td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${badge.color}`}>
+                                  {badge.icon && <badge.icon className="mr-1 h-3 w-3" />}
+                                  {badge.label}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                )
-              })}
+                </CardContent>
+              </Card>
+              {/* QR Code for Document Upload */}
+              {pa.id && (
+                <PassengerAssistantQRCodeWrapper assistantId={pa.id} />
+              )}
             </div>
-          </CardContent>
-        </Card>
+          ))}
+        </>
       )}
 
-      {/* Quick Link to Certificate Expiry Dashboard */}
-      <Card className="border-navy">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-navy mr-3" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  View All Certificate Expiries
-                </p>
-                <p className="text-xs text-gray-500">
-                  Check all expiring certificates across drivers, PAs, and vehicles
-                </p>
-              </div>
-            </div>
-            <Link href="/dashboard/certificates-expiry" prefetch={true}>
-              <Button variant="secondary">
-                View Dashboard →
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

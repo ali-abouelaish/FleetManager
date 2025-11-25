@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Plus, Trash2, Users, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { generateUUID } from '@/lib/utils'
 
 interface ParentContact {
   id: string
@@ -42,7 +43,7 @@ export default function CreatePassengerPage() {
 
   const [parentContacts, setParentContacts] = useState<ParentContact[]>([
     {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       full_name: '',
       relationship: '',
       phone_number: '',
@@ -55,7 +56,7 @@ export default function CreatePassengerPage() {
     setParentContacts([
       ...parentContacts,
       {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         full_name: '',
         relationship: '',
         phone_number: '',

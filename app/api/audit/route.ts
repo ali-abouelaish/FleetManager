@@ -14,14 +14,21 @@ export async function POST(request: Request) {
     }
 
     // Get the user's ID from the users table
-    const { data: userData } = await supabase
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('email', user.email)
-      .single()
+      .maybeSingle()
+
+    if (userError) {
+      console.error('Error fetching user:', userError)
+      // Continue without audit log if user lookup fails
+      return NextResponse.json({ success: true, warning: 'Audit log skipped: user not found' })
+    }
 
     if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      // User not found in users table, skip audit log
+      return NextResponse.json({ success: true, warning: 'Audit log skipped: user not found' })
     }
 
     // Insert audit log

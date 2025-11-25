@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
+import DriverQRCode from './DriverQRCode'
 
 interface Driver {
   employee_id: number
@@ -41,8 +42,6 @@ interface Driver {
   employees: {
     id: number
     full_name: string
-    first_name: string
-    last_name: string
     can_work: boolean
     employment_status: string
     phone_number: string | null
@@ -111,11 +110,9 @@ export function DriverDetailClient({ id }: { id: string }) {
         .from('drivers')
         .select(`
           *,
-          employees!inner (
+          employees (
             id,
             full_name,
-            first_name,
-            last_name,
             can_work,
             employment_status,
             phone_number,
@@ -125,7 +122,13 @@ export function DriverDetailClient({ id }: { id: string }) {
         .eq('employee_id', id)
         .single()
 
-      if (error || !data) {
+      if (error) {
+        console.error('Error fetching driver:', error)
+        setLoading(false)
+        return
+      }
+
+      if (!data) {
         setLoading(false)
         return
       }
@@ -171,7 +174,7 @@ export function DriverDetailClient({ id }: { id: string }) {
             <p className="mt-2 text-sm text-gray-600">Driver Details & Compliance</p>
           </div>
         </div>
-        <Link href={`/dashboard/employees/${employee.id}/edit`}>
+        <Link href={`/dashboard/drivers/${id}/edit`}>
           <Button>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
@@ -241,77 +244,78 @@ export function DriverDetailClient({ id }: { id: string }) {
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Employee ID</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.id}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.full_name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      employee.employment_status === 'Active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {employee.employment_status || 'N/A'}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
-                      employee.can_work === false
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}
-                  >
-                    {employee.can_work === false ? (
-                      <>
-                        <XCircle className="mr-1 h-3 w-3" />
-                        Cannot Work
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                        Authorized
-                      </>
-                    )}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">PSV License</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {driver.psv_license ? 'Yes' : 'No'}
-                  </span>
-                </dd>
-              </div>
-            </CardContent>
-          </Card>
+        <>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader className="bg-navy text-white">
+                <CardTitle>Basic Information</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Employee ID</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{employee.id}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Full Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{employee.full_name}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
+                  <dd className="mt-1">
+                    <span
+                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                        employee.employment_status === 'Active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {employee.employment_status || 'N/A'}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
+                  <dd className="mt-1">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
+                        employee.can_work === false
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {employee.can_work === false ? (
+                        <>
+                          <XCircle className="mr-1 h-3 w-3" />
+                          Cannot Work
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-1 h-3 w-3" />
+                          Authorized
+                        </>
+                      )}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">PSV License</dt>
+                  <dd className="mt-1">
+                    <span
+                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                        driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {driver.psv_license ? 'Yes' : 'No'}
+                    </span>
+                  </dd>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
+            <Card>
+              <CardHeader className="bg-navy text-white">
+                <CardTitle>Contact Information</CardTitle>
+              </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
@@ -365,6 +369,10 @@ export function DriverDetailClient({ id }: { id: string }) {
             </CardContent>
           </Card>
         </div>
+
+        {/* QR Code Section */}
+        <DriverQRCode driverId={parseInt(id)} />
+      </>
       )}
 
       {/* Documentation Tab */}

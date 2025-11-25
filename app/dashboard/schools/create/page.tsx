@@ -35,7 +35,8 @@ export default function CreateSchoolPage() {
       if (error) throw error
 
       if (data && data[0]) {
-        await fetch('/api/audit', {
+        // Audit log (non-blocking)
+        fetch('/api/audit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -43,7 +44,7 @@ export default function CreateSchoolPage() {
             record_id: data[0].id,
             action: 'CREATE',
           }),
-        })
+        }).catch(err => console.error('Audit log error:', err))
       }
 
       router.push('/dashboard/schools')

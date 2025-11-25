@@ -6,18 +6,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, Pencil, Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
+import SchoolRouteSessionsClient from './SchoolRouteSessionsClient'
 
 async function getSchoolDetails(id: string) {
   const supabase = await createClient()
   
-  // Get school details
+  // Get school details - use maybeSingle() to handle cases where school doesn't exist
   const { data: school, error: schoolError } = await supabase
     .from('schools')
     .select('*')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (schoolError || !school) {
+  if (schoolError) {
+    console.error('Error fetching school:', schoolError)
+    return null
+  }
+
+  if (!school) {
     return null
   }
 
@@ -248,6 +254,11 @@ export default async function ViewSchoolPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Route Sessions & Attendance Section */}
+      {routes.length > 0 && (
+        <SchoolRouteSessionsClient schoolId={parseInt(params.id)} routes={routes} />
+      )}
     </div>
   )
 }

@@ -7,8 +7,10 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 import { AlertTriangle, Clock } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { CertificateExpiryFilter } from './CertificateExpiryFilter'
+import { EntityTypeTabs } from './EntityTypeTabs'
 
 type ExpiryPeriod = '30-days' | '14-days' | 'expired'
+type EntityType = 'employees' | 'vehicles'
 
 interface ExpiringCertificate {
   entityType: 'driver' | 'assistant' | 'vehicle'
@@ -34,7 +36,7 @@ function getRowColorClass(daysRemaining: number): string {
   return 'bg-yellow-50 hover:bg-yellow-100'
 }
 
-async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCertificate[]> {
+async function getExpiringCertificates(period: ExpiryPeriod, entityType: EntityType): Promise<ExpiringCertificate[]> {
   const supabase = await createClient()
   const certificates: ExpiringCertificate[] = []
   const today = new Date()
@@ -52,30 +54,34 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
     maxDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
   }
 
-  // Fetch Drivers
-  const { data: drivers } = await supabase
-    .from('drivers')
-    .select(`
-      employee_id,
-      tas_badge_number,
-      tas_badge_expiry_date,
-      taxi_badge_number,
-      taxi_badge_expiry_date,
-      dbs_expiry_date,
-      first_aid_certificate_expiry_date,
-      passport_expiry_date,
-      driving_license_expiry_date,
-      cpc_expiry_date,
-      vehicle_insurance_expiry_date,
-      mot_expiry_date,
-      employees!inner (
-        id,
-        first_name,
-        last_name
-      )
-    `)
+  // Fetch Drivers (only if employees tab)
+  let drivers = null
+  if (entityType === 'employees') {
+    const result = await supabase
+      .from('drivers')
+      .select(`
+        employee_id,
+        tas_badge_number,
+        tas_badge_expiry_date,
+        taxi_badge_number,
+        taxi_badge_expiry_date,
+        dbs_expiry_date,
+        first_aid_certificate_expiry_date,
+        passport_expiry_date,
+        driving_license_expiry_date,
+        cpc_expiry_date,
+        vehicle_insurance_expiry_date,
+        mot_expiry_date,
+        employees!inner (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+    drivers = result.data
+  }
 
-  if (drivers) {
+  if (drivers && entityType === 'employees') {
     drivers.forEach((driver: any) => {
       const checkCertificate = (type: string, expiry: string | null) => {
         if (!expiry) return
@@ -126,23 +132,27 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
     })
   }
 
-  // Fetch Passenger Assistants
-  const { data: assistants } = await supabase
-    .from('passenger_assistants')
-    .select(`
-      id,
-      employee_id,
-      tas_badge_number,
-      tas_badge_expiry_date,
-      dbs_expiry_date,
-      employees!inner (
+  // Fetch Passenger Assistants (only if employees tab)
+  let assistants = null
+  if (entityType === 'employees') {
+    const result = await supabase
+      .from('passenger_assistants')
+      .select(`
         id,
-        first_name,
-        last_name
-      )
-    `)
+        employee_id,
+        tas_badge_number,
+        tas_badge_expiry_date,
+        dbs_expiry_date,
+        employees!inner (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+    assistants = result.data
+  }
 
-  if (assistants) {
+  if (assistants && entityType === 'employees') {
     assistants.forEach((assistant: any) => {
       const checkCertificate = (type: string, expiry: string | null) => {
         if (!expiry) return
@@ -186,12 +196,16 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
     })
   }
 
-  // Fetch Vehicles
-  const { data: vehicles } = await supabase
-    .from('vehicles')
-    .select('*')
+  // Fetch Vehicles (only if vehicles tab)
+  let vehicles = null
+  if (entityType === 'vehicles') {
+    const result = await supabase
+      .from('vehicles')
+      .select('*')
+    vehicles = result.data
+  }
 
-  if (vehicles) {
+  if (vehicles && entityType === 'vehicles') {
     vehicles.forEach((vehicle: any) => {
       const checkCertificate = (type: string, expiry: string | null) => {
         if (!expiry) return
@@ -202,7 +216,7 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
             entityType: 'vehicle',
             entityId: vehicle.id,
             entityName: `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'N/A',
-            entityIdentifier: vehicle.vehicle_identifier || vehicle.registration || 'N/A',
+            entityIdentifier: vehicle.registration || vehicle.vehicle_identifier || 'N/A',
             certificateType: type,
             expiryDate: expiry,
             daysRemaining,
@@ -212,7 +226,7 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
             entityType: 'vehicle',
             entityId: vehicle.id,
             entityName: `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'N/A',
-            entityIdentifier: vehicle.vehicle_identifier || vehicle.registration || 'N/A',
+            entityIdentifier: vehicle.registration || vehicle.vehicle_identifier || 'N/A',
             certificateType: type,
             expiryDate: expiry,
             daysRemaining,
@@ -222,7 +236,7 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
             entityType: 'vehicle',
             entityId: vehicle.id,
             entityName: `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'N/A',
-            entityIdentifier: vehicle.vehicle_identifier || vehicle.registration || 'N/A',
+            entityIdentifier: vehicle.registration || vehicle.vehicle_identifier || 'N/A',
             certificateType: type,
             expiryDate: expiry,
             daysRemaining,
@@ -246,7 +260,7 @@ async function getExpiringCertificates(period: ExpiryPeriod): Promise<ExpiringCe
   return certificates
 }
 
-async function getCertificateCounts() {
+async function getCertificateCounts(entityType: EntityType) {
   const supabase = await createClient()
   
   const thirtyDays = new Date()
@@ -255,10 +269,10 @@ async function getCertificateCounts() {
   fourteenDays.setDate(fourteenDays.getDate() + 14)
   const today = new Date()
 
-  // Count expiring certificates (this is a simplified count)
-  const expired = await getExpiringCertificates('expired')
-  const fourteenDay = await getExpiringCertificates('14-days')
-  const thirtyDay = await getExpiringCertificates('30-days')
+  // Count expiring certificates for the specific entity type
+  const expired = await getExpiringCertificates('expired', entityType)
+  const fourteenDay = await getExpiringCertificates('14-days', entityType)
+  const thirtyDay = await getExpiringCertificates('30-days', entityType)
 
   return {
     'expired': expired.length,
@@ -267,8 +281,8 @@ async function getCertificateCounts() {
   }
 }
 
-async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
-  const certificates = await getExpiringCertificates(period)
+async function CertificatesTable({ period, entityType }: { period: ExpiryPeriod, entityType: EntityType }) {
+  const certificates = await getExpiringCertificates(period, entityType)
 
   // Group by entity type
   const drivers = certificates.filter(c => c.entityType === 'driver')
@@ -277,8 +291,11 @@ async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
 
   return (
     <div className="space-y-6">
-      {/* Drivers Table */}
-      {drivers.length > 0 && (
+      {/* Employees Section - Only show if employees tab */}
+      {entityType === 'employees' && (
+        <>
+          {/* Drivers Table */}
+          {drivers.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-navy">
@@ -335,8 +352,8 @@ async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
         </Card>
       )}
 
-      {/* Passenger Assistants Table */}
-      {assistants.length > 0 && (
+          {/* Passenger Assistants Table */}
+          {assistants.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-navy">
@@ -391,10 +408,15 @@ async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
             </div>
           </CardContent>
         </Card>
+          )}
+        </>
       )}
 
-      {/* Vehicles Table */}
-      {vehicles.length > 0 && (
+      {/* Vehicles Section - Only show if vehicles tab */}
+      {entityType === 'vehicles' && (
+        <>
+          {/* Vehicles Table */}
+          {vehicles.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-navy">
@@ -408,7 +430,7 @@ async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Vehicle</TableHead>
-                    <TableHead>Identifier</TableHead>
+                    <TableHead>Registration</TableHead>
                     <TableHead>Certificate Type</TableHead>
                     <TableHead>Expiry Date</TableHead>
                     <TableHead>Days Remaining</TableHead>
@@ -449,6 +471,8 @@ async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
             </div>
           </CardContent>
         </Card>
+          )}
+        </>
       )}
 
       {/* Empty State */}
@@ -469,31 +493,10 @@ async function CertificatesTable({ period }: { period: ExpiryPeriod }) {
   )
 }
 
-export default async function CertificatesExpiryPage({
-  searchParams,
-}: {
-  searchParams: { period?: string }
-}) {
-  const period = (searchParams.period as ExpiryPeriod) || '30-days'
-  const counts = await getCertificateCounts()
+import { redirect } from 'next/navigation'
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-navy">Certificate Expiries</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Track and monitor expiring certificates for drivers, passenger assistants, and vehicles
-        </p>
-      </div>
-
-      {/* Filter Tabs */}
-      <CertificateExpiryFilter currentPeriod={period} counts={counts} />
-
-      {/* Tables */}
-      <Suspense key={period} fallback={<TableSkeleton rows={5} columns={5} />}>
-        <CertificatesTable period={period} />
-      </Suspense>
-    </div>
-  )
+export default async function CertificatesExpiryPage() {
+  // Redirect to employees page by default
+  redirect('/dashboard/certificates-expiry/employees')
 }
 

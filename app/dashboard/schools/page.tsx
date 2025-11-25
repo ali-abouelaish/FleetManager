@@ -78,7 +78,13 @@ async function SchoolsTable() {
 
 export default async function SchoolsPage() {
   const schools = await getSchools()
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ''
+  
+  // Debug: Log if key is missing (only in development)
+  if (!apiKey && process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set or is empty')
+    console.warn('Please check your .env.local file and restart the dev server')
+  }
 
   return (
     <div className="space-y-6">
@@ -108,12 +114,31 @@ export default async function SchoolsPage() {
           </CardHeader>
           <CardContent className="pt-6">
             {apiKey ? (
-              <SchoolsMap schools={schools} apiKey={apiKey} />
+              <Suspense fallback={
+                <div className="h-[500px] rounded-lg border bg-gray-50 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading map...</p>
+                  </div>
+                </div>
+              }>
+                <SchoolsMap schools={schools} apiKey={apiKey} />
+              </Suspense>
             ) : (
               <div className="h-[500px] rounded-lg border bg-yellow-50 flex items-center justify-center">
-                <div className="text-center text-yellow-800 p-4">
-                  <p className="font-medium mb-2">⚠️ Google Maps API Key Required</p>
-                  <p className="text-sm">Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file</p>
+                <div className="text-center text-yellow-800 p-4 max-w-md">
+                  <p className="font-medium mb-2">⚠️ Google Maps API Key Not Found</p>
+                  <p className="text-sm mb-3">
+                    Please add <code className="bg-yellow-100 px-2 py-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your environment file.
+                  </p>
+                  <div className="text-xs text-left bg-yellow-100 p-3 rounded space-y-1">
+                    <p className="font-semibold mb-2">Troubleshooting:</p>
+                    <p>1. Ensure the variable is in <code className="font-mono">.env.local</code> in the project root</p>
+                    <p>2. Variable name must be exactly: <code className="font-mono">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code></p>
+                    <p>3. <strong>Restart your Next.js dev server</strong> after adding/changing env variables</p>
+                    <p>4. Check for any extra spaces or quotes around the value</p>
+                    <p>5. Format: <code className="font-mono">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_key_here</code></p>
+                  </div>
                 </div>
               </div>
             )}

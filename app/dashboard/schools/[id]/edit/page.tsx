@@ -27,10 +27,16 @@ function EditSchoolPageClient({ id }: { id: string }) {
         .from('schools')
         .select('*')
         .eq('id', id)
-        .single()
+        .maybeSingle()
 
       if (error) {
+        console.error('Error fetching school:', error)
         setError('Failed to load school')
+        return
+      }
+
+      if (!data) {
+        setError('School not found')
         return
       }
 
@@ -58,7 +64,8 @@ function EditSchoolPageClient({ id }: { id: string }) {
 
       if (error) throw error
 
-      await fetch('/api/audit', {
+      // Audit log (non-blocking)
+      fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -66,7 +73,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
           record_id: parseInt(id),
           action: 'UPDATE',
         }),
-      })
+      }).catch(err => console.error('Audit log error:', err))
 
       router.push(`/dashboard/schools/${id}`)
       router.refresh()
@@ -89,7 +96,8 @@ function EditSchoolPageClient({ id }: { id: string }) {
 
       if (error) throw error
 
-      await fetch('/api/audit', {
+      // Audit log (non-blocking)
+      fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,7 +105,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
           record_id: parseInt(id),
           action: 'DELETE',
         }),
-      })
+      }).catch(err => console.error('Audit log error:', err))
 
       router.push('/dashboard/schools')
       router.refresh()

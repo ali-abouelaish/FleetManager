@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Trash2, Plus, MapPin, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { generateUUID } from '@/lib/utils'
 
 interface RoutePoint {
   id: string | number // string for new (UUID), number for existing (DB ID)
@@ -42,7 +43,7 @@ function EditRoutePageClient({ id }: { id: string }) {
     setRoutePoints([
       ...routePoints,
       {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         point_name: '',
         address: '',
         latitude: '',

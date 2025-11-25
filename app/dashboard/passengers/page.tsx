@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye, Pencil } from 'lucide-react'
+import { Plus, Eye, Pencil, MessageSquare } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 async function getPassengers() {
@@ -19,7 +19,25 @@ async function getPassengers() {
     return []
   }
 
-  return data || []
+  // Fetch update counts for each passenger
+  const passengerIds = data?.map(p => p.id) || []
+  const { data: updateCounts } = await supabase
+    .from('passenger_updates')
+    .select('passenger_id')
+
+  // Count updates per passenger
+  const countsMap = new Map<number, number>()
+  updateCounts?.forEach(update => {
+    countsMap.set(update.passenger_id, (countsMap.get(update.passenger_id) || 0) + 1)
+  })
+
+  // Attach counts to passengers
+  const passengersWithCounts = data?.map(passenger => ({
+    ...passenger,
+    updateCount: countsMap.get(passenger.id) || 0
+  }))
+
+  return passengersWithCounts || []
 }
 
 async function PassengersTable() {
@@ -36,13 +54,14 @@ async function PassengersTable() {
               <TableHead>Route</TableHead>
               <TableHead>Mobility Type</TableHead>
               <TableHead>Seat Number</TableHead>
+              <TableHead>Updates</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {passengers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
+                <TableCell colSpan={8} className="text-center text-gray-500">
                   No passengers found. Add your first passenger to get started.
                 </TableCell>
               </TableRow>
@@ -55,6 +74,16 @@ async function PassengersTable() {
                   <TableCell>{passenger.routes?.route_number || 'N/A'}</TableCell>
                   <TableCell>{passenger.mobility_type || 'N/A'}</TableCell>
                   <TableCell>{passenger.seat_number || 'N/A'}</TableCell>
+                  <TableCell>
+                    {passenger.updateCount > 0 ? (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold" title={`${passenger.updateCount} update(s) recorded`}>
+                        <MessageSquare className="h-3 w-3" />
+                        {passenger.updateCount}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                     <Link href={`/dashboard/passengers/${passenger.id}`} prefetch={true}>
@@ -96,7 +125,7 @@ export default function PassengersPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={7} />}>
+      <Suspense fallback={<TableSkeleton rows={5} columns={8} />}>
         <PassengersTable />
       </Suspense>
     </div>

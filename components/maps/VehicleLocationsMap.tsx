@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { loadGoogleMapsScript } from '@/lib/google-maps-loader'
 
 interface VehicleLocation {
   id: number
@@ -37,28 +38,24 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
   const [mapError, setMapError] = useState<string | null>(null)
 
   useEffect(() => {
+    let isMounted = true
+
     const initMap = async () => {
       setLoading(true)
       setMapError(null)
 
       try {
-        // Check if Google Maps is already loaded
-        if (!window.google) {
-          // Load Google Maps script manually
-          const script = document.createElement('script')
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly`
-          script.async = true
-          script.defer = true
-          
-          await new Promise<void>((resolve, reject) => {
-            script.onload = () => resolve()
-            script.onerror = () => reject(new Error('Failed to load Google Maps'))
-            document.head.appendChild(script)
-          })
-        }
+        // Load Google Maps API (will prevent duplicates)
+        await loadGoogleMapsScript(apiKey, ['places'])
 
         // Google Maps API is now available globally
-        if (!mapRef.current || !window.google) return
+        if (!mapRef.current || !window.google || !window.google.maps) {
+          if (isMounted) {
+            setMapError('Google Maps API failed to initialize')
+            setLoading(false)
+          }
+          return
+        }
 
         const mapInstance = new window.google.maps.Map(mapRef.current, {
             center: { lat: 0, lng: 0 },
@@ -92,15 +89,24 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
             mapInstance.setZoom(6)
           }
 
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       } catch (error) {
         console.error('Failed to load Google Maps:', error)
-        setMapError('Failed to load map. Please check your Google Maps API key.')
-        setLoading(false)
+        if (isMounted) {
+          setMapError('Failed to load map. Please check your Google Maps API key.')
+          setLoading(false)
+        }
       }
     }
 
     initMap()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
   }, [locations, apiKey])
 
   const createMarker = (
