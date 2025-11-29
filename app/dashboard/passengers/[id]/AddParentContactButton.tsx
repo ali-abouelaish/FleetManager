@@ -110,13 +110,13 @@ export default function AddParentContactButton({ passengerId }: AddParentContact
               {/* Mode Selection */}
               <div className="flex space-x-4">
                 <Button
-                  variant={addMode === 'existing' ? 'default' : 'secondary'}
+                  variant={addMode === 'existing' ? 'primary' : 'secondary'}
                   onClick={() => setAddMode('existing')}
                 >
                   Link Existing Contact
                 </Button>
                 <Button
-                  variant={addMode === 'new' ? 'default' : 'secondary'}
+                  variant={addMode === 'new' ? 'primary' : 'secondary'}
                   onClick={() => setAddMode('new')}
                 >
                   Create New Contact

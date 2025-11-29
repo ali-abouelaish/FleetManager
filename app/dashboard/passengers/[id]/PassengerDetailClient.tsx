@@ -506,13 +506,13 @@ export default function PassengerDetailClient({ passengerId, showOnlyUpdates = f
               {/* Mode Selection */}
               <div className="flex space-x-4">
                 <Button
-                  variant={addContactMode === 'existing' ? 'default' : 'secondary'}
+                  variant={addContactMode === 'existing' ? 'primary' : 'secondary'}
                   onClick={() => setAddContactMode('existing')}
                 >
                   Link Existing Contact
                 </Button>
                 <Button
-                  variant={addContactMode === 'new' ? 'default' : 'secondary'}
+                  variant={addContactMode === 'new' ? 'primary' : 'secondary'}
                   onClick={() => setAddContactMode('new')}
                 >
                   Create New Contact

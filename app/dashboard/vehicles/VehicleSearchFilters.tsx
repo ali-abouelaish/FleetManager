@@ -167,7 +167,7 @@ export function VehicleSearchFilters() {
         {hasActiveFilters && (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={clearFilters}
             disabled={isPending}
             className="whitespace-nowrap"

@@ -7,7 +7,6 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 import { AlertTriangle, Clock } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { CertificateExpiryFilter } from './CertificateExpiryFilter'
-import { EntityTypeTabs } from './EntityTypeTabs'
 
 type ExpiryPeriod = '30-days' | '14-days' | 'expired'
 type EntityType = 'employees' | 'vehicles'

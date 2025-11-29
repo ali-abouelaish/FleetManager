@@ -35,7 +35,8 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
 
     if (!error && data) {
       setQrToken(data.qr_token)
-      setAssistantName(data.employees?.full_name || null)
+      const employee = Array.isArray(data.employees) ? data.employees[0] : data.employees
+      setAssistantName(employee?.full_name || null)
       if (data.qr_token) {
         generateQRCode(data.qr_token)
       }

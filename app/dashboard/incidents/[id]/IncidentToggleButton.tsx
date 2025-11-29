@@ -43,7 +43,7 @@ export default function IncidentToggleButton({ incidentId, initialResolved }: In
     <Button
       onClick={handleToggle}
       disabled={loading}
-      variant={resolved ? 'secondary' : 'default'}
+      variant={resolved ? 'secondary' : 'primary'}
       className={resolved ? '' : 'bg-green-600 hover:bg-green-700'}
     >
       {resolved ? (

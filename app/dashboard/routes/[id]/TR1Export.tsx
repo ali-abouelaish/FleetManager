@@ -154,7 +154,10 @@ export default function TR1Export({ routeId, routeNumber }: TR1ExportProps) {
         if (!sessionsByDate[dateKey]) {
           sessionsByDate[dateKey] = {}
         }
-        sessionsByDate[dateKey][session.session_type.toLowerCase()] = session
+        const sessionType = session.session_type?.toLowerCase() as 'am' | 'pm'
+        if (sessionType === 'am' || sessionType === 'pm') {
+          sessionsByDate[dateKey][sessionType] = session
+        }
       })
 
       // Get unique dates sorted

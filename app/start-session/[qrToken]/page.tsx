@@ -64,10 +64,12 @@ export default function StartSessionPage() {
       .single()
 
     if (!error && data) {
+      const employee = Array.isArray(data.employees) ? data.employees[0] : data.employees
       const crew = Array.isArray(data.crew) ? data.crew[0] : data.crew
+      const route = Array.isArray(crew?.routes) ? crew?.routes[0] : crew?.routes
       setDriverInfo({
-        name: data.employees?.full_name || 'Unknown Driver',
-        routeName: crew?.routes?.route_number || null,
+        name: employee?.full_name || 'Unknown Driver',
+        routeName: route?.route_number || null,
         driverId: data.employee_id,
         routeId: crew?.route_id || null,
       })

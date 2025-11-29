@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -12,7 +12,7 @@ import { Upload, CheckCircle, XCircle, FileText, Image as ImageIcon, Loader2, Ey
 import { uploadAssistantDocument } from '@/lib/supabase/assistantDocuments'
 import { formatDate, formatDateTime } from '@/lib/utils'
 
-export default function AssistantUploadPage() {
+function AssistantUploadContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -93,11 +93,13 @@ export default function AssistantUploadPage() {
       .single()
 
     if (!error && data) {
+      const employee = Array.isArray(data.employees) ? data.employees[0] : data.employees
       const crew = Array.isArray(data.crew) ? data.crew[0] : data.crew
+      const route = Array.isArray(crew?.routes) ? crew?.routes[0] : crew?.routes
       setAssistantInfo({
         id: data.id,
-        name: data.employees?.full_name || 'Unknown Assistant',
-        routeName: crew?.routes?.route_number || null,
+        name: employee?.full_name || 'Unknown Assistant',
+        routeName: route?.route_number || null,
         employeeId: data.employee_id,
       })
     }
@@ -579,6 +581,25 @@ export default function AssistantUploadPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AssistantUploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div>
+              <p className="mt-4 text-gray-600">Loading...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <AssistantUploadContent />
+    </Suspense>
   )
 }
 

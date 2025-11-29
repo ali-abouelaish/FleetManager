@@ -73,7 +73,7 @@ export default function VORToggleButton({ vehicleId, currentVORStatus }: VORTogg
     <>
       <Button
         onClick={() => setShowModal(true)}
-        variant={currentVORStatus ? 'secondary' : 'default'}
+        variant={currentVORStatus ? 'secondary' : 'primary'}
         className={currentVORStatus ? '' : 'bg-red-600 hover:bg-red-700'}
       >
         {currentVORStatus ? (
