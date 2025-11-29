@@ -160,10 +160,28 @@ export default function CreateIncidentPage() {
     setLoading(true)
 
     try {
-      // Step 1: Create the incident
+      // Get current user
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        throw new Error('You must be logged in to create an incident')
+      }
+
+      // Get user ID from users table
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', authUser.email)
+        .maybeSingle()
+
+      // Step 1: Create the incident with created_by
+      const incidentDataToInsert = {
+        ...formData,
+        created_by: userData?.id || null,
+      }
+
       const { data: incidentData, error: incidentError } = await supabase
         .from('incidents')
-        .insert([formData])
+        .insert([incidentDataToInsert])
         .select()
         .single()
 

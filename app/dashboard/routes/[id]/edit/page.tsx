@@ -29,10 +29,14 @@ function EditRoutePageClient({ id }: { id: string }) {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [schools, setSchools] = useState<any[]>([])
+  const [drivers, setDrivers] = useState<any[]>([])
+  const [passengerAssistants, setPassengerAssistants] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     route_number: '',
     school_id: '',
+    driver_id: '',
+    passenger_assistant_id: '',
   })
 
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([])
@@ -101,10 +105,18 @@ function EditRoutePageClient({ id }: { id: string }) {
 
   useEffect(() => {
     async function loadData() {
-      const [routeResult, schoolsResult, pointsResult] = await Promise.all([
+      const [routeResult, schoolsResult, pointsResult, driversResult, pasResult] = await Promise.all([
         supabase.from('routes').select('*').eq('id', id).single(),
         supabase.from('schools').select('id, name').order('name'),
-        supabase.from('route_points').select('*').eq('route_id', id).order('stop_order')
+        supabase.from('route_points').select('*').eq('route_id', id).order('stop_order'),
+        supabase
+          .from('drivers')
+          .select('employee_id, employees(full_name, employment_status, can_work)')
+          .order('employee_id'),
+        supabase
+          .from('passenger_assistants')
+          .select('employee_id, employees(full_name, employment_status, can_work)')
+          .order('employee_id'),
       ])
 
       if (routeResult.error) {
@@ -116,11 +128,35 @@ function EditRoutePageClient({ id }: { id: string }) {
         setFormData({
           route_number: routeResult.data.route_number || '',
           school_id: routeResult.data.school_id || '',
+          driver_id: routeResult.data.driver_id || '',
+          passenger_assistant_id: routeResult.data.passenger_assistant_id || '',
         })
       }
 
       if (schoolsResult.data) {
         setSchools(schoolsResult.data)
+      }
+
+      if (driversResult.data) {
+        setDrivers(
+          driversResult.data
+            .filter((d: any) => d.employees?.employment_status === 'Active' && d.employees?.can_work !== false)
+            .map((d: any) => ({
+              id: d.employee_id,
+              name: d.employees?.full_name || 'Unknown',
+            }))
+        )
+      }
+
+      if (pasResult.data) {
+        setPassengerAssistants(
+          pasResult.data
+            .filter((pa: any) => pa.employees?.employment_status === 'Active' && pa.employees?.can_work !== false)
+            .map((pa: any) => ({
+              id: pa.employee_id,
+              name: pa.employees?.full_name || 'Unknown',
+            }))
+        )
       }
 
       if (pointsResult.data) {
@@ -147,9 +183,16 @@ function EditRoutePageClient({ id }: { id: string }) {
 
     try {
       // Step 1: Update the route
+      const routeDataToUpdate = {
+        route_number: formData.route_number,
+        school_id: formData.school_id || null,
+        driver_id: formData.driver_id || null,
+        passenger_assistant_id: formData.passenger_assistant_id || null,
+      }
+      
       const { error: routeError } = await supabase
         .from('routes')
-        .update(formData)
+        .update(routeDataToUpdate)
         .eq('id', id)
 
       if (routeError) throw routeError
@@ -313,6 +356,44 @@ function EditRoutePageClient({ id }: { id: string }) {
                   </option>
                 ))}
               </Select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="driver_id">Driver</Label>
+                <Select
+                  id="driver_id"
+                  value={formData.driver_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, driver_id: e.target.value })
+                  }
+                >
+                  <option value="">Select a driver (optional)</option>
+                  {drivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="passenger_assistant_id">Passenger Assistant</Label>
+                <Select
+                  id="passenger_assistant_id"
+                  value={formData.passenger_assistant_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, passenger_assistant_id: e.target.value })
+                  }
+                >
+                  <option value="">Select a PA (optional)</option>
+                  {passengerAssistants.map((pa) => (
+                    <option key={pa.id} value={pa.id}>
+                      {pa.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </form>
         </CardContent>

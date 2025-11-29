@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { ArrowLeft, Pencil, FileDown } from 'lucide-react'
 import RoutePDFExport from './RoutePDFExport'
+import TR1Export from './TR1Export'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import RouteSessionsClient from './RouteSessionsClient'
@@ -14,7 +15,12 @@ async function getRouteDetails(id: string) {
   
   const { data: route, error: routeError } = await supabase
     .from('routes')
-    .select('*, schools(name, address)')
+    .select(`
+      *,
+      schools(name, address),
+      driver:driver_id(employees(full_name)),
+      pa:passenger_assistant_id(employees(full_name))
+    `)
     .eq('id', id)
     .single()
 
@@ -28,16 +34,6 @@ async function getRouteDetails(id: string) {
     .select('*')
     .eq('route_id', id)
 
-  // Get crew for this route
-  const { data: crew } = await supabase
-    .from('crew')
-    .select(`
-      *,
-      driver:driver_id(employees(full_name)),
-      pa:pa_id(employees(full_name))
-    `)
-    .eq('route_id', id)
-
   // Get route points
   const { data: routePoints } = await supabase
     .from('route_points')
@@ -48,7 +44,6 @@ async function getRouteDetails(id: string) {
   return {
     route,
     passengers: passengers || [],
-    crew: crew || [],
     routePoints: routePoints || [],
   }
 }
@@ -64,7 +59,7 @@ export default async function ViewRoutePage({
     notFound()
   }
 
-  const { route, passengers, crew, routePoints } = data
+  const { route, passengers, routePoints } = data
 
   return (
     <div className="space-y-6">
@@ -83,7 +78,8 @@ export default async function ViewRoutePage({
             <p className="mt-2 text-sm text-gray-600">Route Details & Assignments</p>
           </div>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
+          <TR1Export routeId={route.id} routeNumber={route.route_number} />
           <RoutePDFExport routeId={route.id} routeNumber={route.route_number} />
           <Link href={`/dashboard/routes/${route.id}/edit`}>
             <Button>
@@ -138,7 +134,9 @@ export default async function ViewRoutePage({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Crew Members</span>
-              <span className="text-2xl font-bold text-gray-900">{crew.length}</span>
+              <span className="text-2xl font-bold text-gray-900">
+                {((route.driver_id ? 1 : 0) + (route.passenger_assistant_id ? 1 : 0))}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Route Points</span>
@@ -154,7 +152,7 @@ export default async function ViewRoutePage({
           <CardTitle>Crew Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          {crew.length === 0 ? (
+          {!route.driver_id && !route.passenger_assistant_id ? (
             <p className="text-center text-gray-500 py-4">No crew assigned to this route.</p>
           ) : (
             <Table>
@@ -165,12 +163,34 @@ export default async function ViewRoutePage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {crew.map((member: any) => (
-                  <TableRow key={member.id}>
-                    <TableCell>{member.driver?.employees?.full_name || 'N/A'}</TableCell>
-                    <TableCell>{member.pa?.employees?.full_name || 'N/A'}</TableCell>
-                  </TableRow>
-                ))}
+                <TableRow>
+                  <TableCell>
+                    {route.driver_id ? (() => {
+                      const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
+                      const driverName = Array.isArray(driver?.employees) ? driver.employees[0]?.full_name : driver?.employees?.full_name
+                      return driverName ? (
+                        <Link href={`/dashboard/employees/${route.driver_id}`} className="text-blue-600 hover:underline">
+                          {driverName}
+                        </Link>
+                      ) : 'Unknown'
+                    })() : (
+                      <span className="text-gray-400">Not assigned</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {route.passenger_assistant_id ? (() => {
+                      const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
+                      const paName = Array.isArray(pa?.employees) ? pa.employees[0]?.full_name : pa?.employees?.full_name
+                      return paName ? (
+                        <Link href={`/dashboard/employees/${route.passenger_assistant_id}`} className="text-blue-600 hover:underline">
+                          {paName}
+                        </Link>
+                      ) : 'Unknown'
+                    })() : (
+                      <span className="text-gray-400">Not assigned</span>
+                    )}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           )}

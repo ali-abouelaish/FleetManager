@@ -39,6 +39,8 @@ export default function CreatePassengerPage() {
     mobility_type: '',
     route_id: '',
     seat_number: '',
+    personal_item: '',
+    supervision_type: '',
   })
 
   const [parentContacts, setParentContacts] = useState<ParentContact[]>([
@@ -313,6 +315,32 @@ export default function CreatePassengerPage() {
                   setFormData({ ...formData, sen_requirements: e.target.value })
                 }
               />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="personal_item">Personal Item</Label>
+                <Input
+                  id="personal_item"
+                  value={formData.personal_item}
+                  onChange={(e) =>
+                    setFormData({ ...formData, personal_item: e.target.value })
+                  }
+                  placeholder="e.g., backpack, medication bag, etc."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="supervision_type">Supervision Type</Label>
+                <Input
+                  id="supervision_type"
+                  value={formData.supervision_type}
+                  onChange={(e) =>
+                    setFormData({ ...formData, supervision_type: e.target.value })
+                  }
+                  placeholder="Type of supervision required"
+                />
+              </div>
             </div>
           </form>
         </CardContent>

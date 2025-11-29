@@ -248,3 +248,33 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
   }
 }
 
+/**
+ * Export custom HTML content to PDF
+ * Uses browser's print functionality to generate PDF
+ */
+export function exportHTMLToPDF(htmlContent: string, filename: string): void {
+  // Create a temporary window with the content to print
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    alert('Please allow pop-ups to export PDF')
+    return
+  }
+
+  // Set the document title for the filename
+  const htmlWithTitle = htmlContent.replace(
+    '<head>',
+    `<head><title>${filename.replace('.pdf', '')}</title>`
+  )
+
+  printWindow.document.write(htmlWithTitle)
+  printWindow.document.close()
+
+  // Wait for content to load, then trigger print
+  // Give extra time for any scripts in the HTML to execute (e.g., value injection)
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.print()
+    }, 1000) // Increased delay to allow DOM manipulation scripts to run
+  }
+}
+

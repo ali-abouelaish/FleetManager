@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Upload, Save, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Upload, Save, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 
 interface Employee {
@@ -115,6 +115,22 @@ export default function CreateDriverPage() {
     }))
   }
 
+  const handleNext = () => {
+    const tabs: typeof activeTab[] = ['basic', 'certificates', 'documents', 'training']
+    const currentIndex = tabs.indexOf(activeTab)
+    if (currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1])
+    }
+  }
+
+  const handlePrevious = () => {
+    const tabs: typeof activeTab[] = ['basic', 'certificates', 'documents', 'training']
+    const currentIndex = tabs.indexOf(activeTab)
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1])
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -128,23 +144,64 @@ export default function CreateDriverPage() {
 
     try {
       // Upload files to Supabase Storage if needed
-      // Note: You'll need to set up a 'driver-documents' bucket in Supabase
-      const fileUrls: {[key: string]: string} = {}
+      // Using DRIVER_DOCUMENTS bucket (same as passenger assistants)
+      const uploadedDocuments: Array<{
+        fileUrl: string
+        fileName: string
+        fileType: string
+        docType: string
+        filePath: string
+      }> = []
+      
+      // Map file keys to document types
+      const fileKeyToDocType: {[key: string]: string} = {
+        tas_badge_file: 'TAS Badge',
+        taxi_badge_file: 'Taxi Badge',
+        dbs_file: 'DBS Certificate',
+        first_aid_file: 'First Aid Certificate',
+        passport_file: 'Passport',
+        driving_license_file: 'Driving License',
+        cpc_file: 'CPC Certificate',
+        utility_bill_file: 'Utility Bill',
+        birth_cert_file: 'Birth Certificate',
+        marriage_cert_file: 'Marriage Certificate',
+        photo_file: 'Photo',
+        private_hire_badge_file: 'Private Hire Badge',
+        paper_licence_file: 'Paper Licence',
+        taxi_plate_photo_file: 'Taxi Plate Photo',
+        logbook_file: 'Logbook',
+      }
       
       for (const [key, file] of Object.entries(fileUploads)) {
         if (file) {
           const fileExt = file.name.split('.').pop()
-          const fileName = `${formData.employee_id}/${key}_${Date.now()}.${fileExt}`
+          const fileName = `drivers/${formData.employee_id}/${key}_${Date.now()}.${fileExt}`
           
           const { data, error } = await supabase.storage
-            .from('driver-documents')
+            .from('DRIVER_DOCUMENTS')
             .upload(fileName, file)
 
-          if (!error && data) {
+          if (error) {
+            console.error(`Error uploading file ${file.name}:`, error)
+            // Provide helpful error message for bucket not found
+            if (error.message.includes('Bucket not found') || error.message.includes('not found')) {
+              throw new Error('Storage bucket "ROUTE_DOCUMENTS" not found. Please create a public bucket named "ROUTE_DOCUMENTS" in your Supabase Storage settings.')
+            }
+            throw error
+          }
+
+          if (data) {
             const { data: { publicUrl } } = supabase.storage
-              .from('driver-documents')
+              .from('DRIVER_DOCUMENTS')
               .getPublicUrl(fileName)
-            fileUrls[key] = publicUrl
+            
+            uploadedDocuments.push({
+              fileUrl: publicUrl,
+              fileName: file.name,
+              fileType: file.type || 'application/octet-stream',
+              docType: fileKeyToDocType[key] || 'Certificate',
+              filePath: fileName,
+            })
           }
         }
       }
@@ -184,6 +241,30 @@ export default function CreateDriverPage() {
         })
 
       if (insertError) throw insertError
+
+      // Create document records in the documents table
+      if (uploadedDocuments.length > 0) {
+        const documentRecords = uploadedDocuments.map(doc => ({
+          employee_id: parseInt(formData.employee_id),
+          owner_type: 'employee',
+          owner_id: parseInt(formData.employee_id),
+          file_url: JSON.stringify([doc.fileUrl]), // Store as JSON array for consistency
+          file_name: doc.fileName,
+          file_type: doc.fileType,
+          file_path: doc.fileUrl, // Store URL for backward compatibility
+          doc_type: doc.docType,
+          uploaded_at: new Date().toISOString(),
+        }))
+
+        const { error: documentsError } = await supabase
+          .from('documents')
+          .insert(documentRecords)
+
+        if (documentsError) {
+          console.error('Error creating document records:', documentsError)
+          // Don't throw - driver was created successfully, documents just won't show up
+        }
+      }
 
       router.push('/dashboard/drivers')
     } catch (err: any) {
@@ -310,6 +391,25 @@ export default function CreateDriverPage() {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-navy focus:outline-none focus:ring-navy sm:text-sm"
                   placeholder="Any additional information about the driver..."
                 />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons for Basic Info */}
+        {activeTab === 'basic' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-end space-x-4">
+                <Link href="/dashboard/drivers">
+                  <Button type="button" variant="secondary">
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="button" onClick={handleNext}>
+                  Next
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -623,6 +723,31 @@ export default function CreateDriverPage() {
           </Card>
         )}
 
+        {/* Navigation Buttons for Certificates */}
+        {activeTab === 'certificates' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex space-x-4">
+                  <Link href="/dashboard/drivers">
+                    <Button type="button" variant="secondary">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={handleNext}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Documents Tab */}
         {activeTab === 'documents' && (
           <Card>
@@ -667,6 +792,31 @@ export default function CreateDriverPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons for Documents */}
+        {activeTab === 'documents' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex space-x-4">
+                  <Link href="/dashboard/drivers">
+                    <Button type="button" variant="secondary">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={handleNext}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -777,22 +927,30 @@ export default function CreateDriverPage() {
           </Card>
         )}
 
-        {/* Submit Button */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex justify-end space-x-4">
-              <Link href="/dashboard/drivers">
-                <Button type="button" variant="secondary">
-                  Cancel
+        {/* Submit Button - Only show on Training tab */}
+        {activeTab === 'training' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
                 </Button>
-              </Link>
-              <Button type="submit" disabled={loading || !formData.employee_id}>
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? 'Creating...' : 'Create Driver'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex space-x-4">
+                  <Link href="/dashboard/drivers">
+                    <Button type="button" variant="secondary">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="submit" disabled={loading || !formData.employee_id}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {loading ? 'Creating...' : 'Create Driver'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </form>
     </div>
   )

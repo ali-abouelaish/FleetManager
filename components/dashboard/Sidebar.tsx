@@ -11,14 +11,11 @@ import {
   Route,
   UserCheck,
   AlertCircle,
-  FileText,
   ClipboardList,
   UserCog,
   MapPin,
-  MapPinned,
   Phone,
   Calendar,
-  Contact,
   BarChart3,
 } from 'lucide-react'
 
@@ -34,12 +31,9 @@ const navigation = [
   { name: 'Schools', href: '/dashboard/schools', icon: School },
   { name: 'Routes', href: '/dashboard/routes', icon: Route },
   { name: 'Vehicles', href: '/dashboard/vehicles', icon: Car },
-  { name: 'Spare Vehicle Locations', href: '/dashboard/vehicle-locations', icon: MapPinned },
   { name: 'Passengers', href: '/dashboard/passengers', icon: Users },
-  { name: 'Parent Contacts', href: '/dashboard/parent-contacts', icon: Contact },
   { name: 'Call Logs', href: '/dashboard/call-logs', icon: Phone },
   { name: 'Incidents', href: '/dashboard/incidents', icon: AlertCircle },
-  { name: 'Documents', href: '/dashboard/documents', icon: FileText },
   { name: 'Audit Log', href: '/dashboard/audit', icon: ClipboardList },
 ]
 

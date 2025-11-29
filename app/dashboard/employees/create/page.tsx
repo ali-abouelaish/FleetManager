@@ -24,8 +24,6 @@ export default function CreateEmployeePage() {
     phone_number: '',
     personal_email: '',
     start_date: '',
-    end_date: '',
-    wheelchair_access: false,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +34,11 @@ export default function CreateEmployeePage() {
     try {
       const { data, error } = await supabase
         .from('employees')
-        .insert([formData])
+        .insert([{
+          ...formData,
+          end_date: null, // Explicitly set to null since field is removed from form
+          wheelchair_access: null, // Explicitly set to null since field is removed from form
+        }])
         .select()
 
       if (error) throw error
@@ -171,31 +173,6 @@ export default function CreateEmployeePage() {
                     setFormData({ ...formData, start_date: e.target.value })
                   }
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="end_date">End Date</Label>
-                <Input
-                  id="end_date"
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, end_date: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="wheelchair_access"
-                  checked={formData.wheelchair_access}
-                  onChange={(e) =>
-                    setFormData({ ...formData, wheelchair_access: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="wheelchair_access">Wheelchair Access</Label>
               </div>
             </div>
 

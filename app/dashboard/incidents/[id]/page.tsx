@@ -22,7 +22,8 @@ async function getIncident(id: string) {
         session_date,
         session_type,
         routes(route_number)
-      )
+      ),
+      created_by_user:created_by(id, email, role)
     `)
     .eq('id', id)
     .single()
@@ -48,9 +49,28 @@ async function getIncident(id: string) {
   }
 }
 
+async function getCurrentUser() {
+  const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  
+  if (!authUser) return null
+
+  const { data: userData } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('email', authUser.email)
+    .maybeSingle()
+
+  return userData
+}
+
 export default async function ViewIncidentPage({ params }: { params: { id: string } }) {
   const incident = await getIncident(params.id)
   if (!incident) notFound()
+
+  const currentUser = await getCurrentUser()
+  const canEdit = currentUser && incident.created_by === currentUser.id
+  const canDelete = currentUser && currentUser.role === 'super_admin'
 
   return (
     <div className="space-y-6">
@@ -64,7 +84,23 @@ export default async function ViewIncidentPage({ params }: { params: { id: strin
             <p className="mt-2 text-sm text-gray-600">Incident Details & Related Entities</p>
           </div>
         </div>
-        <IncidentToggleButton incidentId={incident.id} initialResolved={incident.resolved} />
+        <div className="flex items-center space-x-2">
+          <IncidentToggleButton incidentId={incident.id} initialResolved={incident.resolved} />
+          {canEdit && (
+            <Link href={`/dashboard/incidents/${incident.id}/edit`}>
+              <Button variant="secondary">
+                Edit
+              </Button>
+            </Link>
+          )}
+          {canDelete && (
+            <Link href={`/dashboard/incidents/${incident.id}/delete`}>
+              <Button variant="danger">
+                Delete
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -93,6 +129,12 @@ export default async function ViewIncidentPage({ params }: { params: { id: strin
               <dt className="text-sm font-medium text-gray-500">Reported At</dt>
               <dd className="mt-1 text-sm text-gray-900">{formatDateTime(incident.reported_at)}</dd>
             </div>
+            {incident.created_by_user && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Created By</dt>
+                <dd className="mt-1 text-sm text-gray-900">{incident.created_by_user.email}</dd>
+              </div>
+            )}
           </CardContent>
         </Card>
 

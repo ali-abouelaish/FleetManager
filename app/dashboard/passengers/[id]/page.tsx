@@ -119,6 +119,14 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
               <dt className="text-sm font-medium text-gray-500">Address</dt>
               <dd className="mt-1 text-sm text-gray-900">{passenger.address || 'N/A'}</dd>
             </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Personal Item</dt>
+              <dd className="mt-1 text-sm text-gray-900">{passenger.personal_item || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Supervision Type</dt>
+              <dd className="mt-1 text-sm text-gray-900">{passenger.supervision_type || 'N/A'}</dd>
+            </div>
           </CardContent>
         </Card>
 

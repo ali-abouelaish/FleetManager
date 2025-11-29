@@ -121,7 +121,7 @@ async function DriversTable() {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Link href={`/dashboard/employees/${driver.employee_id}/edit`} prefetch={true}>
+                      <Link href={`/dashboard/drivers/${driver.employee_id}/edit`} prefetch={true}>
                         <Button variant="ghost" size="sm">
                           <Pencil className="h-4 w-4" />
                         </Button>

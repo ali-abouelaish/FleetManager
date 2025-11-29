@@ -5,10 +5,11 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap } from 'lucide-react'
+import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap, Download, ExternalLink, Eye } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import DriverQRCode from './DriverQRCode'
+import DriverUpdatesClient from './DriverUpdatesClient'
 
 interface Driver {
   employee_id: number
@@ -49,7 +50,7 @@ interface Driver {
   }
 }
 
-type TabType = 'overview' | 'documentation' | 'training'
+type TabType = 'overview' | 'documentation' | 'training' | 'documents'
 
 // Helper to calculate days remaining
 function getDaysRemaining(expiryDate: string | null): number | null {
@@ -98,10 +99,22 @@ function getExpiryBadge(daysRemaining: number | null) {
   }
 }
 
+interface Document {
+  id: number
+  file_name: string | null
+  file_url: string | null
+  file_type: string | null
+  doc_type: string | null
+  uploaded_at: string
+  file_path: string | null
+}
+
 export function DriverDetailClient({ id }: { id: string }) {
   const [driver, setDriver] = useState<Driver | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [loadingDocuments, setLoadingDocuments] = useState(false)
 
   useEffect(() => {
     async function fetchDriver() {
@@ -135,10 +148,44 @@ export function DriverDetailClient({ id }: { id: string }) {
 
       setDriver(data as Driver)
       setLoading(false)
+      
+      // Load documents for this driver
+      if (data) {
+        loadDocuments(data.employee_id)
+      }
     }
 
     fetchDriver()
   }, [id])
+
+  const loadDocuments = async (employeeId: number) => {
+    setLoadingDocuments(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('documents')
+      .select('id, file_name, file_url, file_type, doc_type, uploaded_at, file_path')
+      .eq('employee_id', employeeId)
+      .order('uploaded_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching documents:', error)
+      setDocuments([])
+    } else {
+      console.log('Loaded documents for employee:', employeeId, data)
+      setDocuments(data || [])
+    }
+    setLoadingDocuments(false)
+  }
+
+  const parseFileUrls = (fileUrl: string | null): string[] => {
+    if (!fileUrl) return []
+    try {
+      const parsed = JSON.parse(fileUrl)
+      return Array.isArray(parsed) ? parsed : [fileUrl]
+    } catch {
+      return [fileUrl]
+    }
+  }
 
   if (loading) {
     return (
@@ -239,83 +286,95 @@ export function DriverDetailClient({ id }: { id: string }) {
             <GraduationCap className="inline mr-2 h-4 w-4" />
             Training & Checks
           </button>
+          <button
+            onClick={() => setActiveTab('documents')}
+            className={`
+              border-b-2 px-1 py-4 text-sm font-medium transition-colors
+              ${activeTab === 'documents' 
+                ? 'border-navy text-navy' 
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+            `}
+          >
+            <FileText className="inline mr-2 h-4 w-4" />
+            Uploaded Documents
+          </button>
         </nav>
       </div>
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader className="bg-navy text-white">
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Employee ID</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{employee.id}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{employee.full_name}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
-                  <dd className="mt-1">
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        employee.employment_status === 'Active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {employee.employment_status || 'N/A'}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
-                  <dd className="mt-1">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
-                        employee.can_work === false
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {employee.can_work === false ? (
-                        <>
-                          <XCircle className="mr-1 h-3 w-3" />
-                          Cannot Work
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="mr-1 h-3 w-3" />
-                          Authorized
-                        </>
-                      )}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">PSV License</dt>
-                  <dd className="mt-1">
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {driver.psv_license ? 'Yes' : 'No'}
-                    </span>
-                  </dd>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Employee ID</dt>
+                <dd className="mt-1 text-sm text-gray-900">{employee.id}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Full Name</dt>
+                <dd className="mt-1 text-sm text-gray-900">{employee.full_name}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
+                <dd className="mt-1">
+                  <span
+                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                      employee.employment_status === 'Active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {employee.employment_status || 'N/A'}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
+                <dd className="mt-1">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
+                      employee.can_work === false
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {employee.can_work === false ? (
+                      <>
+                        <XCircle className="mr-1 h-3 w-3" />
+                        Cannot Work
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="mr-1 h-3 w-3" />
+                        Authorized
+                      </>
+                    )}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">PSV License</dt>
+                <dd className="mt-1">
+                  <span
+                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                      driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {driver.psv_license ? 'Yes' : 'No'}
+                  </span>
+                </dd>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="bg-navy text-white">
-                <CardTitle>Contact Information</CardTitle>
-              </CardHeader>
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Contact Information</CardTitle>
+            </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
@@ -392,23 +451,39 @@ export function DriverDetailClient({ id }: { id: string }) {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-white">Badge/Reference</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-white">Expiry Date</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-white">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      { label: 'TAS Badge', date: driver.tas_badge_expiry_date, ref: driver.tas_badge_number },
-                      { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, ref: driver.taxi_badge_number },
-                      { label: 'DBS Certificate', date: driver.dbs_expiry_date, ref: null },
-                      { label: 'First Aid Certificate', date: driver.first_aid_certificate_expiry_date, ref: null },
-                      { label: 'Passport', date: driver.passport_expiry_date, ref: null },
-                      { label: 'Driving License', date: driver.driving_license_expiry_date, ref: null },
-                      { label: 'CPC Certificate', date: driver.cpc_expiry_date, ref: null },
-                      { label: 'Vehicle Insurance', date: driver.vehicle_insurance_expiry_date, ref: null },
-                      { label: 'MOT', date: driver.mot_expiry_date, ref: null },
-                      { label: 'Utility Bill', date: driver.utility_bill_date, ref: null },
+                      { label: 'TAS Badge', date: driver.tas_badge_expiry_date, ref: driver.tas_badge_number, docType: 'TAS Badge' },
+                      { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, ref: driver.taxi_badge_number, docType: 'Taxi Badge' },
+                      { label: 'DBS Certificate', date: driver.dbs_expiry_date, ref: null, docType: 'DBS Certificate' },
+                      { label: 'First Aid Certificate', date: driver.first_aid_certificate_expiry_date, ref: null, docType: 'First Aid Certificate' },
+                      { label: 'Passport', date: driver.passport_expiry_date, ref: null, docType: 'Passport' },
+                      { label: 'Driving License', date: driver.driving_license_expiry_date, ref: null, docType: 'Driving License' },
+                      { label: 'CPC Certificate', date: driver.cpc_expiry_date, ref: null, docType: 'CPC Certificate' },
+                      { label: 'Vehicle Insurance', date: driver.vehicle_insurance_expiry_date, ref: null, docType: null },
+                      { label: 'MOT', date: driver.mot_expiry_date, ref: null, docType: null },
+                      { label: 'Utility Bill', date: driver.utility_bill_date, ref: null, docType: 'Utility Bill' },
                     ].map((item, idx) => {
                       const daysRemaining = getDaysRemaining(item.date)
                       const badge = getExpiryBadge(daysRemaining)
+                      // Find matching document for this certificate
+                      // Try exact match first, then case-insensitive match, then partial match
+                      const matchingDoc = item.docType 
+                        ? documents.find(doc => {
+                            if (!doc.doc_type) return false
+                            const docTypeLower = doc.doc_type.toLowerCase()
+                            const searchTypeLower = item.docType.toLowerCase()
+                            return doc.doc_type === item.docType || 
+                                   docTypeLower === searchTypeLower ||
+                                   docTypeLower.includes(searchTypeLower) ||
+                                   searchTypeLower.includes(docTypeLower)
+                          })
+                        : null
+                      const docFileUrls = matchingDoc ? parseFileUrls(matchingDoc.file_url || matchingDoc.file_path) : []
+                      
                       return (
                         <tr key={idx} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.label}</td>
@@ -419,6 +494,27 @@ export function DriverDetailClient({ id }: { id: string }) {
                               {badge.icon && <badge.icon className="mr-1 h-3 w-3" />}
                               {badge.label}
                             </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {docFileUrls.length > 0 ? (
+                              <div className="flex space-x-2">
+                                {docFileUrls.map((url, urlIdx) => (
+                                  <a
+                                    key={urlIdx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-navy text-white hover:bg-blue-800 transition-colors"
+                                    title={`View ${docFileUrls.length > 1 ? `file ${urlIdx + 1}` : 'document'}`}
+                                  >
+                                    <Eye className="mr-1 h-3 w-3" />
+                                    {docFileUrls.length > 1 ? `View ${urlIdx + 1}` : 'View Document'}
+                                  </a>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">No document</span>
+                            )}
                           </td>
                         </tr>
                       )
@@ -581,6 +677,96 @@ export function DriverDetailClient({ id }: { id: string }) {
         </div>
       )}
 
+      {/* Documents Tab */}
+      {activeTab === 'documents' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>📄 Uploaded Documents</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {loadingDocuments ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-navy"></div>
+                  <p className="mt-2 text-sm text-gray-500">Loading documents...</p>
+                </div>
+              ) : documents.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-sm text-gray-500">No documents uploaded yet</p>
+                </div>
+              ) : (
+                <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-navy">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Document Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">File Type</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Document Category</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Uploaded</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documents.map((doc, idx) => {
+                        const fileUrls = parseFileUrls(doc.file_url || doc.file_path)
+                        return (
+                          <tr key={doc.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                              {doc.file_name || 'Untitled Document'}
+                              {fileUrls.length > 1 && (
+                                <span className="ml-2 text-xs text-gray-500">
+                                  ({fileUrls.length} files)
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {doc.file_type || 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {doc.doc_type || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {formatDate(doc.uploaded_at)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex space-x-2">
+                                {fileUrls.map((url, urlIdx) => (
+                                  <a
+                                    key={urlIdx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-navy text-white hover:bg-blue-800 transition-colors"
+                                    title={`View ${fileUrls.length > 1 ? `file ${urlIdx + 1}` : 'document'}`}
+                                  >
+                                    {fileUrls.length > 1 ? (
+                                      <>
+                                        <ExternalLink className="mr-1 h-3 w-3" />
+                                        File {urlIdx + 1}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ExternalLink className="mr-1 h-3 w-3" />
+                                        View
+                                      </>
+                                    )}
+                                  </a>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Additional Notes (shown on all tabs) */}
       {driver.additional_notes && (
         <Card className="border-l-4 border-navy">
@@ -616,6 +802,9 @@ export function DriverDetailClient({ id }: { id: string }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Driver Updates */}
+      <DriverUpdatesClient driverId={driver.employee_id} />
     </div>
   )
 }

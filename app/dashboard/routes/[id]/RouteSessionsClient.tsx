@@ -111,14 +111,14 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
 
   const loadAssignedCrew = async () => {
     const { data } = await supabase
-      .from('crew')
+      .from('routes')
       .select(`
         driver_id,
-        pa_id,
+        passenger_assistant_id,
         driver:driver_id(employees(full_name)),
-        pa:pa_id(employees(full_name))
+        pa:passenger_assistant_id(employees(full_name))
       `)
-      .eq('route_id', routeId)
+      .eq('id', routeId)
       .maybeSingle()
 
     if (data) {
@@ -131,7 +131,7 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
       const crew = {
         driver_id: data.driver_id,
         driver_name: driverEmployees?.full_name || null,
-        pa_id: data.pa_id,
+        pa_id: data.passenger_assistant_id,
         pa_name: paEmployees?.full_name || null,
       }
       setAssignedCrew(crew)

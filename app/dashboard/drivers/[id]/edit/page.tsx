@@ -88,6 +88,25 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
     additional_notes: '',
   })
 
+  // File uploads state
+  const [fileUploads, setFileUploads] = useState<{[key: string]: File | null}>({
+    tas_badge_file: null,
+    taxi_badge_file: null,
+    dbs_file: null,
+    first_aid_file: null,
+    passport_file: null,
+    driving_license_file: null,
+    cpc_file: null,
+    utility_bill_file: null,
+    birth_cert_file: null,
+    marriage_cert_file: null,
+    photo_file: null,
+    private_hire_badge_file: null,
+    paper_licence_file: null,
+    taxi_plate_photo_file: null,
+    logbook_file: null,
+  })
+
   useEffect(() => {
     loadDriver()
   }, [params.id])
@@ -153,12 +172,86 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
     }))
   }
 
+  const handleFileChange = (fieldName: string, file: File | null) => {
+    setFileUploads(prev => ({
+      ...prev,
+      [fieldName]: file
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     setError(null)
 
     try {
+      // Upload files to Supabase Storage if needed
+      const uploadedDocuments: Array<{
+        fileUrl: string
+        fileName: string
+        fileType: string
+        docType: string
+        filePath: string
+      }> = []
+      
+      // Map file keys to document types
+      const fileKeyToDocType: {[key: string]: string} = {
+        tas_badge_file: 'TAS Badge',
+        taxi_badge_file: 'Taxi Badge',
+        dbs_file: 'DBS Certificate',
+        first_aid_file: 'First Aid Certificate',
+        passport_file: 'Passport',
+        driving_license_file: 'Driving License',
+        cpc_file: 'CPC Certificate',
+        utility_bill_file: 'Utility Bill',
+        birth_cert_file: 'Birth Certificate',
+        marriage_cert_file: 'Marriage Certificate',
+        photo_file: 'Photo',
+        private_hire_badge_file: 'Private Hire Badge',
+        paper_licence_file: 'Paper Licence',
+        taxi_plate_photo_file: 'Taxi Plate Photo',
+        logbook_file: 'Logbook',
+      }
+      
+      for (const [key, file] of Object.entries(fileUploads)) {
+        if (file && driver) {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `drivers/${driver.employee_id}/${key}_${Date.now()}.${fileExt}`
+          
+          const { data, error } = await supabase.storage
+            .from('ROUTE_DOCUMENTS')
+            .upload(fileName, file)
+
+          if (error) {
+            console.error(`Error uploading file ${file.name}:`, error)
+            // Provide helpful error message for bucket not found
+            if (error.message.includes('Bucket not found') || error.message.includes('not found')) {
+              setError('Storage bucket "ROUTE_DOCUMENTS" not found. Please create a public bucket named "ROUTE_DOCUMENTS" in your Supabase Storage settings.')
+            } else {
+              setError(`Failed to upload ${file.name}: ${error.message}`)
+            }
+            continue
+          }
+
+          if (data) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('ROUTE_DOCUMENTS')
+              .getPublicUrl(fileName)
+            
+            const docType = fileKeyToDocType[key] || 'Certificate'
+            console.log(`Uploaded file: ${file.name} as ${docType}`)
+            
+            uploadedDocuments.push({
+              fileUrl: publicUrl,
+              fileName: file.name,
+              fileType: file.type || 'application/octet-stream',
+              docType: docType,
+              filePath: fileName,
+            })
+          }
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('drivers')
         .update({
@@ -193,6 +286,40 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         .eq('employee_id', params.id)
 
       if (updateError) throw updateError
+
+      // Create document records in the documents table
+      if (uploadedDocuments.length > 0 && driver) {
+        const documentRecords = uploadedDocuments.map(doc => {
+          const record = {
+            employee_id: driver.employee_id,
+            owner_type: 'employee',
+            owner_id: driver.employee_id,
+            file_url: JSON.stringify([doc.fileUrl]), // Store as JSON array for consistency
+            file_name: doc.fileName,
+            file_type: doc.fileType,
+            file_path: doc.fileUrl, // Store URL for backward compatibility
+            doc_type: doc.docType,
+            uploaded_at: new Date().toISOString(),
+          }
+          console.log(`Creating document record for ${doc.docType}:`, record)
+          return record
+        })
+
+        const { data: insertedDocs, error: documentsError } = await supabase
+          .from('documents')
+          .insert(documentRecords)
+          .select()
+
+        if (documentsError) {
+          console.error('Error creating document records:', documentsError)
+          setError(`Driver updated but failed to save documents: ${documentsError.message}`)
+        } else {
+          console.log(`Successfully inserted ${insertedDocs?.length || 0} document(s):`, insertedDocs)
+        }
+      } else if (uploadedDocuments.length > 0 && !driver) {
+        console.error('Cannot create documents: driver data is missing')
+        setError('Driver data is missing. Cannot save documents.')
+      }
 
       router.push(`/dashboard/drivers/${params.id}`)
     } catch (err: any) {
@@ -358,6 +485,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       onChange={handleInputChange}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="tas_badge_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="tas_badge_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('tas_badge_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
                 </div>
 
                 {/* Taxi Badge */}
@@ -383,6 +520,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       onChange={handleInputChange}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="taxi_badge_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="taxi_badge_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('taxi_badge_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
                 </div>
 
                 {/* DBS Certificate */}
@@ -396,6 +543,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       name="dbs_expiry_date"
                       value={formData.dbs_expiry_date}
                       onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dbs_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="dbs_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('dbs_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
                     />
                   </div>
                 </div>
@@ -428,6 +585,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       onChange={handleInputChange}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="passport_file">Upload Copy</Label>
+                    <input
+                      type="file"
+                      id="passport_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('passport_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
                 </div>
 
                 {/* Driving License */}
@@ -443,6 +610,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       onChange={handleInputChange}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="driving_license_file">Upload License</Label>
+                    <input
+                      type="file"
+                      id="driving_license_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('driving_license_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
                 </div>
 
                 {/* CPC Certificate */}
@@ -456,6 +633,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       name="cpc_expiry_date"
                       value={formData.cpc_expiry_date}
                       onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cpc_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="cpc_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('cpc_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
                     />
                   </div>
                 </div>
@@ -501,6 +688,16 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       name="utility_bill_date"
                       value={formData.utility_bill_date}
                       onChange={handleInputChange}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="utility_bill_file">Upload Bill</Label>
+                    <input
+                      type="file"
+                      id="utility_bill_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('utility_bill_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
                     />
                   </div>
                 </div>
