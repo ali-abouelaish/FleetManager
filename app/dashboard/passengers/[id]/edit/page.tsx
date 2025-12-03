@@ -22,6 +22,7 @@ function EditPassengerPageClient({ id }: { id: string }) {
   const [formData, setFormData] = useState({
     full_name: '',
     dob: '',
+    gender: '',
     address: '',
     sen_requirements: '',
     school_id: '',
@@ -49,6 +50,7 @@ function EditPassengerPageClient({ id }: { id: string }) {
         setFormData({
           full_name: passengerResult.data.full_name || '',
           dob: passengerResult.data.dob || '',
+          gender: passengerResult.data.gender || '',
           address: passengerResult.data.address || '',
           sen_requirements: passengerResult.data.sen_requirements || '',
           school_id: passengerResult.data.school_id || '',
@@ -145,6 +147,16 @@ function EditPassengerPageClient({ id }: { id: string }) {
               <div className="space-y-2">
                 <Label htmlFor="dob">Date of Birth</Label>
                 <Input id="dob" type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select id="gender" value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
+                  <option value="">Select gender (optional)</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="school_id">School</Label>

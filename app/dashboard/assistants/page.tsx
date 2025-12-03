@@ -22,23 +22,22 @@ async function getAssistants() {
   return data || []
 }
 
-// Helper to get expired certificates for a PA
-function getExpiredCertificates(assistant: any): string[] {
+// Helper to get missing and expired certificates for a PA
+function getMissingAndExpiredCertificates(assistant: any): string[] {
   const today = new Date()
-  const expiredCerts: string[] = []
+  const issues: string[] = []
   
-  const checkDate = (date: string | null, certName: string) => {
-    if (!date) return
-    const expiry = new Date(date)
+  // Check TAS Badge (required)
+  if (!assistant.tas_badge_expiry_date) {
+    issues.push('Missing TAS Badge expiry date')
+  } else {
+    const expiry = new Date(assistant.tas_badge_expiry_date)
     if (expiry < today) {
-      expiredCerts.push(certName)
+      issues.push('Expired TAS Badge')
     }
   }
   
-  checkDate(assistant.tas_badge_expiry_date, 'TAS Badge')
-  checkDate(assistant.dbs_expiry_date, 'DBS')
-  
-  return expiredCerts
+  return issues
 }
 
 async function AssistantsTable() {
@@ -56,7 +55,7 @@ async function AssistantsTable() {
             <TableHead>Can Work</TableHead>
             <TableHead>TAS Badge Number</TableHead>
             <TableHead>TAS Badge Expiry</TableHead>
-            <TableHead>DBS Expiry</TableHead>
+            <TableHead>DBS Number</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -69,7 +68,7 @@ async function AssistantsTable() {
             </TableRow>
           ) : (
             assistants.map((assistant: any) => {
-              const expiredCerts = getExpiredCertificates(assistant)
+              const missingAndExpired = getMissingAndExpiredCertificates(assistant)
               
               return (
                 <TableRow key={assistant.employee_id}>
@@ -89,9 +88,13 @@ async function AssistantsTable() {
                         <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-red-100 text-red-800">
                           CANNOT WORK
                         </span>
-                        {expiredCerts.length > 0 && (
+                        {missingAndExpired.length > 0 ? (
                           <div className="text-xs text-red-700 font-medium">
-                            Expired: {expiredCerts.join(', ')}
+                            {missingAndExpired.join(', ')}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-orange-700 font-medium">
+                            Status may be out of sync. Try editing and saving the record to refresh.
                           </div>
                         )}
                       </div>
@@ -103,14 +106,14 @@ async function AssistantsTable() {
                   </TableCell>
                   <TableCell>{assistant.tas_badge_number || 'N/A'}</TableCell>
                   <TableCell>{formatDate(assistant.tas_badge_expiry_date)}</TableCell>
-                  <TableCell>{formatDate(assistant.dbs_expiry_date)}</TableCell>
+                  <TableCell>{assistant.dbs_number || 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Link href={`/dashboard/assistants/${assistant.id}`} prefetch={true}>
                         <Button variant="ghost" size="sm" title="View PA Profile"><Eye className="h-4 w-4" /></Button>
                       </Link>
-                      <Link href={`/dashboard/employees/${assistant.employee_id}`} prefetch={true}>
-                        <Button variant="ghost" size="sm" title="View Employee Profile"><Pencil className="h-4 w-4" /></Button>
+                      <Link href={`/dashboard/assistants/${assistant.id}/edit`} prefetch={true}>
+                        <Button variant="ghost" size="sm" title="Edit Passenger Assistant"><Pencil className="h-4 w-4" /></Button>
                       </Link>
                     </div>
                   </TableCell>

@@ -16,17 +16,12 @@ interface Driver {
   employee_id: number
   tas_badge_number: string | null
   tas_badge_expiry_date: string | null
-  taxi_badge_number: string | null
-  taxi_badge_expiry_date: string | null
-  dbs_expiry_date: string | null
   psv_license: boolean
   first_aid_certificate_expiry_date: string | null
   passport_expiry_date: string | null
   driving_license_expiry_date: string | null
   cpc_expiry_date: string | null
   utility_bill_date: string | null
-  vehicle_insurance_expiry_date: string | null
-  mot_expiry_date: string | null
   birth_certificate: boolean
   marriage_certificate: boolean
   photo_taken: boolean
@@ -61,17 +56,13 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
   const [formData, setFormData] = useState({
     tas_badge_number: '',
     tas_badge_expiry_date: '',
-    taxi_badge_number: '',
-    taxi_badge_expiry_date: '',
-    dbs_expiry_date: '',
+    dbs_number: '',
     psv_license: false,
     first_aid_certificate_expiry_date: '',
     passport_expiry_date: '',
     driving_license_expiry_date: '',
     cpc_expiry_date: '',
     utility_bill_date: '',
-    vehicle_insurance_expiry_date: '',
-    mot_expiry_date: '',
     birth_certificate: false,
     marriage_certificate: false,
     photo_taken: false,
@@ -91,7 +82,6 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
   // File uploads state
   const [fileUploads, setFileUploads] = useState<{[key: string]: File | null}>({
     tas_badge_file: null,
-    taxi_badge_file: null,
     dbs_file: null,
     first_aid_file: null,
     passport_file: null,
@@ -135,17 +125,13 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
     setFormData({
       tas_badge_number: data.tas_badge_number || '',
       tas_badge_expiry_date: data.tas_badge_expiry_date ? data.tas_badge_expiry_date.split('T')[0] : '',
-      taxi_badge_number: data.taxi_badge_number || '',
-      taxi_badge_expiry_date: data.taxi_badge_expiry_date ? data.taxi_badge_expiry_date.split('T')[0] : '',
-      dbs_expiry_date: data.dbs_expiry_date ? data.dbs_expiry_date.split('T')[0] : '',
+      dbs_number: data.dbs_number || '',
       psv_license: data.psv_license || false,
       first_aid_certificate_expiry_date: data.first_aid_certificate_expiry_date ? data.first_aid_certificate_expiry_date.split('T')[0] : '',
       passport_expiry_date: data.passport_expiry_date ? data.passport_expiry_date.split('T')[0] : '',
       driving_license_expiry_date: data.driving_license_expiry_date ? data.driving_license_expiry_date.split('T')[0] : '',
       cpc_expiry_date: data.cpc_expiry_date ? data.cpc_expiry_date.split('T')[0] : '',
       utility_bill_date: data.utility_bill_date ? data.utility_bill_date.split('T')[0] : '',
-      vehicle_insurance_expiry_date: data.vehicle_insurance_expiry_date ? data.vehicle_insurance_expiry_date.split('T')[0] : '',
-      mot_expiry_date: data.mot_expiry_date ? data.mot_expiry_date.split('T')[0] : '',
       birth_certificate: data.birth_certificate || false,
       marriage_certificate: data.marriage_certificate || false,
       photo_taken: data.photo_taken || false,
@@ -197,7 +183,6 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
       // Map file keys to document types
       const fileKeyToDocType: {[key: string]: string} = {
         tas_badge_file: 'TAS Badge',
-        taxi_badge_file: 'Taxi Badge',
         dbs_file: 'DBS Certificate',
         first_aid_file: 'First Aid Certificate',
         passport_file: 'Passport',
@@ -257,17 +242,13 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         .update({
           tas_badge_number: formData.tas_badge_number || null,
           tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
-          taxi_badge_number: formData.taxi_badge_number || null,
-          taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
-          dbs_expiry_date: formData.dbs_expiry_date || null,
+          dbs_number: formData.dbs_number || null,
           psv_license: formData.psv_license,
           first_aid_certificate_expiry_date: formData.first_aid_certificate_expiry_date || null,
           passport_expiry_date: formData.passport_expiry_date || null,
           driving_license_expiry_date: formData.driving_license_expiry_date || null,
           cpc_expiry_date: formData.cpc_expiry_date || null,
           utility_bill_date: formData.utility_bill_date || null,
-          vehicle_insurance_expiry_date: formData.vehicle_insurance_expiry_date || null,
-          mot_expiry_date: formData.mot_expiry_date || null,
           birth_certificate: formData.birth_certificate,
           marriage_certificate: formData.marriage_certificate,
           photo_taken: formData.photo_taken,
@@ -497,52 +478,17 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                   </div>
                 </div>
 
-                {/* Taxi Badge */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Taxi Badge</h3>
-                  <div>
-                    <Label htmlFor="taxi_badge_number">Badge Number</Label>
-                    <Input
-                      id="taxi_badge_number"
-                      name="taxi_badge_number"
-                      value={formData.taxi_badge_number}
-                      onChange={handleInputChange}
-                      placeholder="e.g., TAXI12345"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="taxi_badge_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="taxi_badge_expiry_date"
-                      name="taxi_badge_expiry_date"
-                      value={formData.taxi_badge_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="taxi_badge_file">Upload Certificate</Label>
-                    <input
-                      type="file"
-                      id="taxi_badge_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('taxi_badge_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
-                    />
-                  </div>
-                </div>
-
                 {/* DBS Certificate */}
                 <div className="space-y-4 p-4 border rounded-lg">
                   <h3 className="font-semibold text-navy">DBS Certificate</h3>
                   <div>
-                    <Label htmlFor="dbs_expiry_date">Expiry Date</Label>
+                    <Label htmlFor="dbs_number">DBS Number</Label>
                     <Input
-                      type="date"
-                      id="dbs_expiry_date"
-                      name="dbs_expiry_date"
-                      value={formData.dbs_expiry_date}
+                      id="dbs_number"
+                      name="dbs_number"
+                      value={formData.dbs_number}
                       onChange={handleInputChange}
+                      placeholder="e.g., DBS123456789"
                     />
                   </div>
                   <div>
@@ -647,35 +593,6 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                   </div>
                 </div>
 
-                {/* Vehicle Insurance */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Vehicle Insurance</h3>
-                  <div>
-                    <Label htmlFor="vehicle_insurance_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="vehicle_insurance_expiry_date"
-                      name="vehicle_insurance_expiry_date"
-                      value={formData.vehicle_insurance_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-
-                {/* MOT */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">MOT</h3>
-                  <div>
-                    <Label htmlFor="mot_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="mot_expiry_date"
-                      name="mot_expiry_date"
-                      value={formData.mot_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
 
                 {/* Utility Bill */}
                 <div className="space-y-4 p-4 border rounded-lg">

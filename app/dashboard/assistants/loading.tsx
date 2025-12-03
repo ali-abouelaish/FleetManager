@@ -13,7 +13,7 @@ export default function Loading() {
       <TableSkeleton 
         rows={8} 
         columns={8}
-        headers={['Employee ID', 'Full Name', 'Phone', 'Status', 'TAS Badge Number', 'TAS Badge Expiry', 'DBS Expiry', 'Actions']}
+        headers={['Employee ID', 'Full Name', 'Phone', 'Status', 'TAS Badge Number', 'TAS Badge Expiry', 'DBS Number', 'Actions']}
       />
     </div>
   )

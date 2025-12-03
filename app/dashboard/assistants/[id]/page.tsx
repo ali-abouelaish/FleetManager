@@ -82,9 +82,7 @@ export default async function ViewPassengerAssistantPage({
 
   const employee = assistant.employees
   const tasDaysRemaining = getDaysRemaining(assistant.tas_badge_expiry_date)
-  const dbsDaysRemaining = getDaysRemaining(assistant.dbs_expiry_date)
   const tasBadge = getStatusBadge(tasDaysRemaining)
-  const dbsBadge = getStatusBadge(dbsDaysRemaining)
 
   return (
     <div className="space-y-6">
@@ -101,7 +99,7 @@ export default async function ViewPassengerAssistantPage({
             <p className="mt-2 text-sm text-gray-600">Passenger Assistant Profile</p>
           </div>
         </div>
-        <Link href={`/dashboard/employees/${employee?.id}/edit`}>
+        <Link href={`/dashboard/assistants/${assistant.id}/edit`}>
           <Button>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
@@ -186,16 +184,8 @@ export default async function ViewPassengerAssistantPage({
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">DBS Expiry</dt>
-              <dd className="mt-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-900">{assistant.dbs_expiry_date ? formatDate(assistant.dbs_expiry_date) : 'Not set'}</span>
-                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${dbsBadge.color}`}>
-                    {dbsBadge.icon && <dbsBadge.icon className="mr-1 h-3 w-3" />}
-                    {dbsBadge.label}
-                  </span>
-                </div>
-              </dd>
+              <dt className="text-sm font-medium text-gray-500">DBS Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{assistant.dbs_number || 'Not set'}</dd>
             </div>
           </CardContent>
         </Card>

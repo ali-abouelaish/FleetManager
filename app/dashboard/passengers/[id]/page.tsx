@@ -6,7 +6,7 @@ import { ArrowLeft, Pencil, AlertCircle, ExternalLink, Users, Phone, Mail, MapPi
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import PassengerDetailClient from './PassengerDetailClient'
-import AddParentContactButton from './AddParentContactButton'
+import AddParentContactSection from './AddParentContactSection'
 import RemoveParentContactButton from './RemoveParentContactButton'
 
 async function getPassenger(id: string) {
@@ -158,13 +158,10 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
       {/* Parent Contacts */}
       <Card>
         <CardHeader className="bg-navy text-white">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center">
-              <Users className="mr-2 h-5 w-5" />
-              Parent Contacts ({parentContacts.length})
-            </CardTitle>
-            <AddParentContactButton passengerId={passenger.id} />
-          </div>
+          <CardTitle className="flex items-center">
+            <Users className="mr-2 h-5 w-5" />
+            Parent Contacts ({parentContacts.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           {parentContacts.length === 0 ? (
@@ -216,6 +213,9 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
           )}
         </CardContent>
       </Card>
+
+      {/* Add Parent Contact Section */}
+      <AddParentContactSection passengerId={passenger.id} />
 
       {passenger.sen_requirements && (
         <Card>

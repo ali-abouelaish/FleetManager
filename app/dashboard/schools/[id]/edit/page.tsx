@@ -19,6 +19,10 @@ function EditSchoolPageClient({ id }: { id: string }) {
   const [formData, setFormData] = useState({
     name: '',
     address: '',
+    phone_number: '',
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
   })
 
   useEffect(() => {
@@ -44,6 +48,10 @@ function EditSchoolPageClient({ id }: { id: string }) {
         setFormData({
           name: data.name || '',
           address: data.address || '',
+          phone_number: data.phone_number || '',
+          contact_name: data.contact_name || '',
+          contact_phone: data.contact_phone || '',
+          contact_email: data.contact_email || '',
         })
       }
     }
@@ -162,7 +170,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">School Address</Label>
               <textarea
                 id="address"
                 rows={3}
@@ -172,6 +180,63 @@ function EditSchoolPageClient({ id }: { id: string }) {
                   setFormData({ ...formData, address: e.target.value })
                 }
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone_number">School Phone Number</Label>
+              <Input
+                id="phone_number"
+                type="tel"
+                value={formData.phone_number}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone_number: e.target.value })
+                }
+                placeholder="e.g., 0121 464 1676"
+              />
+            </div>
+
+            <div className="border-t pt-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4">School Contact Information</h3>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contact_name">School Contact</Label>
+                  <Input
+                    id="contact_name"
+                    value={formData.contact_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contact_name: e.target.value })
+                    }
+                    placeholder="e.g., Sarah Eaton"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact_phone">School Contact Direct No.</Label>
+                  <Input
+                    id="contact_phone"
+                    type="tel"
+                    value={formData.contact_phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contact_phone: e.target.value })
+                    }
+                    placeholder="e.g., 0121 464 1676"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact_email">School Contact Email</Label>
+                  <Input
+                    id="contact_email"
+                    type="email"
+                    value={formData.contact_email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contact_email: e.target.value })
+                    }
+                    placeholder="e.g., seaton@hamilton.bham.sch.uk"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-4">

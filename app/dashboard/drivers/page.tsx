@@ -25,30 +25,22 @@ async function getDrivers() {
   return data || []
 }
 
-// Helper to get expired certificates for a driver
-function getExpiredCertificates(driver: any): string[] {
+// Helper to get missing and expired certificates for a driver
+function getMissingAndExpiredCertificates(driver: any): string[] {
   const today = new Date()
-  const expiredCerts: string[] = []
+  const issues: string[] = []
   
-  const checkDate = (date: string | null, certName: string) => {
-    if (!date) return
-    const expiry = new Date(date)
+  // Check TAS Badge (required)
+  if (!driver.tas_badge_expiry_date) {
+    issues.push('Missing TAS Badge expiry date')
+  } else {
+    const expiry = new Date(driver.tas_badge_expiry_date)
     if (expiry < today) {
-      expiredCerts.push(certName)
+      issues.push('Expired TAS Badge')
     }
   }
   
-  checkDate(driver.tas_badge_expiry_date, 'TAS Badge')
-  checkDate(driver.taxi_badge_expiry_date, 'Taxi Badge')
-  checkDate(driver.dbs_expiry_date, 'DBS')
-  checkDate(driver.first_aid_certificate_expiry_date, 'First Aid')
-  checkDate(driver.passport_expiry_date, 'Passport')
-  checkDate(driver.driving_license_expiry_date, 'Driving License')
-  checkDate(driver.cpc_expiry_date, 'CPC')
-  checkDate(driver.vehicle_insurance_expiry_date, 'Vehicle Insurance')
-  checkDate(driver.mot_expiry_date, 'MOT')
-  
-  return expiredCerts
+  return issues
 }
 
 async function DriversTable() {
@@ -65,21 +57,19 @@ async function DriversTable() {
             <TableHead>Status</TableHead>
             <TableHead>Can Work</TableHead>
             <TableHead>TAS Badge Expiry</TableHead>
-            <TableHead>Taxi Badge Expiry</TableHead>
-            <TableHead>DBS Expiry</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {drivers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-gray-500">
+              <TableCell colSpan={7} className="text-center text-gray-500">
                 No drivers found.
               </TableCell>
             </TableRow>
           ) : (
             drivers.map((driver: any) => {
-              const expiredCerts = getExpiredCertificates(driver)
+              const missingAndExpired = getMissingAndExpiredCertificates(driver)
               
               return (
                 <TableRow key={driver.employee_id}>
@@ -99,9 +89,13 @@ async function DriversTable() {
                         <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-red-100 text-red-800">
                           CANNOT WORK
                         </span>
-                        {expiredCerts.length > 0 && (
+                        {missingAndExpired.length > 0 ? (
                           <div className="text-xs text-red-700 font-medium">
-                            Expired: {expiredCerts.join(', ')}
+                            {missingAndExpired.join(', ')}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-orange-700 font-medium">
+                            Status may be out of sync. Try editing and saving the record to refresh.
                           </div>
                         )}
                       </div>
@@ -112,8 +106,6 @@ async function DriversTable() {
                     )}
                   </TableCell>
                   <TableCell>{formatDate(driver.tas_badge_expiry_date)}</TableCell>
-                  <TableCell>{formatDate(driver.taxi_badge_expiry_date)}</TableCell>
-                  <TableCell>{formatDate(driver.dbs_expiry_date)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Link href={`/dashboard/drivers/${driver.employee_id}`} prefetch={true}>
@@ -154,7 +146,7 @@ export default function DriversPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={9} />}>
+      <Suspense fallback={<TableSkeleton rows={5} columns={7} />}>
         <DriversTable />
       </Suspense>
     </div>

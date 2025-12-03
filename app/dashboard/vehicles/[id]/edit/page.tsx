@@ -20,15 +20,19 @@ function EditVehiclePageClient({ id }: { id: string }) {
   const [formData, setFormData] = useState({
     vehicle_identifier: '',
     registration: '',
+    registration_expiry_date: '',
     make: '',
     model: '',
     plate_number: '',
+    colour: '',
     plate_expiry_date: '',
     vehicle_type: '',
     ownership_type: '',
     mot_date: '',
     tax_date: '',
     insurance_expiry_date: '',
+    taxi_badge_number: '',
+    taxi_badge_expiry_date: '',
     tail_lift: false,
     loler_expiry_date: '',
     last_serviced: '',
@@ -59,15 +63,19 @@ function EditVehiclePageClient({ id }: { id: string }) {
         setFormData({
           vehicle_identifier: data.vehicle_identifier || '',
           registration: data.registration || '',
+          registration_expiry_date: data.registration_expiry_date || '',
           make: data.make || '',
           model: data.model || '',
           plate_number: data.plate_number || '',
+          colour: data.colour || '',
           plate_expiry_date: data.plate_expiry_date || '',
           vehicle_type: data.vehicle_type || '',
           ownership_type: data.ownership_type || '',
           mot_date: data.mot_date || '',
           tax_date: data.tax_date || '',
           insurance_expiry_date: data.insurance_expiry_date || '',
+          taxi_badge_number: data.taxi_badge_number || '',
+          taxi_badge_expiry_date: data.taxi_badge_expiry_date || '',
           tail_lift: data.tail_lift || false,
           loler_expiry_date: data.loler_expiry_date || '',
           last_serviced: data.last_serviced || '',
@@ -92,9 +100,25 @@ function EditVehiclePageClient({ id }: { id: string }) {
     setLoading(true)
 
     try {
+      // Convert empty date strings to null
+      const dataToUpdate = {
+        ...formData,
+        registration_expiry_date: formData.registration_expiry_date || null,
+        plate_expiry_date: formData.plate_expiry_date || null,
+        mot_date: formData.mot_date || null,
+        tax_date: formData.tax_date || null,
+        insurance_expiry_date: formData.insurance_expiry_date || null,
+        taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
+        loler_expiry_date: formData.loler_expiry_date || null,
+        last_serviced: formData.last_serviced || null,
+        service_booked_day: formData.service_booked_day || null,
+        first_aid_expiry: formData.first_aid_expiry || null,
+        fire_extinguisher_expiry: formData.fire_extinguisher_expiry || null,
+      }
+
       const { error } = await supabase
         .from('vehicles')
-        .update(formData)
+        .update(dataToUpdate)
         .eq('id', id)
 
       if (error) throw error
@@ -206,6 +230,30 @@ function EditVehiclePageClient({ id }: { id: string }) {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="registration_expiry_date">Registration Expiry Date</Label>
+                <Input
+                  id="registration_expiry_date"
+                  type="date"
+                  value={formData.registration_expiry_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, registration_expiry_date: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="plate_number">Plate Number</Label>
+                <Input
+                  id="plate_number"
+                  value={formData.plate_number}
+                  onChange={(e) =>
+                    setFormData({ ...formData, plate_number: e.target.value })
+                  }
+                  placeholder="e.g., AB12 CDE"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="make">Make</Label>
                 <Input
                   id="make"
@@ -224,6 +272,18 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   onChange={(e) =>
                     setFormData({ ...formData, model: e.target.value })
                   }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="colour">Colour</Label>
+                <Input
+                  id="colour"
+                  value={formData.colour}
+                  onChange={(e) =>
+                    setFormData({ ...formData, colour: e.target.value })
+                  }
+                  placeholder="e.g., Red, Blue, White"
                 />
               </div>
 
@@ -261,7 +321,19 @@ function EditVehiclePageClient({ id }: { id: string }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="mot_date">MOT Date</Label>
+                <Label htmlFor="insurance_expiry_date">Vehicle Insurance - Expiry Date</Label>
+                <Input
+                  id="insurance_expiry_date"
+                  type="date"
+                  value={formData.insurance_expiry_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, insurance_expiry_date: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mot_date">MOT - Expiry Date</Label>
                 <Input
                   id="mot_date"
                   type="date"
@@ -285,14 +357,31 @@ function EditVehiclePageClient({ id }: { id: string }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="insurance_expiry_date">Insurance Expiry Date</Label>
+                <Label htmlFor="taxi_badge_number">
+                  Taxi Badge - Badge Number
+                </Label>
                 <Input
-                  id="insurance_expiry_date"
-                  type="date"
-                  value={formData.insurance_expiry_date}
+                  id="taxi_badge_number"
+                  value={formData.taxi_badge_number}
                   onChange={(e) =>
-                    setFormData({ ...formData, insurance_expiry_date: e.target.value })
+                    setFormData({ ...formData, taxi_badge_number: e.target.value })
                   }
+                  placeholder="e.g., TAXI67890"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="taxi_badge_expiry_date">
+                  Taxi Badge - Expiry Date <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="taxi_badge_expiry_date"
+                  type="date"
+                  value={formData.taxi_badge_expiry_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, taxi_badge_expiry_date: e.target.value })
+                  }
+                  required
                 />
               </div>
 

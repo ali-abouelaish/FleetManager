@@ -31,12 +31,17 @@ function EditRoutePageClient({ id }: { id: string }) {
   const [schools, setSchools] = useState<any[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
   const [passengerAssistants, setPassengerAssistants] = useState<any[]>([])
+  const [vehicles, setVehicles] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     route_number: '',
     school_id: '',
     driver_id: '',
     passenger_assistant_id: '',
+    vehicle_id: '',
+    am_start_time: '',
+    pm_start_time: '',
+    days_of_week: [] as string[],
   })
 
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([])
@@ -105,7 +110,7 @@ function EditRoutePageClient({ id }: { id: string }) {
 
   useEffect(() => {
     async function loadData() {
-      const [routeResult, schoolsResult, pointsResult, driversResult, pasResult] = await Promise.all([
+      const [routeResult, schoolsResult, pointsResult, driversResult, pasResult, vehiclesResult] = await Promise.all([
         supabase.from('routes').select('*').eq('id', id).single(),
         supabase.from('schools').select('id, name').order('name'),
         supabase.from('route_points').select('*').eq('route_id', id).order('stop_order'),
@@ -117,6 +122,11 @@ function EditRoutePageClient({ id }: { id: string }) {
           .from('passenger_assistants')
           .select('employee_id, employees(full_name, employment_status, can_work)')
           .order('employee_id'),
+        supabase
+          .from('vehicles')
+          .select('id, vehicle_identifier, registration, make, model, plate_number, off_the_road')
+          .eq('off_the_road', false)
+          .order('vehicle_identifier'),
       ])
 
       if (routeResult.error) {
@@ -125,11 +135,28 @@ function EditRoutePageClient({ id }: { id: string }) {
       }
 
       if (routeResult.data) {
+        // Format time values for input (HH:MM format)
+        const formatTime = (time: string | null) => {
+          if (!time) return ''
+          // If time is in HH:MM:SS format, extract HH:MM
+          if (time.includes(':')) {
+            const parts = time.split(':')
+            return `${parts[0]}:${parts[1]}`
+          }
+          return time
+        }
+
         setFormData({
           route_number: routeResult.data.route_number || '',
           school_id: routeResult.data.school_id || '',
           driver_id: routeResult.data.driver_id || '',
           passenger_assistant_id: routeResult.data.passenger_assistant_id || '',
+          vehicle_id: routeResult.data.vehicle_id || '',
+          am_start_time: formatTime(routeResult.data.am_start_time),
+          pm_start_time: formatTime(routeResult.data.pm_start_time),
+          days_of_week: Array.isArray(routeResult.data.days_of_week) 
+            ? routeResult.data.days_of_week 
+            : [],
         })
       }
 
@@ -171,6 +198,10 @@ function EditRoutePageClient({ id }: { id: string }) {
         }))
         setRoutePoints(existingPoints)
       }
+
+      if (vehiclesResult.data) {
+        setVehicles(vehiclesResult.data)
+      }
     }
 
     loadData()
@@ -188,6 +219,10 @@ function EditRoutePageClient({ id }: { id: string }) {
         school_id: formData.school_id || null,
         driver_id: formData.driver_id || null,
         passenger_assistant_id: formData.passenger_assistant_id || null,
+        vehicle_id: formData.vehicle_id || null,
+        am_start_time: formData.am_start_time || null,
+        pm_start_time: formData.pm_start_time || null,
+        days_of_week: formData.days_of_week.length > 0 ? formData.days_of_week : null,
       }
       
       const { error: routeError } = await supabase
@@ -393,6 +428,84 @@ function EditRoutePageClient({ id }: { id: string }) {
                     </option>
                   ))}
                 </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vehicle_id">Vehicle</Label>
+              <Select
+                id="vehicle_id"
+                value={formData.vehicle_id}
+                onChange={(e) =>
+                  setFormData({ ...formData, vehicle_id: e.target.value })
+                }
+              >
+                <option value="">Select a vehicle (optional)</option>
+                {vehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.vehicle_identifier || vehicle.registration || vehicle.plate_number || `Vehicle ${vehicle.id}`}
+                    {vehicle.make && vehicle.model ? ` - ${vehicle.make} ${vehicle.model}` : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="border-t pt-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4">Route Schedule</h3>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="am_start_time">AM Start Time</Label>
+                  <Input
+                    id="am_start_time"
+                    type="time"
+                    value={formData.am_start_time}
+                    onChange={(e) =>
+                      setFormData({ ...formData, am_start_time: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pm_start_time">PM Start Time</Label>
+                  <Input
+                    id="pm_start_time"
+                    type="time"
+                    value={formData.pm_start_time}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pm_start_time: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label className="mb-2 block">Days of Week</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                    <label key={day} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.days_of_week.includes(day)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              days_of_week: [...formData.days_of_week, day],
+                            })
+                          } else {
+                            setFormData({
+                              ...formData,
+                              days_of_week: formData.days_of_week.filter((d) => d !== day),
+                            })
+                          }
+                        }}
+                        className="rounded border-gray-300 text-navy focus:ring-navy"
+                      />
+                      <span className="text-sm text-gray-700">{day}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </form>

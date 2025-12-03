@@ -30,17 +30,13 @@ export default function CreateDriverPage() {
     employee_id: '',
     tas_badge_number: '',
     tas_badge_expiry_date: '',
-    taxi_badge_number: '',
-    taxi_badge_expiry_date: '',
-    dbs_expiry_date: '',
+    dbs_number: '',
     psv_license: false,
     first_aid_certificate_expiry_date: '',
     passport_expiry_date: '',
     driving_license_expiry_date: '',
     cpc_expiry_date: '',
     utility_bill_date: '',
-    vehicle_insurance_expiry_date: '',
-    mot_expiry_date: '',
     birth_certificate: false,
     marriage_certificate: false,
     photo_taken: false,
@@ -60,7 +56,6 @@ export default function CreateDriverPage() {
   // File uploads state
   const [fileUploads, setFileUploads] = useState<{[key: string]: File | null}>({
     tas_badge_file: null,
-    taxi_badge_file: null,
     dbs_file: null,
     first_aid_file: null,
     passport_file: null,
@@ -156,7 +151,6 @@ export default function CreateDriverPage() {
       // Map file keys to document types
       const fileKeyToDocType: {[key: string]: string} = {
         tas_badge_file: 'TAS Badge',
-        taxi_badge_file: 'Taxi Badge',
         dbs_file: 'DBS Certificate',
         first_aid_file: 'First Aid Certificate',
         passport_file: 'Passport',
@@ -207,38 +201,59 @@ export default function CreateDriverPage() {
       }
 
       // Insert driver record
+      const driverData = {
+        employee_id: parseInt(formData.employee_id),
+        tas_badge_number: formData.tas_badge_number || null,
+        tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
+        dbs_number: formData.dbs_number || null,
+        psv_license: formData.psv_license,
+        first_aid_certificate_expiry_date: formData.first_aid_certificate_expiry_date || null,
+        passport_expiry_date: formData.passport_expiry_date || null,
+        driving_license_expiry_date: formData.driving_license_expiry_date || null,
+        cpc_expiry_date: formData.cpc_expiry_date || null,
+        utility_bill_date: formData.utility_bill_date || null,
+        birth_certificate: formData.birth_certificate,
+        marriage_certificate: formData.marriage_certificate,
+        photo_taken: formData.photo_taken,
+        private_hire_badge: formData.private_hire_badge,
+        paper_licence: formData.paper_licence,
+        taxi_plate_photo: formData.taxi_plate_photo,
+        logbook: formData.logbook,
+        safeguarding_training_completed: formData.safeguarding_training_completed,
+        safeguarding_training_date: formData.safeguarding_training_date || null,
+        tas_pats_training_completed: formData.tas_pats_training_completed,
+        tas_pats_training_date: formData.tas_pats_training_date || null,
+        psa_training_completed: formData.psa_training_completed,
+        psa_training_date: formData.psa_training_date || null,
+        additional_notes: formData.additional_notes || null,
+      }
+
+      // Verify employee exists before insert
+      const { data: employeeCheck, error: employeeError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('id', parseInt(formData.employee_id))
+        .single()
+
+      if (employeeError || !employeeCheck) {
+        throw new Error(`Employee with ID ${formData.employee_id} does not exist`)
+      }
+
+      // Check if employee is already a driver
+      const { data: existingDriver, error: driverCheckError } = await supabase
+        .from('drivers')
+        .select('employee_id')
+        .eq('employee_id', parseInt(formData.employee_id))
+        .maybeSingle()
+
+      if (existingDriver) {
+        throw new Error('This employee is already registered as a driver')
+      }
+
       const { error: insertError } = await supabase
         .from('drivers')
-        .insert({
-          employee_id: parseInt(formData.employee_id),
-          tas_badge_number: formData.tas_badge_number || null,
-          tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
-          taxi_badge_number: formData.taxi_badge_number || null,
-          taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
-          dbs_expiry_date: formData.dbs_expiry_date || null,
-          psv_license: formData.psv_license,
-          first_aid_certificate_expiry_date: formData.first_aid_certificate_expiry_date || null,
-          passport_expiry_date: formData.passport_expiry_date || null,
-          driving_license_expiry_date: formData.driving_license_expiry_date || null,
-          cpc_expiry_date: formData.cpc_expiry_date || null,
-          utility_bill_date: formData.utility_bill_date || null,
-          vehicle_insurance_expiry_date: formData.vehicle_insurance_expiry_date || null,
-          mot_expiry_date: formData.mot_expiry_date || null,
-          birth_certificate: formData.birth_certificate,
-          marriage_certificate: formData.marriage_certificate,
-          photo_taken: formData.photo_taken,
-          private_hire_badge: formData.private_hire_badge,
-          paper_licence: formData.paper_licence,
-          taxi_plate_photo: formData.taxi_plate_photo,
-          logbook: formData.logbook,
-          safeguarding_training_completed: formData.safeguarding_training_completed,
-          safeguarding_training_date: formData.safeguarding_training_date || null,
-          tas_pats_training_completed: formData.tas_pats_training_completed,
-          tas_pats_training_date: formData.tas_pats_training_date || null,
-          psa_training_completed: formData.psa_training_completed,
-          psa_training_date: formData.psa_training_date || null,
-          additional_notes: formData.additional_notes || null,
-        })
+        .insert([driverData])
+        .select()
 
       if (insertError) throw insertError
 
@@ -432,15 +447,16 @@ export default function CreateDriverPage() {
                         ⚠️ Required Certificates Policy
                       </h3>
                       <p className="text-sm text-red-700">
-                        <strong>Drivers MUST have these 3 certificates with dates set:</strong>
+                        <strong>Drivers MUST have this certificate with date set:</strong>
                       </p>
                       <ul className="text-sm text-red-700 mt-2 ml-4 list-disc">
                         <li>TAS Badge expiry date</li>
-                        <li>Taxi Badge expiry date</li>
-                        <li>DBS Certificate expiry date</li>
                       </ul>
                       <p className="text-sm text-red-700 mt-2">
-                        <strong>Without all 3 dates, the driver will be flagged as "CANNOT WORK"</strong> and will not be authorized for routes.
+                        <strong>Without this date, the driver will be flagged as "CANNOT WORK"</strong> and will not be authorized for routes.
+                      </p>
+                      <p className="text-sm text-red-600 mt-2 italic">
+                        Note: Taxi Badge is now tracked on vehicles, not drivers.
                       </p>
                     </div>
                   </div>
@@ -490,67 +506,18 @@ export default function CreateDriverPage() {
                   </div>
                 </div>
 
-                {/* Taxi Badge */}
-                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
-                  <h3 className="font-semibold text-navy flex items-center">
-                    Taxi Badge
-                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
-                  </h3>
-                  <div>
-                    <Label htmlFor="taxi_badge_number">Badge Number</Label>
-                    <Input
-                      id="taxi_badge_number"
-                      name="taxi_badge_number"
-                      value={formData.taxi_badge_number}
-                      onChange={handleInputChange}
-                      placeholder="e.g., TAXI67890"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="taxi_badge_expiry_date">
-                      Expiry Date <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="date"
-                      id="taxi_badge_expiry_date"
-                      name="taxi_badge_expiry_date"
-                      value={formData.taxi_badge_expiry_date}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <p className="text-xs text-red-600 mt-1">⚠️ Required for driver to work</p>
-                  </div>
-                  <div>
-                    <Label htmlFor="taxi_badge_file">Upload Certificate</Label>
-                    <input
-                      type="file"
-                      id="taxi_badge_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('taxi_badge_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
-                    />
-                  </div>
-                </div>
-
                 {/* DBS Certificate */}
-                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
-                  <h3 className="font-semibold text-navy flex items-center">
-                    DBS Certificate
-                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
-                  </h3>
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">DBS Certificate</h3>
                   <div>
-                    <Label htmlFor="dbs_expiry_date">
-                      Expiry Date <span className="text-red-500">*</span>
-                    </Label>
+                    <Label htmlFor="dbs_number">DBS Number</Label>
                     <Input
-                      type="date"
-                      id="dbs_expiry_date"
-                      name="dbs_expiry_date"
-                      value={formData.dbs_expiry_date}
+                      id="dbs_number"
+                      name="dbs_number"
+                      value={formData.dbs_number}
                       onChange={handleInputChange}
-                      required
+                      placeholder="e.g., DBS123456789"
                     />
-                    <p className="text-xs text-red-600 mt-1">⚠️ Required for driver to work</p>
                   </div>
                   <div>
                     <Label htmlFor="dbs_file">Upload Certificate</Label>
@@ -689,35 +656,6 @@ export default function CreateDriverPage() {
                   </div>
                 </div>
 
-                {/* Vehicle Insurance */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Vehicle Insurance</h3>
-                  <div>
-                    <Label htmlFor="vehicle_insurance_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="vehicle_insurance_expiry_date"
-                      name="vehicle_insurance_expiry_date"
-                      value={formData.vehicle_insurance_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-
-                {/* MOT */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">MOT</h3>
-                  <div>
-                    <Label htmlFor="mot_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="mot_expiry_date"
-                      name="mot_expiry_date"
-                      value={formData.mot_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>

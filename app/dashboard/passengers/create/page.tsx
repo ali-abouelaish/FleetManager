@@ -33,6 +33,7 @@ export default function CreatePassengerPage() {
   const [formData, setFormData] = useState({
     full_name: '',
     dob: '',
+    gender: '',
     address: '',
     sen_requirements: '',
     school_id: searchParams.get('school_id') || '',
@@ -225,6 +226,23 @@ export default function CreatePassengerPage() {
                     setFormData({ ...formData, dob: e.target.value })
                   }
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select
+                  id="gender"
+                  value={formData.gender}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gender: e.target.value })
+                  }
+                >
+                  <option value="">Select gender (optional)</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </Select>
               </div>
 
               <div className="space-y-2">

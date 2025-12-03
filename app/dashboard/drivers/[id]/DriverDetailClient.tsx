@@ -15,9 +15,7 @@ interface Driver {
   employee_id: number
   tas_badge_number: string | null
   tas_badge_expiry_date: string | null
-  taxi_badge_number: string | null
-  taxi_badge_expiry_date: string | null
-  dbs_expiry_date: string | null
+  dbs_number: string | null
   psv_license: boolean
   first_aid_certificate_expiry_date: string | null
   passport_expiry_date: string | null
@@ -31,8 +29,6 @@ interface Driver {
   paper_licence: boolean
   taxi_plate_photo: boolean
   logbook: boolean
-  vehicle_insurance_expiry_date: string | null
-  mot_expiry_date: string | null
   safeguarding_training_completed: boolean
   safeguarding_training_date: string | null
   tas_pats_training_completed: boolean
@@ -400,8 +396,6 @@ export function DriverDetailClient({ id }: { id: string }) {
               <div className="grid gap-4 md:grid-cols-3">
                 {[
                   { label: 'TAS Badge', date: driver.tas_badge_expiry_date, badge: driver.tas_badge_number },
-                  { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, badge: driver.taxi_badge_number },
-                  { label: 'DBS', date: driver.dbs_expiry_date },
                   { label: 'Driving License', date: driver.driving_license_expiry_date },
                   { label: 'CPC', date: driver.cpc_expiry_date },
                   { label: 'First Aid', date: driver.first_aid_certificate_expiry_date },
@@ -457,14 +451,11 @@ export function DriverDetailClient({ id }: { id: string }) {
                   <tbody>
                     {[
                       { label: 'TAS Badge', date: driver.tas_badge_expiry_date, ref: driver.tas_badge_number, docType: 'TAS Badge' },
-                      { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, ref: driver.taxi_badge_number, docType: 'Taxi Badge' },
-                      { label: 'DBS Certificate', date: driver.dbs_expiry_date, ref: null, docType: 'DBS Certificate' },
+                      { label: 'DBS Certificate', date: null, ref: driver.dbs_number, docType: 'DBS Certificate' },
                       { label: 'First Aid Certificate', date: driver.first_aid_certificate_expiry_date, ref: null, docType: 'First Aid Certificate' },
                       { label: 'Passport', date: driver.passport_expiry_date, ref: null, docType: 'Passport' },
                       { label: 'Driving License', date: driver.driving_license_expiry_date, ref: null, docType: 'Driving License' },
                       { label: 'CPC Certificate', date: driver.cpc_expiry_date, ref: null, docType: 'CPC Certificate' },
-                      { label: 'Vehicle Insurance', date: driver.vehicle_insurance_expiry_date, ref: null, docType: null },
-                      { label: 'MOT', date: driver.mot_expiry_date, ref: null, docType: null },
                       { label: 'Utility Bill', date: driver.utility_bill_date, ref: null, docType: 'Utility Bill' },
                     ].map((item, idx) => {
                       const daysRemaining = getDaysRemaining(item.date)

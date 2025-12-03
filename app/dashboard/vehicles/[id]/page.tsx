@@ -81,6 +81,10 @@ export default async function ViewVehiclePage({
               <dd className="mt-1 text-sm text-gray-900">{vehicle.registration || 'N/A'}</dd>
             </div>
             <div>
+              <dt className="text-sm font-medium text-gray-500">Registration Expiry Date</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatDate(vehicle.registration_expiry_date)}</dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-gray-500">Plate Number</dt>
               <dd className="mt-1 text-sm text-gray-900">{vehicle.plate_number || 'N/A'}</dd>
             </div>
@@ -91,6 +95,10 @@ export default async function ViewVehiclePage({
             <div>
               <dt className="text-sm font-medium text-gray-500">Model</dt>
               <dd className="mt-1 text-sm text-gray-900">{vehicle.model || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Colour</dt>
+              <dd className="mt-1 text-sm text-gray-900">{vehicle.colour || 'N/A'}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Vehicle Type</dt>
@@ -145,7 +153,11 @@ export default async function ViewVehiclePage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <dt className="text-sm font-medium text-gray-500">MOT Date</dt>
+              <dt className="text-sm font-medium text-gray-500">Vehicle Insurance - Expiry Date</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatDate(vehicle.insurance_expiry_date)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">MOT - Expiry Date</dt>
               <dd className="mt-1 text-sm text-gray-900">{formatDate(vehicle.mot_date)}</dd>
             </div>
             <div>
@@ -153,8 +165,12 @@ export default async function ViewVehiclePage({
               <dd className="mt-1 text-sm text-gray-900">{formatDate(vehicle.tax_date)}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Insurance Expiry</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDate(vehicle.insurance_expiry_date)}</dd>
+              <dt className="text-sm font-medium text-gray-500">Taxi Badge - Badge Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{vehicle.taxi_badge_number || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Taxi Badge - Expiry Date</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatDate(vehicle.taxi_badge_expiry_date)}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">LOLER Expiry</dt>

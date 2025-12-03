@@ -10,6 +10,17 @@ import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import RouteSessionsClient from './RouteSessionsClient'
 
+// Helper function to format time (HH:MM:SS to HH:MM)
+function formatTime(time: string | null): string {
+  if (!time) return 'N/A'
+  // If time is in HH:MM:SS format, extract HH:MM
+  if (time.includes(':')) {
+    const parts = time.split(':')
+    return `${parts[0]}:${parts[1]}`
+  }
+  return time
+}
+
 async function getRouteDetails(id: string) {
   const supabase = await createClient()
   
@@ -19,7 +30,16 @@ async function getRouteDetails(id: string) {
       *,
       schools(name, address),
       driver:driver_id(employees(full_name)),
-      pa:passenger_assistant_id(employees(full_name))
+      pa:passenger_assistant_id(employees(full_name)),
+      vehicles (
+        id,
+        vehicle_identifier,
+        registration,
+        make,
+        model,
+        plate_number,
+        vehicle_type
+      )
     `)
     .eq('id', id)
     .single()
@@ -41,10 +61,16 @@ async function getRouteDetails(id: string) {
     .eq('route_id', id)
     .order('stop_order')
 
+  // Get vehicle directly from route
+  const vehicle = route.vehicles 
+    ? (Array.isArray(route.vehicles) ? route.vehicles[0] : route.vehicles)
+    : null
+
   return {
     route,
     passengers: passengers || [],
     routePoints: routePoints || [],
+    vehicle,
   }
 }
 
@@ -59,7 +85,7 @@ export default async function ViewRoutePage({
     notFound()
   }
 
-  const { route, passengers, routePoints } = data
+  const { route, passengers, routePoints, vehicle } = data
 
   return (
     <div className="space-y-6">
@@ -114,6 +140,22 @@ export default async function ViewRoutePage({
                 ) : (
                   'N/A'
                 )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">AM Start Time</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatTime(route.am_start_time)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">PM Start Time</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatTime(route.pm_start_time)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Days of Week</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {route.days_of_week && Array.isArray(route.days_of_week) && route.days_of_week.length > 0
+                  ? route.days_of_week.join(', ')
+                  : 'N/A'}
               </dd>
             </div>
             <div>
@@ -193,6 +235,54 @@ export default async function ViewRoutePage({
                 </TableRow>
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Vehicle Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Vehicle</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!vehicle ? (
+            <p className="text-center text-gray-500 py-4">
+              No vehicle assigned to this route.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Vehicle Identifier</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  <Link href={`/dashboard/vehicles/${vehicle.id}`} className="text-blue-600 hover:underline font-semibold">
+                    {vehicle.vehicle_identifier || 'N/A'}
+                  </Link>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Registration</dt>
+                <dd className="mt-1 text-sm text-gray-900">{vehicle.registration || vehicle.plate_number || 'N/A'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Make & Model</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {vehicle.make && vehicle.model 
+                    ? `${vehicle.make} ${vehicle.model}` 
+                    : vehicle.make || vehicle.model || 'N/A'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Vehicle Type</dt>
+                <dd className="mt-1 text-sm text-gray-900">{vehicle.vehicle_type || 'N/A'}</dd>
+              </div>
+              <div className="pt-2">
+                <Link href={`/dashboard/vehicles/${vehicle.id}`}>
+                  <Button variant="ghost" size="sm">
+                    View Vehicle Details
+                  </Button>
+                </Link>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
