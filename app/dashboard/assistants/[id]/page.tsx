@@ -28,7 +28,6 @@ async function getPassengerAssistant(id: string) {
         personal_email,
         start_date,
         end_date,
-        wheelchair_access,
         can_work
       )
     `)

@@ -118,10 +118,10 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                   
                   const isOvercapacity = seatsTotal > 0 && totalPassengers > seatsTotal
                   const isWheelchairOvercapacity = wheelchairCapacity > 0 && wheelchairPassengers > wheelchairCapacity
-                  const hasIssues = isOvercapacity || isWheelchairOvercapacity || !route.crew_id || !route.vehicle_id
+                  const hasIssues = isOvercapacity || isWheelchairOvercapacity || (!route.driver_id && !route.pa_id) || !route.vehicle_id
 
                   return (
-                    <TableRow key={route.route_id || route.crew_id}>
+                    <TableRow key={route.route_id}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{route.route_number || `Route ${route.route_id}`}</div>
@@ -231,10 +231,12 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                           <div className="flex items-center space-x-1 text-red-600">
                             <AlertTriangle className="h-4 w-4" />
                             <span className="text-xs">
-                              {!route.crew_id && 'No Crew'}
-                              {!route.vehicle_id && 'No Vehicle'}
-                              {isOvercapacity && 'Overcapacity'}
-                              {isWheelchairOvercapacity && '♿ Overcapacity'}
+                              {[
+                                (!route.driver_id && !route.pa_id) && 'No Crew',
+                                !route.vehicle_id && 'No Vehicle',
+                                isOvercapacity && 'Overcapacity',
+                                isWheelchairOvercapacity && '♿ Overcapacity'
+                              ].filter(Boolean).join(' ')}
                             </span>
                           </div>
                         ) : (

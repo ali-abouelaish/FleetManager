@@ -330,12 +330,6 @@ export default async function ViewEmployeePage({
                 </span>
               </dd>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Wheelchair Access</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {employee.wheelchair_access ? 'Yes' : 'No'}
-              </dd>
-            </div>
           </CardContent>
         </Card>
 

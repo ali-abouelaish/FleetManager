@@ -183,6 +183,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                   <option value="">Select role</option>
                   <option value="Driver">Driver</option>
                   <option value="PA">Passenger Assistant</option>
+                  <option value="Coordinator">Coordinator</option>
                   <option value="Admin">Admin</option>
                   <option value="Other">Other</option>
                 </Select>

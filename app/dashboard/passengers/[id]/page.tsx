@@ -8,6 +8,9 @@ import { notFound } from 'next/navigation'
 import PassengerDetailClient from './PassengerDetailClient'
 import AddParentContactSection from './AddParentContactSection'
 import RemoveParentContactButton from './RemoveParentContactButton'
+import EditSENRequirementsSection from './EditSENRequirementsSection'
+import AddIncidentSection from './AddIncidentSection'
+import IncidentDocumentUpload from './IncidentDocumentUpload'
 
 async function getPassenger(id: string) {
   const supabase = await createClient()
@@ -217,16 +220,23 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
       {/* Add Parent Contact Section */}
       <AddParentContactSection passengerId={passenger.id} />
 
-      {passenger.sen_requirements && (
-        <Card>
-          <CardHeader className="bg-navy text-white">
-            <CardTitle>SEN Requirements</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
+      {/* SEN Requirements Section */}
+      <Card>
+        <CardHeader className="bg-navy text-white">
+          <CardTitle>SEN Requirements</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <EditSENRequirementsSection
+            passengerId={passenger.id}
+            currentValue={passenger.sen_requirements}
+          />
+          {passenger.sen_requirements ? (
             <p className="text-sm text-gray-900 whitespace-pre-wrap">{passenger.sen_requirements}</p>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-gray-500 italic">No SEN requirements recorded yet.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Related Incidents */}
       <Card>
@@ -237,6 +247,10 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
+          <AddIncidentSection
+            passengerId={passenger.id}
+            passengerRouteId={passenger.route_id}
+          />
           {incidents.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No incidents recorded for this passenger.</p>
           ) : (
@@ -274,12 +288,15 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
                           )}
                         </div>
                       </div>
-                      <Link href={`/dashboard/incidents/${incident.id}`}>
-                        <Button variant="ghost" size="sm" className="text-navy">
-                          View Details
-                          <ExternalLink className="ml-1 h-3 w-3" />
-                        </Button>
-                      </Link>
+                      <div className="flex flex-col items-end space-y-2">
+                        <Link href={`/dashboard/incidents/${incident.id}`}>
+                          <Button variant="ghost" size="sm" className="text-navy">
+                            View Details
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </Button>
+                        </Link>
+                        <IncidentDocumentUpload incidentId={incident.id} />
+                      </div>
                     </div>
                   </div>
                 )

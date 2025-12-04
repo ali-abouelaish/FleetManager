@@ -6,6 +6,7 @@ import { ArrowLeft, ExternalLink, Users, UserCog, Car, MapPin } from 'lucide-rea
 import { formatDateTime } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import IncidentToggleButton from './IncidentToggleButton'
+import IncidentDocuments from './IncidentDocuments'
 
 async function getIncident(id: string) {
   const supabase = await createClient()
@@ -249,6 +250,9 @@ export default async function ViewIncidentPage({ params }: { params: { id: strin
           </CardContent>
         </Card>
       </div>
+
+      {/* Incident Documents */}
+      <IncidentDocuments incidentId={incident.id} />
     </div>
   )
 }
