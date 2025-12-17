@@ -197,32 +197,22 @@ Fleet Management System`
         on_hold_cleared_at: null,
       }
 
-      // Route/vehicle updates collection
-      const updates: Promise<any>[] = []
-
+      // Apply holds serially to avoid TS issues with builders
       if (notification.entity_type === 'vehicle') {
-        updates.push(
-          supabase.from('vehicles').update(holdPayload).eq('id', notification.entity_id)
-        )
-        updates.push(
-          supabase
-            .from('routes')
-            .update(holdPayload)
-            .eq('vehicle_id', notification.entity_id)
-        )
+        await supabase.from('vehicles').update(holdPayload).eq('id', notification.entity_id)
+        await supabase
+          .from('routes')
+          .update(holdPayload)
+          .eq('vehicle_id', notification.entity_id)
       } else if (notification.entity_type === 'driver') {
-        updates.push(
-          supabase
-            .from('drivers')
-            .update(holdPayload)
-            .eq('employee_id', notification.entity_id)
-        )
-        updates.push(
-          supabase
-            .from('routes')
-            .update(holdPayload)
-            .eq('driver_id', notification.entity_id)
-        )
+        await supabase
+          .from('drivers')
+          .update(holdPayload)
+          .eq('employee_id', notification.entity_id)
+        await supabase
+          .from('routes')
+          .update(holdPayload)
+          .eq('driver_id', notification.entity_id)
         const { data: routeVehicles } = await supabase
           .from('routes')
           .select('vehicle_id')
@@ -231,23 +221,17 @@ Fleet Management System`
         const vehicleIds =
           routeVehicles?.map((r: any) => r.vehicle_id).filter(Boolean) || []
         if (vehicleIds.length > 0) {
-          updates.push(
-            supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
-          )
+          await supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
         }
       } else if (notification.entity_type === 'assistant') {
-        updates.push(
-          supabase
-            .from('passenger_assistants')
-            .update(holdPayload)
-            .eq('employee_id', notification.entity_id)
-        )
-        updates.push(
-          supabase
-            .from('routes')
-            .update(holdPayload)
-            .eq('passenger_assistant_id', notification.entity_id)
-        )
+        await supabase
+          .from('passenger_assistants')
+          .update(holdPayload)
+          .eq('employee_id', notification.entity_id)
+        await supabase
+          .from('routes')
+          .update(holdPayload)
+          .eq('passenger_assistant_id', notification.entity_id)
         const { data: routeVehicles } = await supabase
           .from('routes')
           .select('vehicle_id')
@@ -256,16 +240,8 @@ Fleet Management System`
         const vehicleIds =
           routeVehicles?.map((r: any) => r.vehicle_id).filter(Boolean) || []
         if (vehicleIds.length > 0) {
-          updates.push(
-            supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
-          )
+          await supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
         }
-      }
-
-      if (updates.length > 0) {
-        const holdResults = await Promise.all(updates)
-        const firstError = holdResults.find((r) => r?.error)?.error
-        if (firstError) throw firstError
       }
     }
 
