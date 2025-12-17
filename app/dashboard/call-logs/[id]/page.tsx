@@ -20,7 +20,30 @@ async function getCallLog(id: string) {
     .single()
 
   if (error || !data) return null
-  return data
+
+  // Fetch driver and assistant separately if they exist
+  let driver = null
+  let assistant = null
+
+  if (data.related_driver_id) {
+    const { data: driverData } = await supabase
+      .from('drivers')
+      .select('employee_id, employees(full_name)')
+      .eq('employee_id', data.related_driver_id)
+      .single()
+    driver = driverData
+  }
+
+  if (data.related_assistant_id) {
+    const { data: assistantData } = await supabase
+      .from('passenger_assistants')
+      .select('employee_id, employees(full_name)')
+      .eq('employee_id', data.related_assistant_id)
+      .single()
+    assistant = assistantData
+  }
+
+  return { ...data, driver, assistant }
 }
 
 export default async function ViewCallLogPage({ params }: { params: { id: string } }) {
@@ -60,6 +83,12 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
               <dt className="text-sm font-medium text-gray-500">Caller Type</dt>
               <dd className="mt-1 text-sm text-gray-900">{callLog.caller_type || 'N/A'}</dd>
             </div>
+            {callLog.call_to_type && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Call To/From</dt>
+                <dd className="mt-1 text-sm text-gray-900">{callLog.call_to_type}</dd>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -130,9 +159,29 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
               </dd>
             </div>
           )}
+          {callLog.driver && callLog.driver.employees && (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Related Driver</dt>
+              <dd className="mt-1">
+                <Link href={`/dashboard/employees/${callLog.driver.employee_id}`} className="text-blue-600 hover:underline">
+                  {callLog.driver.employees.full_name}
+                </Link>
+              </dd>
+            </div>
+          )}
+          {callLog.assistant && callLog.assistant.employees && (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Related Assistant (PA)</dt>
+              <dd className="mt-1">
+                <Link href={`/dashboard/employees/${callLog.assistant.employee_id}`} className="text-blue-600 hover:underline">
+                  {callLog.assistant.employees.full_name}
+                </Link>
+              </dd>
+            </div>
+          )}
           {callLog.employees && (
             <div>
-              <dt className="text-sm font-medium text-gray-500">Related Employee</dt>
+              <dt className="text-sm font-medium text-gray-500">Related Employee (Other)</dt>
               <dd className="mt-1">
                 <Link href={`/dashboard/employees/${callLog.employees.id}`} className="text-blue-600 hover:underline">
                   {callLog.employees.full_name}

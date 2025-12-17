@@ -11,17 +11,17 @@ CREATE TABLE IF NOT EXISTS call_logs (
   caller_phone VARCHAR,
   caller_type VARCHAR, -- Parent, School, Employee, Other
   call_type VARCHAR, -- Inquiry, Complaint, Incident Report, Schedule Change, Other
-  related_passenger_id INTEGER REFERENCES passengers(id),
-  related_employee_id INTEGER REFERENCES employees(id),
-  related_route_id INTEGER REFERENCES routes(id),
-  related_incident_id INTEGER REFERENCES incidents(id),
+  related_passenger_id INTEGER REFERENCES passengers(id) ON DELETE SET NULL,
+  related_employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
+  related_route_id INTEGER REFERENCES routes(id) ON DELETE SET NULL,
+  related_incident_id INTEGER REFERENCES incidents(id) ON DELETE SET NULL,
   subject VARCHAR NOT NULL,
   notes TEXT,
   action_required BOOLEAN DEFAULT FALSE,
   action_taken TEXT,
   follow_up_required BOOLEAN DEFAULT FALSE,
   follow_up_date DATE,
-  handled_by INTEGER REFERENCES users(id),
+  handled_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   priority VARCHAR, -- Low, Medium, High, Urgent
   status VARCHAR DEFAULT 'Open', -- Open, In Progress, Resolved, Closed
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -101,7 +101,7 @@ export default function CreatePassengerAssistantPage() {
       }
 
       // Insert passenger assistant record
-      const { error: insertError } = await supabase
+      const { data: assistantResult, error: insertError } = await supabase
         .from('passenger_assistants')
         .insert([{
           employee_id: parseInt(formData.employee_id),
@@ -112,6 +112,19 @@ export default function CreatePassengerAssistantPage() {
         .select()
 
       if (insertError) throw insertError
+
+      // Audit log
+      if (assistantResult && assistantResult[0]) {
+        await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'passenger_assistants',
+            record_id: assistantResult[0].id,
+            action: 'CREATE',
+          }),
+        }).catch(err => console.error('Audit log error:', err))
+      }
 
       router.push('/dashboard/assistants')
       router.refresh()

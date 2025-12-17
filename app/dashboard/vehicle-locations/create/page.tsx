@@ -101,11 +101,25 @@ export default function CreateVehicleLocationPage() {
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
       }
 
-      const { error } = await supabase
+      const { data: locationResult, error } = await supabase
         .from('vehicle_locations')
         .insert(insertData)
+        .select()
 
       if (error) throw error
+
+      // Audit log
+      if (locationResult && locationResult[0]) {
+        await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'vehicle_locations',
+            record_id: locationResult[0].id,
+            action: 'CREATE',
+          }),
+        }).catch(err => console.error('Audit log error:', err))
+      }
 
       startTransition(() => {
         router.push('/dashboard/vehicle-locations')

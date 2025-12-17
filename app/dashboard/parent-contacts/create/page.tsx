@@ -84,6 +84,17 @@ export default function CreateParentContactPage() {
 
       if (contactError) throw contactError
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'parent_contacts',
+          record_id: contact.id,
+          action: 'CREATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       // Link to selected passengers
       if (selectedPassengers.length > 0) {
         const links = selectedPassengers.map(passengerId => ({

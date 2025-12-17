@@ -268,6 +268,17 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
 
       if (updateError) throw updateError
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'drivers',
+          record_id: parseInt(params.id),
+          action: 'UPDATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       // Create document records in the documents table
       if (uploadedDocuments.length > 0 && driver) {
         const documentRecords = uploadedDocuments.map(doc => {

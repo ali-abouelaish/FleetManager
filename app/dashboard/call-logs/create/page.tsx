@@ -18,6 +18,8 @@ export default function CreateCallLogPage() {
   const [error, setError] = useState<string | null>(null)
   const [passengers, setPassengers] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
+  const [drivers, setDrivers] = useState<any[]>([])
+  const [assistants, setAssistants] = useState<any[]>([])
   const [routes, setRoutes] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
@@ -26,7 +28,10 @@ export default function CreateCallLogPage() {
     caller_phone: '',
     caller_type: 'Parent',
     call_type: 'Inquiry',
+    call_to_type: '',
     related_passenger_id: '',
+    related_driver_id: '',
+    related_assistant_id: '',
     related_employee_id: '',
     related_route_id: '',
     subject: '',
@@ -41,15 +46,35 @@ export default function CreateCallLogPage() {
 
   useEffect(() => {
     async function loadData() {
-      const [passengersResult, employeesResult, routesResult] = await Promise.all([
+      const [passengersResult, employeesResult, driversResult, assistantsResult, routesResult] = await Promise.all([
         supabase.from('passengers').select('id, full_name').order('full_name'),
         supabase.from('employees').select('id, full_name').order('full_name'),
+        supabase.from('drivers').select('employee_id, employees(full_name)').order('employee_id'),
+        supabase.from('passenger_assistants').select('employee_id, employees(full_name)').order('employee_id'),
         supabase.from('routes').select('id, route_number').order('route_number')
       ])
 
       if (passengersResult.data) setPassengers(passengersResult.data)
       if (employeesResult.data) setEmployees(employeesResult.data)
       if (routesResult.data) setRoutes(routesResult.data)
+      
+      // Process drivers data
+      if (driversResult.data) {
+        const driversList = driversResult.data.map((d: any) => ({
+          employee_id: d.employee_id,
+          full_name: d.employees?.full_name || 'Unknown'
+        }))
+        setDrivers(driversList)
+      }
+      
+      // Process assistants data
+      if (assistantsResult.data) {
+        const assistantsList = assistantsResult.data.map((a: any) => ({
+          employee_id: a.employee_id,
+          full_name: a.employees?.full_name || 'Unknown'
+        }))
+        setAssistants(assistantsList)
+      }
     }
 
     loadData()
@@ -61,7 +86,19 @@ export default function CreateCallLogPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.from('call_logs').insert([formData]).select()
+      // Convert empty strings to null for foreign key fields
+      const cleanedData = {
+        ...formData,
+        related_passenger_id: formData.related_passenger_id === '' ? null : (formData.related_passenger_id ? parseInt(formData.related_passenger_id) : null),
+        related_driver_id: formData.related_driver_id === '' ? null : (formData.related_driver_id ? parseInt(formData.related_driver_id) : null),
+        related_assistant_id: formData.related_assistant_id === '' ? null : (formData.related_assistant_id ? parseInt(formData.related_assistant_id) : null),
+        related_employee_id: formData.related_employee_id === '' ? null : (formData.related_employee_id ? parseInt(formData.related_employee_id) : null),
+        related_route_id: formData.related_route_id === '' ? null : (formData.related_route_id ? parseInt(formData.related_route_id) : null),
+        call_to_type: formData.call_to_type === '' ? null : formData.call_to_type,
+        follow_up_date: formData.follow_up_date === '' ? null : formData.follow_up_date,
+      }
+
+      const { data, error } = await supabase.from('call_logs').insert([cleanedData]).select()
       if (error) throw error
 
       if (data && data[0]) {
@@ -126,6 +163,16 @@ export default function CreateCallLogPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="call_to_type">Call To/From *</Label>
+                <Select id="call_to_type" required value={formData.call_to_type} onChange={(e) => setFormData({ ...formData, call_to_type: e.target.value })}>
+                  <option value="">Select...</option>
+                  <option value="Staff">Staff</option>
+                  <option value="Parent">Parent</option>
+                  <option value="Admin">Admin</option>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="call_type">Call Type *</Label>
                 <Select id="call_type" required value={formData.call_type} onChange={(e) => setFormData({ ...formData, call_type: e.target.value })}>
                   <option value="Inquiry">Inquiry</option>
@@ -166,7 +213,23 @@ export default function CreateCallLogPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="related_employee_id">Related Employee</Label>
+                <Label htmlFor="related_driver_id">Related Driver</Label>
+                <Select id="related_driver_id" value={formData.related_driver_id} onChange={(e) => setFormData({ ...formData, related_driver_id: e.target.value })}>
+                  <option value="">None</option>
+                  {drivers.map((d) => <option key={d.employee_id} value={d.employee_id}>{d.full_name}</option>)}
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="related_assistant_id">Related Assistant (PA)</Label>
+                <Select id="related_assistant_id" value={formData.related_assistant_id} onChange={(e) => setFormData({ ...formData, related_assistant_id: e.target.value })}>
+                  <option value="">None</option>
+                  {assistants.map((a) => <option key={a.employee_id} value={a.employee_id}>{a.full_name}</option>)}
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="related_employee_id">Related Employee (Other)</Label>
                 <Select id="related_employee_id" value={formData.related_employee_id} onChange={(e) => setFormData({ ...formData, related_employee_id: e.target.value })}>
                   <option value="">None</option>
                   {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}

@@ -40,6 +40,17 @@ export default function EditSENRequirementsForm({
 
       if (updateError) throw updateError
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'passengers',
+          record_id: passengerId,
+          action: 'UPDATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       router.refresh()
       onSuccess()
     } catch (err: any) {

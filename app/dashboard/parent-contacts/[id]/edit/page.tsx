@@ -116,6 +116,17 @@ function EditParentContactClient({ id }: { id: string }) {
 
       if (updateError) throw updateError
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'parent_contacts',
+          record_id: parseInt(id),
+          action: 'UPDATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       // Delete existing links
       await supabase
         .from('passenger_parent_contacts')
@@ -165,6 +176,17 @@ function EditParentContactClient({ id }: { id: string }) {
         .eq('id', id)
 
       if (error) throw error
+
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'parent_contacts',
+          record_id: parseInt(id),
+          action: 'DELETE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
 
       router.push('/dashboard/parent-contacts')
     } catch (err: any) {

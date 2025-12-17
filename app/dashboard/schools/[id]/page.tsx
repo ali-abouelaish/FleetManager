@@ -7,6 +7,7 @@ import { ArrowLeft, Pencil, Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import SchoolRouteSessionsClient from './SchoolRouteSessionsClient'
+import DeleteSchoolButton from './DeleteSchoolButton'
 
 async function getSchoolDetails(id: string) {
   const supabase = await createClient()
@@ -86,12 +87,20 @@ export default async function ViewSchoolPage({
             <p className="mt-2 text-sm text-gray-600">School Details & Related Information</p>
           </div>
         </div>
-        <Link href={`/dashboard/schools/${school.id}/edit`}>
-          <Button>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-2">
+          <Link href={`/dashboard/schools/${school.id}/edit`}>
+            <Button>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          </Link>
+          <DeleteSchoolButton
+            schoolId={school.id}
+            schoolName={school.name}
+            routeCount={routes.length}
+            passengerCount={passengers.length}
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

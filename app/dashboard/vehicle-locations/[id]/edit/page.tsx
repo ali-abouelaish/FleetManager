@@ -130,6 +130,17 @@ export default function EditVehicleLocationPage({
 
       if (error) throw error
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'vehicle_locations',
+          record_id: parseInt(params.id),
+          action: 'UPDATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       startTransition(() => {
         router.push('/dashboard/vehicle-locations')
         router.refresh()

@@ -129,6 +129,17 @@ export default function AddParentContactForm({ passengerId, onSuccess, onCancel 
           setLoading(false)
           return
         }
+
+        // Audit log for parent contact creation
+        await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'parent_contacts',
+            record_id: contactData.id,
+            action: 'CREATE',
+          }),
+        }).catch(err => console.error('Audit log error:', err))
       }
 
       setSuccess(true)

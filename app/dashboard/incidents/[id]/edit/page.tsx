@@ -200,6 +200,17 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
         await supabase.from('incident_passengers').insert(passengerLinks)
       }
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'incidents',
+          record_id: parseInt(id),
+          action: 'UPDATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       router.push(`/dashboard/incidents/${id}`)
       router.refresh()
     } catch (error: any) {

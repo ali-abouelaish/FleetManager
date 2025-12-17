@@ -250,12 +250,25 @@ export default function CreateDriverPage() {
         throw new Error('This employee is already registered as a driver')
       }
 
-      const { error: insertError } = await supabase
+      const { data: driverResult, error: insertError } = await supabase
         .from('drivers')
         .insert([driverData])
         .select()
 
       if (insertError) throw insertError
+
+      // Audit log
+      if (driverResult && driverResult[0]) {
+        await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_name: 'drivers',
+            record_id: driverResult[0].employee_id,
+            action: 'CREATE',
+          }),
+        }).catch(err => console.error('Audit log error:', err))
+      }
 
       // Create document records in the documents table
       if (uploadedDocuments.length > 0) {

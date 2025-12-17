@@ -17,10 +17,12 @@ import {
   Phone,
   Calendar,
   BarChart3,
+  Bell,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
   { name: 'School Overview', href: '/dashboard/school-overview', icon: MapPin },
   { name: 'Daily Summaries', href: '/dashboard/summaries', icon: BarChart3 },
   { name: 'Employee Certificates', href: '/dashboard/certificates-expiry/employees', icon: Calendar },
@@ -34,6 +36,7 @@ const navigation = [
   { name: 'Passengers', href: '/dashboard/passengers', icon: Users },
   { name: 'Call Logs', href: '/dashboard/call-logs', icon: Phone },
   { name: 'Incidents', href: '/dashboard/incidents', icon: AlertCircle },
+  { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
   { name: 'Audit Log', href: '/dashboard/audit', icon: ClipboardList },
 ]
 

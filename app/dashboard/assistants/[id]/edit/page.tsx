@@ -94,6 +94,17 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
 
       if (updateError) throw updateError
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'passenger_assistants',
+          record_id: parseInt(params.id),
+          action: 'UPDATE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       router.push(`/dashboard/assistants/${params.id}`)
       router.refresh()
     } catch (error: any) {

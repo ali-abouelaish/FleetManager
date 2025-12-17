@@ -82,6 +82,17 @@ export default function DeleteIncidentPage({ params }: { params: Promise<{ id: s
 
       if (deleteError) throw deleteError
 
+      // Audit log
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: 'incidents',
+          record_id: parseInt(id),
+          action: 'DELETE',
+        }),
+      }).catch(err => console.error('Audit log error:', err))
+
       router.push('/dashboard/incidents')
       router.refresh()
     } catch (error: any) {
