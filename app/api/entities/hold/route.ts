@@ -42,76 +42,43 @@ export async function POST(request: Request) {
       on_hold_cleared_at: null,
     }
 
-    const updates: Promise<any>[] = []
-
-    const applyHold = async () => {
-      if (entityType === 'vehicle') {
-        updates.push(
-          supabase.from('vehicles').update(holdPayload).eq('id', entityId)
-        )
-        // Routes using this vehicle
-        updates.push(
-          supabase
-            .from('routes')
-            .update(holdPayload)
-            .eq('vehicle_id', entityId)
-        )
-      } else if (entityType === 'driver') {
-        updates.push(
-          supabase
-            .from('drivers')
-            .update(holdPayload)
-            .eq('employee_id', entityId)
-        )
-        // Routes for this driver
-        updates.push(
-          supabase.from('routes').update(holdPayload).eq('driver_id', entityId)
-        )
-        // Vehicles on those routes
-        const { data: routeVehicles } = await supabase
-          .from('routes')
-          .select('vehicle_id')
-          .eq('driver_id', entityId)
-          .not('vehicle_id', 'is', null)
-        const vehicleIds =
-          routeVehicles?.map((r: any) => r.vehicle_id).filter(Boolean) || []
-        if (vehicleIds.length > 0) {
-          updates.push(
-            supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
-          )
-        }
-      } else if (entityType === 'assistant') {
-        updates.push(
-          supabase
-            .from('passenger_assistants')
-            .update(holdPayload)
-            .eq('employee_id', entityId)
-        )
-        updates.push(
-          supabase
-            .from('routes')
-            .update(holdPayload)
-            .eq('passenger_assistant_id', entityId)
-        )
-        const { data: routeVehicles } = await supabase
-          .from('routes')
-          .select('vehicle_id')
-          .eq('passenger_assistant_id', entityId)
-          .not('vehicle_id', 'is', null)
-        const vehicleIds =
-          routeVehicles?.map((r: any) => r.vehicle_id).filter(Boolean) || []
-        if (vehicleIds.length > 0) {
-          updates.push(
-            supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
-          )
-        }
+    // Apply holds (serial to avoid type issues with builder)
+    if (entityType === 'vehicle') {
+      await supabase.from('vehicles').update(holdPayload).eq('id', entityId)
+      await supabase.from('routes').update(holdPayload).eq('vehicle_id', entityId)
+    } else if (entityType === 'driver') {
+      await supabase.from('drivers').update(holdPayload).eq('employee_id', entityId)
+      await supabase.from('routes').update(holdPayload).eq('driver_id', entityId)
+      const { data: routeVehicles } = await supabase
+        .from('routes')
+        .select('vehicle_id')
+        .eq('driver_id', entityId)
+        .not('vehicle_id', 'is', null)
+      const vehicleIds =
+        routeVehicles?.map((r: any) => r.vehicle_id).filter(Boolean) || []
+      if (vehicleIds.length > 0) {
+        await supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
+      }
+    } else if (entityType === 'assistant') {
+      await supabase
+        .from('passenger_assistants')
+        .update(holdPayload)
+        .eq('employee_id', entityId)
+      await supabase
+        .from('routes')
+        .update(holdPayload)
+        .eq('passenger_assistant_id', entityId)
+      const { data: routeVehicles } = await supabase
+        .from('routes')
+        .select('vehicle_id')
+        .eq('passenger_assistant_id', entityId)
+        .not('vehicle_id', 'is', null)
+      const vehicleIds =
+        routeVehicles?.map((r: any) => r.vehicle_id).filter(Boolean) || []
+      if (vehicleIds.length > 0) {
+        await supabase.from('vehicles').update(holdPayload).in('id', vehicleIds)
       }
     }
-
-    await applyHold()
-    const results = await Promise.all(updates)
-    const firstError = results.find((r) => r?.error)?.error
-    if (firstError) throw firstError
 
     // Audit (best-effort)
     const tableMap: Record<string, string> = {
