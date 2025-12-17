@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 
 export async function POST(request: Request) {
   try {
@@ -104,7 +105,11 @@ export async function POST(request: Request) {
     }
 
     // Generate links
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.SITE_URL ||
+      request.headers.get('origin') ||
+      'http://localhost:3000'
     const uploadLink = `${baseUrl}/upload-document/${notification.email_token}`
     const appointmentLink = `${baseUrl}/book-appointment/${notification.email_token}`
 
@@ -155,23 +160,36 @@ Fleet Management System`
     }
 
     // TODO: Integrate with your email service (Resend, SendGrid, etc.)
-    // For now, we'll just log it and mark as sent
-    // Replace this section with actual email sending code
-    
-    console.log('Email to send:', {
-      to: notification.recipient_email,
-      subject: finalSubject,
-      body: finalBody
-    })
+    // SMTP send (HTML + text)
+    const smtpHost = process.env.SMTP_HOST
+    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    const smtpFrom = process.env.SMTP_FROM || smtpUser
 
-    // Example with a hypothetical email service:
-    // const emailService = new EmailService()
-    // await emailService.send({
-    //   to: notification.recipient_email,
-    //   subject,
-    //   html: emailBody.replace(/\n/g, '<br>'),
-    //   text: emailBody
-    // })
+    if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
+      console.warn('SMTP not fully configured; skipping send. Configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM')
+    } else {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      })
+
+      const htmlBody = finalBody.replace(/\n/g, '<br>')
+
+      await transporter.sendMail({
+        from: smtpFrom,
+        to: notification.recipient_email,
+        subject: finalSubject,
+        text: finalBody,
+        html: htmlBody,
+      })
+    }
 
     // Update notification status
     const { error: updateError } = await supabase
