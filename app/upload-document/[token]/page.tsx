@@ -350,12 +350,10 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                     {useCamera ? 'Stop Camera' : 'Use Camera'}
                   </Button>
                   
-                  <label>
-                    <Button type="button" variant="secondary" asChild>
-                      <span>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose Files
-                      </span>
+                  <label className="inline-block">
+                    <Button type="button" variant="secondary">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose Files
                     </Button>
                     <Input
                       type="file"
