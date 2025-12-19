@@ -7,6 +7,9 @@ import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import VORToggleButton from './VORToggleButton'
 import VehicleUpdates from './VehicleUpdates'
+import dynamic from 'next/dynamic'
+
+const VehicleDocuments = dynamic(() => import('./VehicleDocuments'), { ssr: false })
 
 async function getVehicle(id: string) {
   const supabase = await createClient()
@@ -107,6 +110,10 @@ export default async function ViewVehiclePage({
             <div>
               <dt className="text-sm font-medium text-gray-500">Ownership Type</dt>
               <dd className="mt-1 text-sm text-gray-900">{vehicle.ownership_type || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Council Assignment</dt>
+              <dd className="mt-1 text-sm text-gray-900">{vehicle.council_assignment || 'N/A'}</dd>
             </div>
           </CardContent>
         </Card>
@@ -210,6 +217,9 @@ export default async function ViewVehiclePage({
 
       {/* Vehicle Updates */}
       <VehicleUpdates vehicleId={vehicle.id} />
+
+      {/* Vehicle Documents */}
+      <VehicleDocuments vehicleId={vehicle.id} />
     </div>
   )
 }

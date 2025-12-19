@@ -71,17 +71,31 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
   }
 
   const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Camera not supported in this browser. Please use file upload instead.')
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera on mobile
+        video: {
+          facingMode: { ideal: 'environment' }, // back camera on mobile
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
       })
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        setUseCamera(true)
+        // Some mobile browsers need an explicit play()
+        await videoRef.current.play().catch(() => {})
       }
+      setUseCamera(true)
+      setError(null)
     } catch (err: any) {
-      setError('Failed to access camera: ' + err.message)
+      setError(
+        'Failed to access camera. Ensure camera permission is allowed and you are on HTTPS: ' +
+          err.message
+      )
     }
   }
 
@@ -216,16 +230,19 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
         uploadedFiles.push(publicUrl)
 
         // Save to documents table
-        const { error: docError } = await supabase
-          .from('documents')
-          .insert({
-            employee_id: notification.recipient_employee_id,
-            file_name: file.name,
-            file_type: file.type,
-            file_path: storagePath,
-            doc_type: notification.certificate_name,
-            uploaded_by: null, // Uploaded via token, no user ID
-          })
+        const docPayload: any = {
+          employee_id:
+            notification.entity_type === 'vehicle' ? null : notification.recipient_employee_id,
+          vehicle_id: notification.entity_type === 'vehicle' ? notification.entity_id : null,
+          file_name: file.name,
+          file_type: file.type,
+          file_path: storagePath,
+          file_url: publicUrl,
+          doc_type: notification.certificate_name,
+          uploaded_by: null, // Uploaded via token, no user ID
+        }
+
+        const { error: docError } = await supabase.from('documents').insert(docPayload)
 
         if (docError) {
           console.error('Error saving document record:', docError)

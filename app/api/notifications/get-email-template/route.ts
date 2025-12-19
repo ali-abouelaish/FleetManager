@@ -86,9 +86,13 @@ export async function POST(request: Request) {
       neededDocuments = [certDocMap[notification.certificate_type] || notification.certificate_name]
     }
 
-    // Generate upload link
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    // Generate upload link with proper base URL (no hardcoded localhost)
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.SITE_URL ||
+      'http://localhost:3000'
     const uploadLink = `${baseUrl}/upload-document/${notification.email_token}`
+    const appointmentLink = `${baseUrl}/book-appointment/${notification.email_token}`
 
     // Email subject
     const expiryStatus = notification.days_until_expiry < 0 
@@ -120,6 +124,10 @@ Please upload the required documents using the secure link below. You can scan d
 
 Upload Link: ${uploadLink}
 
+**Book an Appointment (optional):**
+If you need assistance, you can book an appointment using this link:
+${appointmentLink}
+
 This link is unique and secure. Please do not share it with others.
 
 If you have any questions, please contact the fleet management office.
@@ -133,7 +141,8 @@ Fleet Management System`
         to: notification.recipient_email,
         subject,
         body: emailBody,
-        uploadLink
+        uploadLink,
+        appointmentLink
       }
     })
   } catch (error: any) {

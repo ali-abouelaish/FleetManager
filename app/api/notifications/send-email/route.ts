@@ -157,6 +157,13 @@ If you have any questions, please contact the fleet management office.
 
 Best regards,
 Fleet Management System`
+    } else {
+      // If custom body is provided, append appointment link if requested
+      if (includeAppointmentLink && !finalBody.includes(appointmentLink)) {
+        finalBody += `\n\n**Book an Appointment (optional):**
+If you need assistance, you can book an appointment using this link:
+${appointmentLink}`
+      }
     }
 
     // TODO: Integrate with your email service (Resend, SendGrid, etc.)
@@ -180,7 +187,16 @@ Fleet Management System`
         },
       })
 
-      const htmlBody = finalBody.replace(/\n/g, '<br>')
+      // Convert to HTML with proper link formatting
+      let htmlBody = finalBody
+        // Convert markdown-style links to HTML links
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #2563eb; text-decoration: underline;">$1</a>')
+        // Convert plain URLs to clickable links
+        .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" style="color: #2563eb; text-decoration: underline;">$1</a>')
+        // Convert line breaks
+        .replace(/\n/g, '<br>')
+        // Convert markdown bold to HTML bold
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 
       await transporter.sendMail({
         from: smtpFrom,

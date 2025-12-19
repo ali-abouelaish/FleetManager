@@ -28,6 +28,7 @@ export default function CreateVehiclePage() {
     plate_expiry_date: '',
     vehicle_type: '',
     ownership_type: '',
+    council_assignment: '',
     mot_date: '',
     tax_date: '',
     insurance_expiry_date: '',
@@ -66,6 +67,8 @@ export default function CreateVehiclePage() {
         service_booked_day: formData.service_booked_day || null,
         first_aid_expiry: formData.first_aid_expiry || null,
         fire_extinguisher_expiry: formData.fire_extinguisher_expiry || null,
+        ownership_type: formData.ownership_type || null,
+        council_assignment: formData.council_assignment || null,
       }
 
       const { data, error } = await supabase
@@ -233,10 +236,21 @@ export default function CreateVehiclePage() {
                   }
                 >
                   <option value="">Select type</option>
-                  <option value="Owned">Owned</option>
-                  <option value="Leased">Leased</option>
-                  <option value="Rented">Rented</option>
+                  <option value="In-House">In-House</option>
+                  <option value="Subcontractors">Subcontractors</option>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="council_assignment">Council Assignment</Label>
+                <Input
+                  id="council_assignment"
+                  value={formData.council_assignment}
+                  onChange={(e) =>
+                    setFormData({ ...formData, council_assignment: e.target.value })
+                  }
+                  placeholder="e.g., Council name or reference"
+                />
               </div>
 
               <div className="space-y-2">
