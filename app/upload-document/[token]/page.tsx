@@ -85,6 +85,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       return
     }
     try {
+      setError(null)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' }, // back camera on mobile
@@ -96,15 +97,20 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         // Some mobile browsers need an explicit play()
-        await videoRef.current.play().catch(() => {})
+        try {
+          await videoRef.current.play()
+        } catch (playErr) {
+          console.warn('Video play error:', playErr)
+        }
       }
       setUseCamera(true)
-      setError(null)
     } catch (err: any) {
+      console.error('Camera error:', err)
       setError(
-        'Failed to access camera. Ensure camera permission is allowed and you are on HTTPS: ' +
-          err.message
+        'Failed to access camera. Ensure camera permission is allowed and you are on HTTPS. Error: ' +
+          (err.message || 'Unknown error')
       )
+      setUseCamera(false)
     }
   }
 
@@ -171,8 +177,10 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
-    if (selectedFiles) {
+    if (selectedFiles && selectedFiles.length > 0) {
       Array.from(selectedFiles).forEach(file => handleFileAdd(file))
+      // Reset the input so the same file can be selected again
+      e.target.value = ''
     }
   }
 
@@ -375,33 +383,43 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={useCamera ? stopCamera : startCamera}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (useCamera) {
+                        stopCamera()
+                      } else {
+                        startCamera()
+                      }
+                    }}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     {useCamera ? 'Stop Camera' : 'Use Camera'}
                   </Button>
                   
-                  <label htmlFor="file-upload" className="inline-block">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        const input = document.getElementById('file-upload') as HTMLInputElement
-                        input?.click()
-                      }}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose Files
-                    </Button>
-                    <Input
-                      id="file-upload"
-                      type="file"
-                      multiple
-                      accept="image/*,application/pdf"
-                      onChange={handleFileInput}
-                      className="hidden"
-                    />
-                  </label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const input = document.getElementById('file-upload') as HTMLInputElement
+                      if (input) {
+                        input.click()
+                      }
+                    }}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose Files
+                  </Button>
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    onChange={handleFileInput}
+                    className="hidden"
+                  />
                 </div>
 
                 {useCamera && (

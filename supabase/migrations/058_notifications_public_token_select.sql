@@ -8,4 +8,3 @@ CREATE POLICY "Allow anon select notifications by token"
   FOR SELECT
   TO anon
   USING (email_token IS NOT NULL);
-
