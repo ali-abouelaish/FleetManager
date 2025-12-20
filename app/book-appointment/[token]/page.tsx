@@ -54,7 +54,7 @@ export default function BookAppointmentPage() {
           // Use email username as fallback
           const emailParts = data.recipient_email.split('@')
           if (emailParts[0]) {
-            setName(emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))
+            setName(emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()))
           }
         }
 
