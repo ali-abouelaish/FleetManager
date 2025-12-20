@@ -17,6 +17,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [notification, setNotification] = useState<any>(null)
+  const [recipientName, setRecipientName] = useState<string>('')
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [useCamera, setUseCamera] = useState(false)
@@ -52,7 +53,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
     try {
       const { data, error: fetchError } = await supabase
         .from('notifications')
-        .select('*')
+        .select('*, recipient:recipient_employee_id(full_name)')
         .eq('email_token', token)
         .single()
 
@@ -63,6 +64,14 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       }
 
       setNotification(data)
+      
+      // Get recipient name for greeting
+      if (data.recipient?.full_name) {
+        setRecipientName(data.recipient.full_name)
+      } else if (data.recipient_email) {
+        setRecipientName(data.recipient_email.split('@')[0])
+      }
+      
       setLoading(false)
     } catch (err: any) {
       setError(err.message || 'Failed to load notification')
@@ -327,6 +336,11 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
         <Card>
           <CardHeader>
             <CardTitle>Upload Required Documents</CardTitle>
+            {recipientName && (
+              <p className="text-sm text-gray-600 mt-2">
+                Hello {recipientName},
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             {notification && (
@@ -367,12 +381,20 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                     {useCamera ? 'Stop Camera' : 'Use Camera'}
                   </Button>
                   
-                  <label className="inline-block">
-                    <Button type="button" variant="secondary">
+                  <label htmlFor="file-upload" className="inline-block">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        const input = document.getElementById('file-upload') as HTMLInputElement
+                        input?.click()
+                      }}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
                       Choose Files
                     </Button>
                     <Input
+                      id="file-upload"
                       type="file"
                       multiple
                       accept="image/*,application/pdf"

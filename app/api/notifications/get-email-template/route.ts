@@ -28,6 +28,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No recipient email address' }, { status: 400 })
     }
 
+    // Get recipient employee name for greeting
+    let recipientName = notification.recipient_email.split('@')[0]
+    if (notification.recipient_employee_id) {
+      const { data: recipientEmployee } = await supabase
+        .from('employees')
+        .select('full_name')
+        .eq('id', notification.recipient_employee_id)
+        .single()
+      if (recipientEmployee?.full_name) {
+        recipientName = recipientEmployee.full_name
+      }
+    }
+
     // Get entity details for email content
     let entityName = ''
     let entityLink = ''
@@ -86,11 +99,13 @@ export async function POST(request: Request) {
       neededDocuments = [certDocMap[notification.certificate_type] || notification.certificate_name]
     }
 
-    // Generate upload link with proper base URL (no hardcoded localhost)
+    // Generate upload link with proper base URL (use request origin if available)
+    const requestOrigin = request.headers.get('origin') || request.headers.get('referer')?.split('/').slice(0, 3).join('/')
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.SITE_URL ||
-      'http://localhost:3000'
+      requestOrigin ||
+      'https://senfleetmanager.com'
     const uploadLink = `${baseUrl}/upload-document/${notification.email_token}`
     const appointmentLink = `${baseUrl}/book-appointment/${notification.email_token}`
 
@@ -104,7 +119,7 @@ export async function POST(request: Request) {
     const subject = `[${expiryStatus}] ${notification.certificate_name} - ${entityName}`
 
     // Email body with placeholders
-    const emailBody = `Dear ${notification.recipient_email.split('@')[0]},
+    const emailBody = `Dear ${recipientName},
 
 This is an automated notification regarding compliance certificate expiry.
 
