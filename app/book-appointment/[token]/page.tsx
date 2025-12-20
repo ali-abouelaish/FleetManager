@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -20,13 +21,58 @@ export default function BookAppointmentPage() {
   const params = useParams<{ token: string }>()
   const router = useRouter()
   const token = params.token
+  const supabase = createClient()
   const [slots, setSlots] = useState<AppointmentSlot[]>([])
   const [slotId, setSlotId] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingNotification, setLoadingNotification] = useState(true)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadNotification = async () => {
+      if (!token) return
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('notifications')
+          .select('*, recipient:recipient_employee_id(full_name, personal_email)')
+          .eq('email_token', token)
+          .single()
+
+        if (fetchError || !data) {
+          setError('Invalid or expired appointment link')
+          setLoadingNotification(false)
+          return
+        }
+
+        // Auto-fill name and email from notification
+        if (data.recipient?.full_name) {
+          setName(data.recipient.full_name)
+        } else if (data.recipient_email) {
+          // Use email username as fallback
+          const emailParts = data.recipient_email.split('@')
+          if (emailParts[0]) {
+            setName(emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))
+          }
+        }
+
+        if (data.recipient?.personal_email) {
+          setEmail(data.recipient.personal_email)
+        } else if (data.recipient_email) {
+          setEmail(data.recipient_email)
+        }
+
+        setLoadingNotification(false)
+      } catch (err: any) {
+        setError(err.message || 'Failed to load notification')
+        setLoadingNotification(false)
+      }
+    }
+
+    loadNotification()
+  }, [token, supabase])
 
   useEffect(() => {
     const load = async () => {
@@ -68,6 +114,21 @@ export default function BookAppointmentPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingNotification) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="max-w-xl w-full">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

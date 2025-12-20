@@ -21,6 +21,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [useCamera, setUseCamera] = useState(false)
+  const [cameraReady, setCameraReady] = useState(false)
   const [token, setToken] = useState<string>('')
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -86,6 +87,8 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
     }
     try {
       setError(null)
+      setCameraReady(false)
+      
       // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop())
@@ -96,7 +99,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       setUseCamera(true)
       
       // Wait a bit for the video element to be rendered
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 200))
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -109,47 +112,47 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       
       // Wait for video element to be available
       if (videoRef.current) {
-        // Set the stream
-        videoRef.current.srcObject = stream
-        
-        // Set up event listeners
         const video = videoRef.current
         
+        // Set the stream
+        video.srcObject = stream
+        
         // Wait for metadata to load
-        await new Promise<void>((resolve, reject) => {
+        await new Promise<void>((resolve) => {
           const timeout = setTimeout(() => {
             console.warn('Video metadata timeout')
             resolve()
-          }, 2000)
+          }, 3000)
           
-          video.onloadedmetadata = () => {
+          const onLoadedMetadata = () => {
             clearTimeout(timeout)
             console.log('Video metadata loaded')
+            video.removeEventListener('loadedmetadata', onLoadedMetadata)
             resolve()
           }
           
-          video.onerror = (e) => {
-            clearTimeout(timeout)
-            console.error('Video error:', e)
-            reject(new Error('Video element error'))
-          }
+          video.addEventListener('loadedmetadata', onLoadedMetadata)
+          
+          // Also try to play immediately
+          video.play().catch(() => {
+            // Will retry after metadata loads
+          })
         })
-        
-        // Ensure video is ready to play
-        video.load()
         
         // Play the video
         try {
           await video.play()
           console.log('Video playing')
+          setCameraReady(true)
         } catch (playErr: any) {
           console.warn('Video play error:', playErr)
           // Try again after a short delay
-          await new Promise(resolve => setTimeout(resolve, 200))
+          await new Promise(resolve => setTimeout(resolve, 300))
           if (videoRef.current) {
             try {
               await videoRef.current.play()
               console.log('Video playing after retry')
+              setCameraReady(true)
             } catch (e) {
               console.error('Retry play failed:', e)
               throw new Error('Failed to play video stream')
@@ -166,6 +169,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
           (err.message || 'Unknown error')
       )
       setUseCamera(false)
+      setCameraReady(false)
       // Clean up on error
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop())
@@ -183,6 +187,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       videoRef.current.srcObject = null
     }
     setUseCamera(false)
+    setCameraReady(false)
   }
 
   const capturePhoto = () => {
@@ -340,6 +345,48 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
         console.error('Error updating notification:', updateError)
       }
 
+      // Get entity name for admin summary
+      let entityName = ''
+      if (notification.entity_type === 'vehicle') {
+        const { data: vehicle } = await supabase
+          .from('vehicles')
+          .select('vehicle_identifier, registration')
+          .eq('id', notification.entity_id)
+          .single()
+        entityName = vehicle?.vehicle_identifier || vehicle?.registration || `Vehicle #${notification.entity_id}`
+      } else if (notification.entity_type === 'driver' || notification.entity_type === 'assistant') {
+        const { data: employee } = await supabase
+          .from('employees')
+          .select('full_name')
+          .eq('id', notification.entity_id)
+          .single()
+        entityName = employee?.full_name || `${notification.entity_type} #${notification.entity_id}`
+      }
+
+      // Send admin summary email
+      try {
+        await fetch('/api/admin/notify-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'document_upload',
+            notificationId: notification.id,
+            recipientName: recipientName || notification.recipient_email?.split('@')[0],
+            recipientEmail: notification.recipient_email,
+            entityType: notification.entity_type,
+            entityName: entityName,
+            certificateName: notification.certificate_name,
+            details: {
+              filesUploaded: files.length,
+              fileNames: files.map(f => f.name),
+            },
+          }),
+        })
+      } catch (summaryError) {
+        console.error('Failed to send admin summary:', summaryError)
+        // Don't fail the upload if summary email fails
+      }
+
       setSuccess(true)
       setFiles([])
       setPreviews([])
@@ -399,11 +446,11 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <Card>
-          <CardHeader>
-            <CardTitle>Upload Required Documents</CardTitle>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl sm:text-2xl">Upload Required Documents</CardTitle>
             {recipientName && (
               <p className="text-sm text-gray-600 mt-2">
                 Hello {recipientName},
@@ -439,7 +486,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                   You can upload images or PDF files. Use the camera button to scan documents directly.
                 </p>
                 
-                <div className="flex space-x-2 mb-4">
+                <div className="flex flex-col sm:flex-row gap-2 mb-4">
                   <Button
                     type="button"
                     variant="secondary"
@@ -452,6 +499,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                         startCamera()
                       }
                     }}
+                    className="flex-1 sm:flex-initial"
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     {useCamera ? 'Stop Camera' : 'Use Camera'}
@@ -468,6 +516,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                         input.click()
                       }
                     }}
+                    className="flex-1 sm:flex-initial"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Choose Files
@@ -484,18 +533,20 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
 
                 {useCamera && (
                   <div className="mb-4">
-                    <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px', aspectRatio: '16/9' }}>
+                    <div className="relative bg-black rounded-lg overflow-hidden w-full" style={{ minHeight: '250px', maxHeight: '500px' }}>
                       <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-full"
+                        className="w-full h-auto"
                         style={{ 
                           display: 'block',
                           objectFit: 'contain',
                           width: '100%',
-                          height: '100%',
+                          height: 'auto',
+                          minHeight: '250px',
+                          maxHeight: '500px',
                           backgroundColor: '#000'
                         }}
                         onLoadedMetadata={() => {
@@ -503,39 +554,52 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
                         }}
                         onCanPlay={() => {
                           console.log('Video can play')
+                          setCameraReady(true)
                         }}
                         onPlay={() => {
                           console.log('Video is playing')
+                          setCameraReady(true)
                         }}
                         onError={(e) => {
                           console.error('Video element error:', e)
+                          setCameraReady(false)
                         }}
                       />
-                      {!streamRef.current && (
-                        <div className="absolute inset-0 flex items-center justify-center text-white z-10">
+                      {!cameraReady && (
+                        <div className="absolute inset-0 flex items-center justify-center text-white z-10 bg-black bg-opacity-75">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
-                            <p>Starting camera...</p>
+                            <p className="text-sm">Starting camera...</p>
                           </div>
                         </div>
                       )}
                     </div>
-                    <Button
-                      type="button"
-                      onClick={capturePhoto}
-                      className="mt-2 w-full"
-                      disabled={!streamRef.current}
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Capture Photo
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                      <Button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="flex-1"
+                        disabled={!cameraReady || !streamRef.current}
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Capture Document
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={stopCamera}
+                        className="flex-1 sm:flex-initial"
+                      >
+                        Stop Camera
+                      </Button>
+                    </div>
                   </div>
                 )}
 
                 {files.length > 0 && (
                   <div className="space-y-2">
                     <Label>Selected Files ({files.length})</Label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {files.map((file, index) => (
                         <div key={index} className="border rounded-lg p-2 relative">
                           <button
