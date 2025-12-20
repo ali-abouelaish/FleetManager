@@ -92,6 +92,12 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
         streamRef.current = null
       }
       
+      // Set useCamera first so the video element is rendered
+      setUseCamera(true)
+      
+      // Wait a bit for the video element to be rendered
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' }, // back camera on mobile
@@ -103,39 +109,56 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
       
       // Wait for video element to be available
       if (videoRef.current) {
+        // Set the stream
         videoRef.current.srcObject = stream
         
-        // Wait for video metadata to load
-        await new Promise((resolve) => {
-          if (videoRef.current) {
-            videoRef.current.onloadedmetadata = () => {
-              resolve(true)
-            }
-            // Fallback timeout
-            setTimeout(resolve, 1000)
-          } else {
-            resolve(true)
+        // Set up event listeners
+        const video = videoRef.current
+        
+        // Wait for metadata to load
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            console.warn('Video metadata timeout')
+            resolve()
+          }, 2000)
+          
+          video.onloadedmetadata = () => {
+            clearTimeout(timeout)
+            console.log('Video metadata loaded')
+            resolve()
+          }
+          
+          video.onerror = (e) => {
+            clearTimeout(timeout)
+            console.error('Video error:', e)
+            reject(new Error('Video element error'))
           }
         })
         
+        // Ensure video is ready to play
+        video.load()
+        
         // Play the video
         try {
-          await videoRef.current.play()
+          await video.play()
+          console.log('Video playing')
         } catch (playErr: any) {
           console.warn('Video play error:', playErr)
           // Try again after a short delay
-          setTimeout(async () => {
-            if (videoRef.current) {
-              try {
-                await videoRef.current.play()
-              } catch (e) {
-                console.error('Retry play failed:', e)
-              }
+          await new Promise(resolve => setTimeout(resolve, 200))
+          if (videoRef.current) {
+            try {
+              await videoRef.current.play()
+              console.log('Video playing after retry')
+            } catch (e) {
+              console.error('Retry play failed:', e)
+              throw new Error('Failed to play video stream')
             }
-          }, 100)
+          }
         }
+      } else {
+        throw new Error('Video element not found')
       }
-      setUseCamera(true)
     } catch (err: any) {
       console.error('Camera error:', err)
       setError(
@@ -461,23 +484,35 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
 
                 {useCamera && (
                   <div className="mb-4">
-                    <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
+                    <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px', aspectRatio: '16/9' }}>
                       <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-auto max-h-96"
+                        className="w-full h-full"
                         style={{ 
                           display: 'block',
-                          objectFit: 'cover',
+                          objectFit: 'contain',
                           width: '100%',
-                          height: 'auto',
-                          minHeight: '300px'
+                          height: '100%',
+                          backgroundColor: '#000'
+                        }}
+                        onLoadedMetadata={() => {
+                          console.log('Video metadata loaded in element')
+                        }}
+                        onCanPlay={() => {
+                          console.log('Video can play')
+                        }}
+                        onPlay={() => {
+                          console.log('Video is playing')
+                        }}
+                        onError={(e) => {
+                          console.error('Video element error:', e)
                         }}
                       />
                       {!streamRef.current && (
-                        <div className="absolute inset-0 flex items-center justify-center text-white">
+                        <div className="absolute inset-0 flex items-center justify-center text-white z-10">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
                             <p>Starting camera...</p>
