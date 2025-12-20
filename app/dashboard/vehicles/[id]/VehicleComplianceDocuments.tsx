@@ -107,6 +107,12 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
     setError(null)
     setUploading(true)
     try {
+      // Verify user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        throw new Error('You must be logged in to upload documents. Please refresh the page and try again.')
+      }
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         const ext = file.name.split('.').pop() || 'bin'
@@ -117,12 +123,16 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
         const { error: uploadErr } = await supabase.storage
           .from('VEHICLE_DOCUMENTS')
           .upload(storagePath, file, { cacheControl: '3600', upsert: false })
-        if (uploadErr) throw uploadErr
+        if (uploadErr) {
+          console.error('Storage upload error:', uploadErr)
+          throw new Error(`Failed to upload file: ${uploadErr.message}`)
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('VEHICLE_DOCUMENTS')
           .getPublicUrl(storagePath)
 
+        // Insert document record
         const { error: docErr } = await supabase.from('documents').insert({
           vehicle_id: vehicleId,
           file_name: file.name,
@@ -130,9 +140,26 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
           file_path: storagePath,
           file_url: publicUrl,
           doc_type: selectedCertificateType,
-          uploaded_by: null,
+          uploaded_by: null, // Can be updated later to track user
         })
-        if (docErr) throw docErr
+        if (docErr) {
+          console.error('Document insert error:', docErr)
+          console.error('Error details:', {
+            message: docErr.message,
+            details: docErr.details,
+            hint: docErr.hint,
+            code: docErr.code
+          })
+          console.error('Insert data:', {
+            vehicle_id: vehicleId,
+            file_name: file.name,
+            file_type: file.type,
+            file_path: storagePath,
+            file_url: publicUrl,
+            doc_type: selectedCertificateType,
+          })
+          throw new Error(`Failed to save document record: ${docErr.message}. ${docErr.hint || ''}`)
+        }
       }
       setFiles(null)
       setSelectedCertificateType('')

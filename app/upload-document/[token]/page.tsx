@@ -86,6 +86,12 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
     }
     try {
       setError(null)
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' }, // back camera on mobile
@@ -94,13 +100,39 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
         },
       })
       streamRef.current = stream
+      
+      // Wait for video element to be available
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        // Some mobile browsers need an explicit play()
+        
+        // Wait for video metadata to load
+        await new Promise((resolve) => {
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = () => {
+              resolve(true)
+            }
+            // Fallback timeout
+            setTimeout(resolve, 1000)
+          } else {
+            resolve(true)
+          }
+        })
+        
+        // Play the video
         try {
           await videoRef.current.play()
-        } catch (playErr) {
+        } catch (playErr: any) {
           console.warn('Video play error:', playErr)
+          // Try again after a short delay
+          setTimeout(async () => {
+            if (videoRef.current) {
+              try {
+                await videoRef.current.play()
+              } catch (e) {
+                console.error('Retry play failed:', e)
+              }
+            }
+          }, 100)
         }
       }
       setUseCamera(true)
@@ -111,6 +143,11 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
           (err.message || 'Unknown error')
       )
       setUseCamera(false)
+      // Clean up on error
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
     }
   }
 
@@ -424,18 +461,35 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
 
                 {useCamera && (
                   <div className="mb-4">
-                    <div className="relative bg-black rounded-lg overflow-hidden">
+                    <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
                       <video
                         ref={videoRef}
                         autoPlay
                         playsInline
+                        muted
                         className="w-full h-auto max-h-96"
+                        style={{ 
+                          display: 'block',
+                          objectFit: 'cover',
+                          width: '100%',
+                          height: 'auto',
+                          minHeight: '300px'
+                        }}
                       />
+                      {!streamRef.current && (
+                        <div className="absolute inset-0 flex items-center justify-center text-white">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
+                            <p>Starting camera...</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <Button
                       type="button"
                       onClick={capturePhoto}
                       className="mt-2 w-full"
+                      disabled={!streamRef.current}
                     >
                       <Camera className="h-4 w-4 mr-2" />
                       Capture Photo
