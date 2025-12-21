@@ -9,6 +9,7 @@ export interface Employee {
   employment_status: string | null
   phone_number: string | null
   personal_email: string | null
+  address: string | null
   start_date: string | null
   end_date: string | null
   wheelchair_access: boolean | null
@@ -120,6 +121,7 @@ export interface Vehicle {
   taxi_registration_driver: string | null
   spare_vehicle: boolean | null
   off_the_road: boolean | null
+  assigned_to: number | null
   notes: string | null
   created_at: string
   updated_at: string

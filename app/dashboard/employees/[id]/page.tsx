@@ -350,6 +350,12 @@ export default async function ViewEmployeePage({
                 {employee.personal_email || 'N/A'}
               </dd>
             </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Address</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {employee.address || 'N/A'}
+              </dd>
+            </div>
           </CardContent>
         </Card>
 

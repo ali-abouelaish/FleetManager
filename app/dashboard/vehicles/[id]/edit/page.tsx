@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import Link from 'next/link'
@@ -16,6 +17,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [drivers, setDrivers] = useState<Array<{ id: number; name: string }>>([])
 
   const [formData, setFormData] = useState({
     vehicle_identifier: '',
@@ -44,8 +46,30 @@ function EditVehiclePageClient({ id }: { id: string }) {
     taxi_registration_driver: '',
     spare_vehicle: false,
     off_the_road: false,
+    assigned_to: '',
     notes: '',
   })
+
+  useEffect(() => {
+    async function loadDrivers() {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('employee_id, employees(full_name, employment_status, can_work)')
+        .order('employee_id')
+
+      if (!error && data) {
+        const driverList = data
+          .filter((d: any) => d.employees?.employment_status === 'Active' && d.employees?.can_work !== false)
+          .map((d: any) => ({
+            id: d.employee_id,
+            name: d.employees?.full_name || 'Unknown',
+          }))
+        setDrivers(driverList)
+      }
+    }
+
+    loadDrivers()
+  }, [supabase])
 
   useEffect(() => {
     async function loadVehicle() {
@@ -88,6 +112,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
           taxi_registration_driver: data.taxi_registration_driver || '',
           spare_vehicle: data.spare_vehicle || false,
           off_the_road: data.off_the_road || false,
+          assigned_to: data.assigned_to ? String(data.assigned_to) : '',
           notes: data.notes || '',
         })
       }
@@ -118,6 +143,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
         fire_extinguisher_expiry: formData.fire_extinguisher_expiry || null,
         ownership_type: formData.ownership_type || null,
         council_assignment: formData.council_assignment || null,
+        assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
       }
 
       const { error } = await supabase
@@ -449,6 +475,20 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <Label htmlFor="off_the_road">Off the Road</Label>
+              </div>
+
+              <div className="space-y-2">
+                <SearchableSelect
+                  id="assigned_to"
+                  label="Assigned To (MOT & Service Follow-up)"
+                  value={formData.assigned_to}
+                  onChange={(value) => setFormData({ ...formData, assigned_to: value })}
+                  options={drivers.map(driver => ({
+                    value: driver.id,
+                    label: driver.name,
+                  }))}
+                  placeholder="Select driver for MOT & service follow-up..."
+                />
               </div>
             </div>
 

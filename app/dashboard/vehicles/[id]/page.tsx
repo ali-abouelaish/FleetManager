@@ -12,7 +12,13 @@ async function getVehicle(id: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('vehicles')
-    .select('*')
+    .select(`
+      *,
+      assigned_employee:assigned_to (
+        id,
+        full_name
+      )
+    `)
     .eq('id', id)
     .single()
 

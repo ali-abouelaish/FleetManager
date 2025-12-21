@@ -29,8 +29,8 @@ async function getRouteDetails(id: string) {
     .select(`
       *,
       schools(name, address),
-      driver:driver_id(employees(full_name)),
-      pa:passenger_assistant_id(employees(full_name)),
+      driver:driver_id(employees(full_name, address, phone_number, personal_email)),
+      pa:passenger_assistant_id(employees(full_name, address, phone_number, personal_email)),
       vehicles (
         id,
         vehicle_identifier,
@@ -54,7 +54,7 @@ async function getRouteDetails(id: string) {
     .select('*')
     .eq('route_id', id)
 
-  // Get route points
+  // Get Pick-up Points
   const { data: routePoints } = await supabase
     .from('route_points')
     .select('*')
@@ -181,7 +181,7 @@ export default async function ViewRoutePage({
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Route Points</span>
+              <span className="text-sm text-gray-600">Pick-up Points</span>
               <span className="text-2xl font-bold text-gray-900">{routePoints.length}</span>
             </div>
           </CardContent>
@@ -197,44 +197,89 @@ export default async function ViewRoutePage({
           {!route.driver_id && !route.passenger_assistant_id ? (
             <p className="text-center text-gray-500 py-4">No crew assigned to this route.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Driver</TableHead>
-                  <TableHead>Passenger Assistant</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell>
-                    {route.driver_id ? (() => {
-                      const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
-                      const driverName = Array.isArray(driver?.employees) ? driver.employees[0]?.full_name : driver?.employees?.full_name
-                      return driverName ? (
-                        <Link href={`/dashboard/employees/${route.driver_id}`} className="text-blue-600 hover:underline">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Driver Details */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Driver</h3>
+                {route.driver_id ? (() => {
+                  const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
+                  const driverEmp = Array.isArray(driver?.employees) ? driver.employees[0] : driver?.employees
+                  const driverName = driverEmp?.full_name
+                  return driverName ? (
+                    <div className="space-y-2">
+                      <div>
+                        <Link href={`/dashboard/employees/${route.driver_id}`} className="text-blue-600 hover:underline font-medium">
                           {driverName}
                         </Link>
-                      ) : 'Unknown'
-                    })() : (
-                      <span className="text-gray-400">Not assigned</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {route.passenger_assistant_id ? (() => {
-                      const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
-                      const paName = Array.isArray(pa?.employees) ? pa.employees[0]?.full_name : pa?.employees?.full_name
-                      return paName ? (
-                        <Link href={`/dashboard/employees/${route.passenger_assistant_id}`} className="text-blue-600 hover:underline">
+                      </div>
+                      {driverEmp?.address && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Address</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{driverEmp.address}</dd>
+                        </div>
+                      )}
+                      {driverEmp?.phone_number && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Phone</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{driverEmp.phone_number}</dd>
+                        </div>
+                      )}
+                      {driverEmp?.personal_email && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Email</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{driverEmp.personal_email}</dd>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">Unknown</span>
+                  )
+                })() : (
+                  <span className="text-gray-400">Not assigned</span>
+                )}
+              </div>
+
+              {/* Passenger Assistant Details */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Passenger Assistant</h3>
+                {route.passenger_assistant_id ? (() => {
+                  const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
+                  const paEmp = Array.isArray(pa?.employees) ? pa.employees[0] : pa?.employees
+                  const paName = paEmp?.full_name
+                  return paName ? (
+                    <div className="space-y-2">
+                      <div>
+                        <Link href={`/dashboard/employees/${route.passenger_assistant_id}`} className="text-blue-600 hover:underline font-medium">
                           {paName}
                         </Link>
-                      ) : 'Unknown'
-                    })() : (
-                      <span className="text-gray-400">Not assigned</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+                      </div>
+                      {paEmp?.address && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Address</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{paEmp.address}</dd>
+                        </div>
+                      )}
+                      {paEmp?.phone_number && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Phone</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{paEmp.phone_number}</dd>
+                        </div>
+                      )}
+                      {paEmp?.personal_email && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Email</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{paEmp.personal_email}</dd>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">Unknown</span>
+                  )
+                })() : (
+                  <span className="text-gray-400">Not assigned</span>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -324,14 +369,14 @@ export default async function ViewRoutePage({
         </CardContent>
       </Card>
 
-      {/* Route Points Section */}
+      {/* Pick-up Points Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Route Points</CardTitle>
+          <CardTitle>Pick-up Points</CardTitle>
         </CardHeader>
         <CardContent>
           {routePoints.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No route points defined.</p>
+            <p className="text-center text-gray-500 py-4">No Pick-up Points defined.</p>
           ) : (
             <Table>
               <TableHeader>

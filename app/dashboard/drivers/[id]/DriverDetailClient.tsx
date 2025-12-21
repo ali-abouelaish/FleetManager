@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap, Download, ExternalLink, Eye } from 'lucide-react'
+import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap, Download, ExternalLink, Eye, Car } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import DriverQRCode from './DriverQRCode'
@@ -105,12 +105,30 @@ interface Document {
   file_path: string | null
 }
 
+interface VehicleAssignment {
+  id: number
+  vehicle_id: number
+  assigned_from: string | null
+  assigned_to: string | null
+  active: boolean
+  vehicles: {
+    id: number
+    vehicle_identifier: string | null
+    registration: string | null
+    make: string | null
+    model: string | null
+    vehicle_type: string | null
+    off_the_road: boolean | null
+  } | null
+}
+
 export function DriverDetailClient({ id }: { id: string }) {
   const [driver, setDriver] = useState<Driver | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [documents, setDocuments] = useState<Document[]>([])
   const [loadingDocuments, setLoadingDocuments] = useState(false)
+  const [vehicleAssignments, setVehicleAssignments] = useState<VehicleAssignment[]>([])
 
   useEffect(() => {
     async function fetchDriver() {
@@ -148,11 +166,45 @@ export function DriverDetailClient({ id }: { id: string }) {
       // Load documents for this driver
       if (data) {
         loadDocuments(data.employee_id)
+        loadVehicleAssignments(data.employee_id)
       }
     }
 
     fetchDriver()
   }, [id])
+
+  const loadVehicleAssignments = async (employeeId: number) => {
+    const supabase = createClient()
+    
+    const { data, error } = await supabase
+      .from('vehicle_assignments')
+      .select(`
+        id,
+        vehicle_id,
+        assigned_from,
+        assigned_to,
+        active,
+        vehicles (
+          id,
+          vehicle_identifier,
+          registration,
+          make,
+          model,
+          vehicle_type,
+          off_the_road
+        )
+      `)
+      .eq('employee_id', employeeId)
+      .eq('active', true)
+      .order('assigned_from', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching vehicle assignments:', error)
+      setVehicleAssignments([])
+    } else {
+      setVehicleAssignments((data || []) as VehicleAssignment[])
+    }
+  }
 
   const loadDocuments = async (employeeId: number) => {
     setLoadingDocuments(true)
@@ -384,6 +436,60 @@ export function DriverDetailClient({ id }: { id: string }) {
                   {employee.personal_email || 'N/A'}
                 </dd>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Vehicle Assignment */}
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle className="flex items-center">
+                <Car className="mr-2 h-5 w-5" />
+                Assigned Vehicle(s)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              {vehicleAssignments.length === 0 ? (
+                <p className="text-sm text-gray-500">No vehicle assigned</p>
+              ) : (
+                vehicleAssignments.map((assignment) => {
+                  const vehicle = assignment.vehicles
+                  if (!vehicle) return null
+                  
+                  return (
+                    <div key={assignment.id} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Link 
+                            href={`/dashboard/vehicles/${vehicle.id}`}
+                            className="text-blue-600 hover:underline font-medium"
+                          >
+                            {vehicle.vehicle_identifier || vehicle.registration || `Vehicle ${vehicle.id}`}
+                          </Link>
+                          {vehicle.make && vehicle.model && (
+                            <p className="text-sm text-gray-600">{vehicle.make} {vehicle.model}</p>
+                          )}
+                        </div>
+                        {vehicle.off_the_road && (
+                          <span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-red-100 text-red-800">
+                            VOR
+                          </span>
+                        )}
+                      </div>
+                      {vehicle.registration && (
+                        <p className="text-xs text-gray-500">Registration: {vehicle.registration}</p>
+                      )}
+                      {vehicle.vehicle_type && (
+                        <p className="text-xs text-gray-500">Type: {vehicle.vehicle_type}</p>
+                      )}
+                      {assignment.assigned_from && (
+                        <p className="text-xs text-gray-500">
+                          Assigned from: {formatDate(assignment.assigned_from)}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })
+              )}
             </CardContent>
           </Card>
 

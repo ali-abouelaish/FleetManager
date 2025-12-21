@@ -23,6 +23,7 @@ export default function CreateEmployeePage() {
     employment_status: 'Active',
     phone_number: '',
     personal_email: '',
+    address: '',
     start_date: '',
   })
 
@@ -161,6 +162,18 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, personal_email: e.target.value })
                   }
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                  placeholder="Full address..."
                 />
               </div>
 

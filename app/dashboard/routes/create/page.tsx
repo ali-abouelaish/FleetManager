@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
@@ -31,6 +31,7 @@ export default function CreateRoutePage() {
   const [drivers, setDrivers] = useState<any[]>([])
   const [passengerAssistants, setPassengerAssistants] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [paAddresses, setPaAddresses] = useState<Record<number, string>>({})
 
   const [formData, setFormData] = useState({
     route_number: '',
@@ -53,6 +54,8 @@ export default function CreateRoutePage() {
       stop_order: 1,
     },
   ])
+  const routePointsRef = useRef(routePoints)
+  routePointsRef.current = routePoints
 
   const addRoutePoint = () => {
     const nextOrder = routePoints.length + 1
@@ -119,7 +122,7 @@ export default function CreateRoutePage() {
           .order('employee_id'),
         supabase
           .from('passenger_assistants')
-          .select('employee_id, employees(full_name, employment_status, can_work)')
+          .select('employee_id, employees(full_name, employment_status, can_work, address)')
           .order('employee_id'),
         supabase
           .from('vehicles')
@@ -144,14 +147,22 @@ export default function CreateRoutePage() {
       }
 
       if (pasResult.data) {
-        setPassengerAssistants(
-          pasResult.data
-            .filter((pa: any) => pa.employees?.employment_status === 'Active' && pa.employees?.can_work !== false)
-            .map((pa: any) => ({
-              id: pa.employee_id,
-              name: pa.employees?.full_name || 'Unknown',
-            }))
-        )
+        const pas = pasResult.data
+          .filter((pa: any) => pa.employees?.employment_status === 'Active' && pa.employees?.can_work !== false)
+          .map((pa: any) => ({
+            id: pa.employee_id,
+            name: pa.employees?.full_name || 'Unknown',
+          }))
+        setPassengerAssistants(pas)
+        
+        // Store PA addresses for later use
+        const addresses: Record<number, string> = {}
+        pasResult.data.forEach((pa: any) => {
+          if (pa.employees?.address) {
+            addresses[pa.employee_id] = pa.employees.address
+          }
+        })
+        setPaAddresses(addresses)
       }
 
       if (vehiclesResult.data) {
@@ -161,6 +172,174 @@ export default function CreateRoutePage() {
 
     loadData()
   }, [supabase])
+
+  // Auto-add APA address as pickup point when APA is assigned and AM/PM times are set
+  useEffect(() => {
+    const currentPoints = routePointsRef.current
+
+    if (!formData.passenger_assistant_id) {
+      // Remove APA points if PA is removed - check all possible PA addresses
+      const allPaAddresses = Object.values(paAddresses)
+      const updatedPoints = currentPoints.filter(
+        point => {
+          const nameLower = point.point_name.toLowerCase()
+          const isApaPoint = (nameLower.includes('apa') && nameLower.includes('home')) || 
+                            allPaAddresses.includes(point.address || '')
+          return !isApaPoint
+        }
+      )
+      if (updatedPoints.length !== currentPoints.length) {
+        const reordered = updatedPoints.map((point, idx) => ({
+          ...point,
+          stop_order: idx + 1,
+        }))
+        setRoutePoints(reordered)
+      }
+      return
+    }
+
+    const selectedPA = passengerAssistants.find(pa => pa.id === parseInt(formData.passenger_assistant_id))
+    if (!selectedPA) return
+
+    // Check if PA name contains "APA" (case-insensitive)
+    const isAPA = selectedPA.name.toLowerCase().includes('apa')
+    if (!isAPA) {
+      // Remove APA points if PA is not APA - check all possible PA addresses
+      const allPaAddresses = Object.values(paAddresses)
+      const updatedPoints = currentPoints.filter(
+        point => {
+          const nameLower = point.point_name.toLowerCase()
+          const isApaPoint = (nameLower.includes('apa') && nameLower.includes('home')) || 
+                            allPaAddresses.includes(point.address || '')
+          return !isApaPoint
+        }
+      )
+      if (updatedPoints.length !== currentPoints.length) {
+        const reordered = updatedPoints.map((point, idx) => ({
+          ...point,
+          stop_order: idx + 1,
+        }))
+        setRoutePoints(reordered)
+      }
+      return
+    }
+
+    const paAddress = paAddresses[parseInt(formData.passenger_assistant_id)]
+    if (!paAddress) return
+
+    let updatedPoints = [...currentPoints]
+    let hasChanges = false
+
+    // For AM routes: ensure first point is APA address
+    if (formData.am_start_time) {
+      const firstPoint = updatedPoints[0]
+      const isFirstApa = firstPoint && (
+        (firstPoint.point_name.toLowerCase().includes('apa') && firstPoint.point_name.toLowerCase().includes('home')) ||
+        firstPoint.address === paAddress
+      )
+
+      if (!isFirstApa) {
+        // Remove any existing APA points
+        updatedPoints = updatedPoints.filter(
+          point => !(
+            (point.point_name.toLowerCase().includes('apa') && point.point_name.toLowerCase().includes('home')) ||
+            point.address === paAddress
+          )
+        )
+
+        // Add APA as first point
+        const apaPoint = {
+          id: generateUUID(),
+          point_name: `${selectedPA.name} - Home`,
+          address: paAddress,
+          latitude: '',
+          longitude: '',
+          stop_order: 1,
+        }
+
+        // Shift existing points down
+        updatedPoints = updatedPoints.map((point, idx) => ({
+          ...point,
+          stop_order: idx + 2,
+        }))
+
+        updatedPoints = [apaPoint, ...updatedPoints]
+        hasChanges = true
+      }
+    } else {
+      // Remove first APA point if AM time is removed
+      if (updatedPoints[0] && (
+        (updatedPoints[0].point_name.toLowerCase().includes('apa') && updatedPoints[0].point_name.toLowerCase().includes('home')) ||
+        updatedPoints[0].address === paAddress
+      )) {
+        updatedPoints = updatedPoints.slice(1).map((point, idx) => ({
+          ...point,
+          stop_order: idx + 1,
+        }))
+        hasChanges = true
+      }
+    }
+
+    // For PM routes: ensure last point is APA address
+    if (formData.pm_start_time) {
+      const lastPoint = updatedPoints[updatedPoints.length - 1]
+      const isLastApa = lastPoint && (
+        (lastPoint.point_name.toLowerCase().includes('apa') && lastPoint.point_name.toLowerCase().includes('home')) ||
+        lastPoint.address === paAddress
+      )
+
+      if (!isLastApa) {
+        // Remove any existing APA points that aren't first (keep first if AM exists)
+        updatedPoints = updatedPoints.filter(
+          (point, idx) => {
+            if (idx === 0 && formData.am_start_time) return true // Keep first if AM route
+            return !(
+              (point.point_name.toLowerCase().includes('apa') && point.point_name.toLowerCase().includes('home')) ||
+              point.address === paAddress
+            )
+          }
+        )
+
+        // Add APA as last point
+        const nextOrder = updatedPoints.length > 0 
+          ? Math.max(...updatedPoints.map(p => p.stop_order)) + 1 
+          : 1
+        const apaPoint = {
+          id: generateUUID(),
+          point_name: `${selectedPA.name} - Home`,
+          address: paAddress,
+          latitude: '',
+          longitude: '',
+          stop_order: nextOrder,
+        }
+
+        updatedPoints = [...updatedPoints, apaPoint]
+        hasChanges = true
+      }
+    } else {
+      // Remove last APA point if PM time is removed (but keep first if AM exists)
+      if (updatedPoints.length > 0) {
+        const lastPoint = updatedPoints[updatedPoints.length - 1]
+        if (lastPoint && (
+          (lastPoint.point_name.toLowerCase().includes('apa') && lastPoint.point_name.toLowerCase().includes('home')) ||
+          lastPoint.address === paAddress
+        ) && !formData.am_start_time) {
+          // Only remove if it's not the first point (which would be for AM)
+          updatedPoints = updatedPoints.slice(0, -1)
+          hasChanges = true
+        }
+      }
+    }
+
+    if (hasChanges) {
+      // Reorder all points
+      const reordered = updatedPoints.map((point, idx) => ({
+        ...point,
+        stop_order: idx + 1,
+      }))
+      setRoutePoints(reordered)
+    }
+  }, [formData.passenger_assistant_id, formData.am_start_time, formData.pm_start_time, passengerAssistants, paAddresses])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -419,7 +598,7 @@ export default function CreateRoutePage() {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center">
               <MapPin className="mr-2 h-5 w-5" />
-              Route Stops / Pickup Points
+               Pickup Points
             </span>
             <Button
               type="button"
