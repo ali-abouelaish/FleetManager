@@ -74,7 +74,10 @@ async function SchoolOverviewCard({ school }: { school: any }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-xl">{school.name}</CardTitle>
-            <p className="text-sm text-gray-600 mt-1">{school.address || 'No address'}</p>
+            <div className="text-sm text-gray-600 mt-1">
+              {school.ref_number && <span className="font-medium">Ref: {school.ref_number} • </span>}
+              {school.address || 'No address'}
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-right">

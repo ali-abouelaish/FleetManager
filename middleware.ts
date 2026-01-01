@@ -31,6 +31,23 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
+
+    // Check user approval status (except for admin routes)
+    // Note: This check is also done in login page, but middleware provides additional protection
+    if (!request.nextUrl.pathname.startsWith('/dashboard/admin')) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('approval_status')
+        .eq('email', user.email)
+        .single()
+
+      if (userData && userData.approval_status !== 'approved') {
+        // Redirect to login with error message
+        const loginUrl = new URL('/login', request.url)
+        loginUrl.searchParams.set('error', 'not_approved')
+        return NextResponse.redirect(loginUrl)
+      }
+    }
   }
 
   // Redirect authenticated users away from login/signup

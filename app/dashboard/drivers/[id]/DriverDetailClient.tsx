@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap, Download, ExternalLink, Eye, Car } from 'lucide-react'
+import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap, Download, ExternalLink, Eye, Car, Timer } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import DriverQRCode from './DriverQRCode'
 import DriverUpdatesClient from './DriverUpdatesClient'
+import BadgePhotoUpload from './BadgePhotoUpload'
+import DriverPreChecks from './DriverPreChecks'
 
 interface Driver {
   employee_id: number
@@ -46,7 +48,7 @@ interface Driver {
   }
 }
 
-type TabType = 'overview' | 'documentation' | 'training' | 'documents'
+type TabType = 'overview' | 'documentation' | 'training' | 'documents' | 'tardiness' | 'daily-checks'
 
 // Helper to calculate days remaining
 function getDaysRemaining(expiryDate: string | null): number | null {
@@ -129,6 +131,9 @@ export function DriverDetailClient({ id }: { id: string }) {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loadingDocuments, setLoadingDocuments] = useState(false)
   const [vehicleAssignments, setVehicleAssignments] = useState<VehicleAssignment[]>([])
+  const [idBadgePhotoUrl, setIdBadgePhotoUrl] = useState<string | null>(null)
+  const [tardinessReports, setTardinessReports] = useState<any[]>([])
+  const [loadingTardiness, setLoadingTardiness] = useState(false)
 
   useEffect(() => {
     async function fetchDriver() {
@@ -167,6 +172,7 @@ export function DriverDetailClient({ id }: { id: string }) {
       if (data) {
         loadDocuments(data.employee_id)
         loadVehicleAssignments(data.employee_id)
+        loadTardinessReports(data.employee_id)
       }
     }
 
@@ -176,7 +182,8 @@ export function DriverDetailClient({ id }: { id: string }) {
   const loadVehicleAssignments = async (employeeId: number) => {
     const supabase = createClient()
     
-    const { data, error } = await supabase
+    // Get active vehicle assignments from vehicle_assignments table
+    const { data: assignmentsData, error: assignmentsError } = await supabase
       .from('vehicle_assignments')
       .select(`
         id,
@@ -195,15 +202,64 @@ export function DriverDetailClient({ id }: { id: string }) {
         )
       `)
       .eq('employee_id', employeeId)
-      .eq('active', true)
+      .or('active.eq.true,active.is.null')
+      .not('vehicle_id', 'is', null)
       .order('assigned_from', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching vehicle assignments:', error)
-      setVehicleAssignments([])
-    } else {
-      setVehicleAssignments((data || []) as VehicleAssignment[])
+    // Also check for vehicles where this driver is assigned for MOT/service follow-up
+    const { data: vehiclesData, error: vehiclesError } = await supabase
+      .from('vehicles')
+      .select(`
+        id,
+        vehicle_identifier,
+        registration,
+        make,
+        model,
+        vehicle_type,
+        off_the_road,
+        assigned_to
+      `)
+      .eq('assigned_to', employeeId)
+
+
+    // Combine both sources
+    const allAssignments: VehicleAssignment[] = []
+
+    // Add vehicle_assignments
+    if (assignmentsData) {
+      assignmentsData.forEach((assignment: any) => {
+        if (assignment.vehicles) {
+          allAssignments.push({
+            id: assignment.id,
+            vehicle_id: assignment.vehicle_id,
+            assigned_from: assignment.assigned_from,
+            assigned_to: assignment.assigned_to,
+            active: assignment.active,
+            vehicles: assignment.vehicles,
+          })
+        }
+      })
     }
+
+    // Add vehicles from assigned_to field (if not already in assignments)
+    if (vehiclesData) {
+      vehiclesData.forEach((vehicle: any) => {
+        // Check if this vehicle is already in assignments
+        const exists = allAssignments.some(a => a.vehicle_id === vehicle.id)
+        if (!exists) {
+          allAssignments.push({
+            id: 0, // No assignment ID for this case
+            vehicle_id: vehicle.id,
+            assigned_from: null,
+            assigned_to: null,
+            active: true,
+            vehicles: vehicle,
+          })
+        }
+      })
+    }
+
+    setVehicleAssignments(allAssignments)
   }
 
   const loadDocuments = async (employeeId: number) => {
@@ -219,8 +275,36 @@ export function DriverDetailClient({ id }: { id: string }) {
       console.error('Error fetching documents:', error)
       setDocuments([])
     } else {
-      console.log('Loaded documents for employee:', employeeId, data)
       setDocuments(data || [])
+      
+      // Find ID Badge photo for profile picture
+      const idBadgeDoc = data?.find(doc => {
+        if (!doc.doc_type) return false
+        const docTypeLower = doc.doc_type.toLowerCase()
+        return docTypeLower === 'id badge' || 
+               (docTypeLower.includes('id') && docTypeLower.includes('badge'))
+      })
+      
+      if (idBadgeDoc) {
+        const urls = parseFileUrls(idBadgeDoc.file_url || idBadgeDoc.file_path)
+        // Find first image URL
+        let imageUrl = urls.find(url => 
+          url && (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif'))
+        ) || urls[0]
+        
+        // If we have a file_path but no public URL, try to get it from storage
+        if (!imageUrl && idBadgeDoc.file_path) {
+          const supabase = createClient()
+          const { data: { publicUrl } } = supabase.storage
+            .from('ROUTE_DOCUMENTS')
+            .getPublicUrl(idBadgeDoc.file_path)
+          imageUrl = publicUrl
+        }
+        
+        if (imageUrl) {
+          setIdBadgePhotoUrl(imageUrl)
+        }
+      }
     }
     setLoadingDocuments(false)
   }
@@ -234,6 +318,64 @@ export function DriverDetailClient({ id }: { id: string }) {
       return [fileUrl]
     }
   }
+
+  const loadTardinessReports = async (employeeId: number) => {
+    setLoadingTardiness(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('tardiness_reports')
+      .select(`
+        *,
+        route:route_id(id, route_number),
+        coordinator:coordinator_id(id, full_name),
+        route_session:route_session_id(id, session_type, session_date)
+      `)
+      .eq('driver_id', employeeId)
+      .order('reported_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching tardiness reports:', error)
+      setTardinessReports([])
+    } else {
+      setTardinessReports(data || [])
+    }
+    setLoadingTardiness(false)
+  }
+
+  // Reload tardiness reports when tardiness tab is opened
+  useEffect(() => {
+    if (activeTab === 'tardiness' && driver) {
+      loadTardinessReports(driver.employee_id)
+    }
+  }, [activeTab, driver?.employee_id])
+
+  // Set up real-time subscription for tardiness reports
+  useEffect(() => {
+    if (!driver) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel('tardiness-reports-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tardiness_reports',
+          filter: `driver_id=eq.${driver.employee_id}`
+        },
+        (payload) => {
+          console.log('Tardiness report changed:', payload)
+          // Reload tardiness reports when any change occurs
+          loadTardinessReports(driver.employee_id)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [driver?.employee_id])
 
   if (loading) {
     return (
@@ -264,6 +406,31 @@ export function DriverDetailClient({ id }: { id: string }) {
               Back
             </Button>
           </Link>
+          {/* Profile Picture - ID Badge */}
+          <div className="relative">
+            {idBadgePhotoUrl ? (
+              <img
+                src={idBadgePhotoUrl}
+                alt={`${employee.full_name} - ID Badge`}
+                className="h-24 w-24 rounded-full object-cover border-4 border-navy shadow-lg"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            ) : (
+              <div className="h-24 w-24 rounded-full bg-navy flex items-center justify-center border-4 border-navy shadow-lg">
+                <span className="text-white text-2xl font-bold">
+                  {employee.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </span>
+              </div>
+            )}
+            {driver.tas_badge_number && (
+              <div className="absolute -bottom-1 -right-1 bg-navy text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white">
+                {driver.tas_badge_number}
+              </div>
+            )}
+          </div>
           <div>
             <h1 className="text-3xl font-bold text-navy">{employee.full_name}</h1>
             <p className="mt-2 text-sm text-gray-600">Driver Details & Compliance</p>
@@ -345,6 +512,35 @@ export function DriverDetailClient({ id }: { id: string }) {
           >
             <FileText className="inline mr-2 h-4 w-4" />
             Uploaded Documents
+          </button>
+          <button
+            onClick={() => setActiveTab('tardiness')}
+            className={`
+              border-b-2 px-1 py-4 text-sm font-medium transition-colors
+              ${activeTab === 'tardiness' 
+                ? 'border-navy text-navy' 
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+            `}
+          >
+            <Timer className="inline mr-2 h-4 w-4" />
+            Tardiness Reports
+            {tardinessReports.filter(r => r.status === 'pending').length > 0 && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
+                {tardinessReports.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('daily-checks')}
+            className={`
+              border-b-2 px-1 py-4 text-sm font-medium transition-colors
+              ${activeTab === 'daily-checks' 
+                ? 'border-navy text-navy' 
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+            `}
+          >
+            <CheckCircle className="inline mr-2 h-4 w-4" />
+            Daily Vehicle Checks
           </button>
         </nav>
       </div>
@@ -449,7 +645,12 @@ export function DriverDetailClient({ id }: { id: string }) {
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               {vehicleAssignments.length === 0 ? (
-                <p className="text-sm text-gray-500">No vehicle assigned</p>
+                <div>
+                  <p className="text-sm text-gray-500">No vehicle assigned</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Vehicle assignments are managed through the vehicle_assignments table
+                  </p>
+                </div>
               ) : (
                 vehicleAssignments.map((assignment) => {
                   const vehicle = assignment.vehicles
@@ -484,6 +685,11 @@ export function DriverDetailClient({ id }: { id: string }) {
                       {assignment.assigned_from && (
                         <p className="text-xs text-gray-500">
                           Assigned from: {formatDate(assignment.assigned_from)}
+                        </p>
+                      )}
+                      {assignment.assigned_to && (
+                        <p className="text-xs text-gray-500">
+                          Assigned until: {formatDate(assignment.assigned_to)}
                         </p>
                       )}
                     </div>
@@ -777,6 +983,22 @@ export function DriverDetailClient({ id }: { id: string }) {
       {/* Documents Tab */}
       {activeTab === 'documents' && (
         <div className="space-y-6">
+          {/* Badge Photo Upload Section */}
+          {driver && (
+            <Card>
+              <CardHeader className="bg-navy text-white">
+                <CardTitle>Badge Photo</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <BadgePhotoUpload employeeId={driver.employee_id} onUpload={() => {
+                  if (driver) {
+                    loadDocuments(driver.employee_id)
+                  }
+                }} />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="bg-navy text-white">
               <CardTitle>📄 Uploaded Documents</CardTitle>
@@ -850,6 +1072,138 @@ export function DriverDetailClient({ id }: { id: string }) {
                                     )}
                                   </a>
                                 ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Daily Checks Tab */}
+      {activeTab === 'daily-checks' && driver && (
+        <DriverPreChecks driverId={driver.employee_id} />
+      )}
+
+      {/* Tardiness Tab */}
+      {activeTab === 'tardiness' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle className="flex items-center">
+                <Timer className="mr-2 h-5 w-5" />
+                Tardiness Reports
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {loadingTardiness ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-navy"></div>
+                  <p className="mt-2 text-sm text-gray-500">Loading tardiness reports...</p>
+                </div>
+              ) : tardinessReports.length === 0 ? (
+                <div className="text-center py-8">
+                  <Timer className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-sm text-gray-500">No tardiness reports found</p>
+                </div>
+              ) : (
+                <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-navy">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Session</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Route</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Reason</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Reviewed By</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tardinessReports.map((report, idx) => {
+                        const getStatusBadge = (status: string) => {
+                          switch (status) {
+                            case 'pending':
+                              return {
+                                icon: Clock,
+                                label: 'Pending',
+                                color: 'bg-yellow-100 text-yellow-800'
+                              }
+                            case 'approved':
+                              return {
+                                icon: CheckCircle,
+                                label: 'Approved',
+                                color: 'bg-green-100 text-green-800'
+                              }
+                            case 'declined':
+                              return {
+                                icon: XCircle,
+                                label: 'Declined',
+                                color: 'bg-red-100 text-red-800'
+                              }
+                            default:
+                              return {
+                                icon: Clock,
+                                label: status,
+                                color: 'bg-gray-100 text-gray-800'
+                              }
+                          }
+                        }
+                        const statusBadge = getStatusBadge(report.status)
+                        const StatusIcon = statusBadge.icon
+                        
+                        return (
+                          <tr key={report.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {formatDate(report.session_date)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {report.session_type || report.route_session?.session_type || 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {report.route?.route_number ? (
+                                <Link 
+                                  href={`/dashboard/routes/${report.route_id}`}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {report.route.route_number}
+                                </Link>
+                              ) : (
+                                'N/A'
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {report.reason}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${statusBadge.color}`}>
+                                <StatusIcon className="mr-1 h-3 w-3" />
+                                {statusBadge.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {report.coordinator?.full_name || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              <div className="max-w-xs">
+                                {report.additional_notes && (
+                                  <p className="text-xs text-gray-500 mb-1">
+                                    <strong>Driver:</strong> {report.additional_notes}
+                                  </p>
+                                )}
+                                {report.coordinator_notes && (
+                                  <p className="text-xs text-gray-500">
+                                    <strong>Coordinator:</strong> {report.coordinator_notes}
+                                  </p>
+                                )}
+                                {!report.additional_notes && !report.coordinator_notes && '—'}
                               </div>
                             </td>
                           </tr>

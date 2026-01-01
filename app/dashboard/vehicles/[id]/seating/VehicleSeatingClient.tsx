@@ -1,0 +1,462 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { VehicleSeatingPlan, SubstitutionVehicle } from '@/lib/types'
+import VisualSeatingGrid from './visual-grid'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import Link from 'next/link'
+
+interface VehicleSeatingClientProps {
+  vehicleId: string
+  vehicle: {
+    id: number
+    registration: string | null
+    make: string | null
+    model: string | null
+    vehicle_identifier: string | null
+  }
+  initialSeatingPlan: VehicleSeatingPlan | null
+}
+
+export default function VehicleSeatingClient({
+  vehicleId,
+  vehicle,
+  initialSeatingPlan
+}: VehicleSeatingClientProps) {
+  const [seatingPlan, setSeatingPlan] = useState<VehicleSeatingPlan | null>(initialSeatingPlan)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [substitutionVehicles, setSubstitutionVehicles] = useState<SubstitutionVehicle[]>([])
+  const [isLoadingSubstitutes, setIsLoadingSubstitutes] = useState(false)
+
+  // Form data
+  const [formData, setFormData] = useState({
+    name: '',
+    total_capacity: '',
+    rows: '',
+    seats_per_row: '',
+    wheelchair_spaces: '',
+    notes: ''
+  })
+
+  // Initialize form when seating plan loads
+  useEffect(() => {
+    if (seatingPlan) {
+      setFormData({
+        name: seatingPlan.name,
+        total_capacity: seatingPlan.total_capacity.toString(),
+        rows: seatingPlan.rows.toString(),
+        seats_per_row: seatingPlan.seats_per_row.toString(),
+        wheelchair_spaces: seatingPlan.wheelchair_spaces.toString(),
+        notes: seatingPlan.notes || ''
+      })
+    } else {
+      // Default values for new plan
+      setFormData({
+        name: `${vehicle.make} ${vehicle.model} Standard Layout`,
+        total_capacity: '4',
+        rows: '2',
+        seats_per_row: '2',
+        wheelchair_spaces: '0',
+        notes: ''
+      })
+    }
+  }, [seatingPlan, vehicle])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // Validate inputs
+      const capacity = parseInt(formData.total_capacity)
+      const rows = parseInt(formData.rows)
+      const seatsPerRow = parseInt(formData.seats_per_row)
+      const wheelchairSpaces = parseInt(formData.wheelchair_spaces)
+
+      if (capacity <= 0 || rows <= 0 || seatsPerRow <= 0 || wheelchairSpaces < 0) {
+        throw new Error('Please enter valid positive numbers')
+      }
+
+      const response = await fetch(`/api/vehicles/${vehicleId}/seating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          total_capacity: capacity,
+          rows: rows,
+          seats_per_row: seatsPerRow,
+          wheelchair_spaces: wheelchairSpaces,
+          notes: formData.notes || null
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update seating plan')
+      }
+
+      setSeatingPlan(result.data)
+      setSuccess(seatingPlan ? 'Seating plan updated successfully!' : 'Seating plan created successfully!')
+      setIsEditing(false)
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFindSubstitutes = async () => {
+    setIsLoadingSubstitutes(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}/substitutes`)
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to find substitution vehicles')
+      }
+
+      setSubstitutionVehicles(result.data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setIsLoadingSubstitutes(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+          {success}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Seating Plan Display/Editor */}
+        <div className="space-y-6">
+          {/* Current Seating Plan Card */}
+          {seatingPlan && !isEditing ? (
+            <Card className="bg-white border-gray-200">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Current Seating Plan</h2>
+                    <p className="text-sm text-gray-600 mt-1">{seatingPlan.name}</p>
+                  </div>
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-navy hover:bg-blue-800"
+                  >
+                    Edit Plan
+                  </Button>
+                </div>
+
+                {/* Visual Grid */}
+                <VisualSeatingGrid seatingPlan={seatingPlan} />
+
+                {/* Notes */}
+                {seatingPlan.notes && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded border border-gray-200">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">Notes</div>
+                    <div className="text-sm text-gray-600">{seatingPlan.notes}</div>
+                  </div>
+                )}
+
+                {/* Metadata */}
+                <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-500 space-y-1">
+                  <div>Created: {new Date(seatingPlan.created_at).toLocaleString()}</div>
+                  <div>Last Updated: {new Date(seatingPlan.updated_at).toLocaleString()}</div>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            /* Seating Plan Editor Form */
+            <Card className="bg-white border-gray-200">
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {seatingPlan ? 'Edit Seating Plan' : 'Create Seating Plan'}
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Configure the seating layout for this vehicle
+                  </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <Label htmlFor="name">Plan Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Standard Coach (45 passengers)"
+                    required
+                    className="bg-white border-gray-300 text-gray-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="total_capacity">Total Capacity</Label>
+                    <Input
+                      id="total_capacity"
+                      name="total_capacity"
+                      type="number"
+                      min="1"
+                    value={formData.total_capacity}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-white border-gray-300 text-gray-900"
+                  />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="wheelchair_spaces">Wheelchair Spaces</Label>
+                    <Input
+                      id="wheelchair_spaces"
+                      name="wheelchair_spaces"
+                      type="number"
+                      min="0"
+                    value={formData.wheelchair_spaces}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-white border-gray-300 text-gray-900"
+                  />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="rows">Number of Rows</Label>
+                    <Input
+                      id="rows"
+                      name="rows"
+                      type="number"
+                      min="1"
+                    value={formData.rows}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-white border-gray-300 text-gray-900"
+                  />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="seats_per_row">Seats per Row</Label>
+                    <Input
+                      id="seats_per_row"
+                      name="seats_per_row"
+                      type="number"
+                      min="1"
+                    value={formData.seats_per_row}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-white border-gray-300 text-gray-900"
+                  />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 2 wheelchair lifts, emergency exit row 5"
+                    rows={3}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-navy hover:bg-blue-800"
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      `${seatingPlan ? 'Update' : 'Create'} Plan`
+                    )}
+                  </Button>
+
+                  {seatingPlan && (
+                    <Button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="bg-gray-700 hover:bg-gray-600"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+                </form>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column: Substitution Vehicles */}
+        <div className="space-y-6">
+          <Card className="bg-white border-gray-200">
+            <div className="p-6">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Substitution Vehicles</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Find available vehicles with matching or similar seating plans (exact matches shown first, then similar capacity)
+                </p>
+              </div>
+
+              {!seatingPlan ? (
+                <div className="text-center py-10 text-gray-500">
+                  <div className="text-4xl mb-3">🪑</div>
+                  <p>Create a seating plan first to find substitution vehicles</p>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleFindSubstitutes}
+                    disabled={isLoadingSubstitutes}
+                    className="w-full bg-navy hover:bg-blue-800 mb-4"
+                  >
+                  {isLoadingSubstitutes ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Searching...
+                    </span>
+                  ) : (
+                    'Find Substitute Vehicles'
+                  )}
+                </Button>
+
+                  {substitutionVehicles.length > 0 ? (
+                    <div className="space-y-3">
+                      {substitutionVehicles.map((vehicle) => (
+                        <div
+                          key={vehicle.vehicle_id}
+                          className="p-5 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <Link
+                                href={`/dashboard/vehicles/${vehicle.vehicle_id}`}
+                                className="font-semibold text-navy hover:text-blue-800 transition-colors"
+                              >
+                                {vehicle.registration_number}
+                              </Link>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {vehicle.make} {vehicle.model}
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                              Available
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 mb-4">
+                          <div>Capacity: <span className="text-gray-900 font-medium">{vehicle.total_capacity}</span></div>
+                          <div>Wheelchair: <span className="text-gray-900 font-medium">{vehicle.wheelchair_spaces}</span></div>
+                          <div>Rows: <span className="text-gray-900 font-medium">{vehicle.rows}</span></div>
+                          <div>Seats/Row: <span className="text-gray-900 font-medium">{vehicle.seats_per_row}</span></div>
+                        </div>
+
+                          <Link
+                            href={`/dashboard/vehicles/${vehicle.vehicle_id}`}
+                            className="text-sm text-navy hover:text-blue-800 transition-colors"
+                          >
+                            View Vehicle Details →
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  ) : substitutionVehicles.length === 0 && !isLoadingSubstitutes && error === null ? (
+                      <div className="text-center py-10 text-gray-500">
+                      <div className="text-4xl mb-3">🔍</div>
+                      <p>Click "Find Substitute Vehicles" to search</p>
+                    </div>
+                  ) : substitutionVehicles.length === 0 && !isLoadingSubstitutes && error === null ? (
+                    <div className="text-center py-10 text-gray-500">
+                      <div className="text-4xl mb-3">🚫</div>
+                      <p>No substitute vehicles available</p>
+                      <p className="text-xs mt-2">
+                        No vehicles with matching or similar seating plans found
+                      </p>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </Card>
+
+          {/* Quick Stats */}
+          {seatingPlan && (
+            <Card className="bg-white border-gray-200">
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Seating Summary</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-3 border-b border-gray-200">
+                    <span className="text-gray-600">Plan Name</span>
+                    <span className="text-gray-900 font-semibold">{seatingPlan.name}</span>
+                  </div>
+                  <div className="flex justify-between py-3 border-b border-gray-200">
+                    <span className="text-gray-600">Total Capacity</span>
+                    <span className="text-gray-900 font-semibold">{seatingPlan.total_capacity} passengers</span>
+                  </div>
+                  <div className="flex justify-between py-3 border-b border-gray-200">
+                    <span className="text-gray-600">Configuration</span>
+                    <span className="text-gray-900 font-semibold">
+                      {seatingPlan.rows} rows × {seatingPlan.seats_per_row} seats
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-3">
+                    <span className="text-gray-600">Wheelchair Spaces</span>
+                    <span className="text-yellow-600 font-semibold">{seatingPlan.wheelchair_spaces}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+

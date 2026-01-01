@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
 
 export async function POST(request: Request) {
   try {
@@ -73,96 +72,63 @@ export async function POST(request: Request) {
       entityName = employee?.full_name || `${notification.entity_type} #${notification.entity_id}`
     }
 
-    // Send admin summary email
+    // Create system activity instead of sending email
     try {
-      // Get admin emails
-      const adminEmails: string[] = []
-      if (process.env.ADMIN_EMAIL) {
-        const emails = process.env.ADMIN_EMAIL.split(',').map(e => e.trim())
-        adminEmails.push(...emails)
-      }
+      const slotDate = slot?.slot_start ? new Date(slot.slot_start).toLocaleDateString() : 'N/A'
+      const slotTime = slot?.slot_start && slot?.slot_end 
+        ? `${new Date(slot.slot_start).toLocaleTimeString()} - ${new Date(slot.slot_end).toLocaleTimeString()}`
+        : 'N/A'
 
-      const { data: adminUsers } = await supabase
-        .from('users')
-        .select('email')
-        .or('role.eq.admin,role.eq.Admin,role.eq.ADMIN')
-      
-      if (adminUsers) {
-        adminUsers.forEach(user => {
-          if (user.email && !adminEmails.includes(user.email)) {
-            adminEmails.push(user.email)
-          }
+      const { data: activity, error: activityError } = await supabase
+        .from('system_activities')
+        .insert({
+          activity_type: 'appointment_booking',
+          notification_id: notification.id,
+          entity_type: notification.entity_type,
+          entity_id: notification.entity_id,
+          entity_name: entityName,
+          certificate_name: notification.certificate_name,
+          recipient_name: name || null,
+          recipient_email: email || notification.recipient_email || null,
+          details: {
+            appointmentDate: slotDate,
+            appointmentTime: slotTime,
+            slotStart: slot?.slot_start || null,
+            slotEnd: slot?.slot_end || null,
+          },
         })
+        .select()
+        .single()
+
+      if (activityError) {
+        console.error('Failed to create system activity:', activityError)
+        // Don't fail the booking if activity creation fails
       }
 
-      if (adminEmails.length > 0) {
-        const smtpHost = process.env.SMTP_HOST
-        const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587
-        const smtpUser = process.env.SMTP_USER
-        const smtpPass = process.env.SMTP_PASS
-        const smtpFrom = process.env.SMTP_FROM || smtpUser
+      // Update the original notification to track employee response
+      const { error: updateNotifError } = await supabase
+        .from('notifications')
+        .update({
+          employee_response_type: 'appointment_booked',
+          employee_response_details: {
+            appointmentDate: slotDate,
+            appointmentTime: slotTime,
+            slotStart: slot?.slot_start || null,
+            slotEnd: slot?.slot_end || null,
+          },
+          employee_response_received_at: new Date().toISOString(),
+          admin_response_required: true, // Flag for admin to review
+          status: 'sent', // Keep status as 'sent' but mark as requiring admin response
+        })
+        .eq('id', notification.id)
 
-        if (smtpHost && smtpUser && smtpPass && smtpFrom) {
-          const requestOrigin = request.headers.get('origin') || request.headers.get('referer')?.split('/').slice(0, 3).join('/')
-          const baseUrl =
-            process.env.NEXT_PUBLIC_APP_URL ||
-            process.env.SITE_URL ||
-            requestOrigin ||
-            'https://senfleetmanager.com'
-
-          const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465,
-            auth: {
-              user: smtpUser,
-              pass: smtpPass,
-            },
-          })
-
-          const slotDate = slot?.slot_start ? new Date(slot.slot_start).toLocaleString() : 'N/A'
-          const slotTime = slot?.slot_start && slot?.slot_end 
-            ? `${new Date(slot.slot_start).toLocaleTimeString()} - ${new Date(slot.slot_end).toLocaleTimeString()}`
-            : 'N/A'
-
-          const subject = `[Appointment Booked] ${notification.certificate_name} - ${entityName}`
-          const emailBody = `An appointment has been booked for compliance certificate review.
-
-**Details:**
-- Certificate: ${notification.certificate_name}
-- Entity: ${entityName} (${notification.entity_type})
-- Recipient: ${name || notification.recipient_email || 'Unknown'}
-- Email: ${email || notification.recipient_email || 'N/A'}
-- Appointment Date: ${slotDate}
-- Slot Time: ${slotTime}
-
-**View Details:**
-${baseUrl}/dashboard/appointments
-
-**Notification:**
-${baseUrl}/dashboard/notifications`
-
-          const htmlBody = emailBody
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" style="color: #2563eb; text-decoration: underline;">$1</a>')
-
-          await Promise.all(
-            adminEmails.map(adminEmail =>
-              transporter.sendMail({
-                from: smtpFrom,
-                to: adminEmail,
-                subject: subject,
-                text: emailBody,
-                html: htmlBody,
-              })
-            )
-          )
-        }
+      if (updateNotifError) {
+        console.error('Failed to update notification with employee response:', updateNotifError)
+        // Don't fail the booking if notification update fails
       }
     } catch (summaryError) {
-      console.error('Failed to send admin summary email:', summaryError)
-      // Don't fail the booking if summary email fails
+      console.error('Failed to create system activity:', summaryError)
+      // Don't fail the booking if activity creation fails
     }
 
     return NextResponse.json({ success: true, booking })

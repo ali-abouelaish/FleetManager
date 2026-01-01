@@ -8,13 +8,21 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Plus, Eye, Pencil, Map } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { SchoolsMap } from '@/components/maps/SchoolsMap'
+import { SchoolSearchFilters } from './SchoolSearchFilters'
 
-async function getSchools() {
+async function getSchools(filters?: { search?: string }) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('schools')
     .select('*')
-    .order('created_at', { ascending: false })
+
+  // Apply search filter (name or ref_number)
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim()
+    query = query.or(`name.ilike.%${searchTerm}%,ref_number.ilike.%${searchTerm}%`)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching schools:', error)
@@ -24,8 +32,8 @@ async function getSchools() {
   return data || []
 }
 
-async function SchoolsTable() {
-  const schools = await getSchools()
+async function SchoolsTable(filters?: { search?: string }) {
+  const schools = await getSchools(filters)
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -34,6 +42,7 @@ async function SchoolsTable() {
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>School Name</TableHead>
+            <TableHead>Ref Number</TableHead>
             <TableHead>Address</TableHead>
             <TableHead>Created At</TableHead>
             <TableHead>Actions</TableHead>
@@ -42,7 +51,7 @@ async function SchoolsTable() {
         <TableBody>
           {schools.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-gray-500">
+              <TableCell colSpan={6} className="text-center text-gray-500">
                 No schools found. Add your first school to get started.
               </TableCell>
             </TableRow>
@@ -51,6 +60,7 @@ async function SchoolsTable() {
               <TableRow key={school.id}>
                 <TableCell>{school.id}</TableCell>
                 <TableCell className="font-medium">{school.name}</TableCell>
+                <TableCell>{school.ref_number || 'N/A'}</TableCell>
                 <TableCell>{school.address || 'N/A'}</TableCell>
                 <TableCell>{formatDate(school.created_at)}</TableCell>
                 <TableCell>
@@ -76,8 +86,14 @@ async function SchoolsTable() {
   )
 }
 
-export default async function SchoolsPage() {
-  const schools = await getSchools()
+export default async function SchoolsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string }>
+}) {
+  const params = await searchParams
+  const filters = { search: params?.search }
+  const schools = await getSchools(filters)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ''
   
   // Debug: Log if key is missing (only in development)
@@ -146,14 +162,17 @@ export default async function SchoolsPage() {
         </Card>
       )}
 
+      {/* Search and Filter Controls */}
+      <SchoolSearchFilters />
+
       {/* Table View */}
       <Card>
         <CardHeader className="bg-navy text-white">
           <CardTitle>Schools List</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <Suspense fallback={<TableSkeleton rows={5} columns={5} />}>
-            <SchoolsTable />
+          <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={6} />}>
+            <SchoolsTable search={filters.search} />
           </Suspense>
         </CardContent>
       </Card>

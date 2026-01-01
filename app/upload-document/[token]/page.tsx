@@ -301,6 +301,14 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
           })
 
         if (uploadError) {
+          // Provide helpful error message for bucket not found
+          if (uploadError.message.includes('Bucket not found') || uploadError.message.includes('not found')) {
+            throw new Error(
+              `Storage bucket "${bucketName}" not found. Please ensure the bucket exists in your Supabase Storage settings. ` +
+              `Required buckets: VEHICLE_DOCUMENTS, EMPLOYEE_DOCUMENTS, DOCUMENTS. ` +
+              `Run migration 064_create_required_storage_buckets.sql to create them automatically.`
+            )
+          }
           throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`)
         }
 
@@ -363,7 +371,7 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
         entityName = employee?.full_name || `${notification.entity_type} #${notification.entity_id}`
       }
 
-      // Send admin summary email
+      // Create system activity instead of sending email
       try {
         await fetch('/api/admin/notify-summary', {
           method: 'POST',
@@ -379,12 +387,13 @@ export default function UploadDocumentPage({ params }: { params: Promise<{ token
             details: {
               filesUploaded: files.length,
               fileNames: files.map(f => f.name),
+              uploadedFileUrls: uploadedFiles,
             },
           }),
         })
       } catch (summaryError) {
-        console.error('Failed to send admin summary:', summaryError)
-        // Don't fail the upload if summary email fails
+        console.error('Failed to create system activity:', summaryError)
+        // Don't fail the upload if activity creation fails
       }
 
       setSuccess(true)

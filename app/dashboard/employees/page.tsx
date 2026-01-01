@@ -6,12 +6,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Plus, Eye, Pencil, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { EmployeeSearchFilters } from './EmployeeSearchFilters'
 
-async function getEmployees() {
+async function getEmployees(filters?: {
+  search?: string
+  role?: string
+  status?: string
+  can_work?: string
+}) {
   const supabase = await createClient()
   
-  // Fetch employees with their driver/PA certificate data
-  const { data, error } = await supabase
+  let query = supabase
     .from('employees')
     .select(`
       *,
@@ -31,14 +36,48 @@ async function getEmployees() {
         dbs_expiry_date
       )
     `)
-    .order('created_at', { ascending: false })
+
+  // Apply search filter (case-insensitive name search)
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim()
+    query = query.ilike('full_name', `%${searchTerm}%`)
+  }
+
+  // Apply role filter
+  if (filters?.role && filters.role !== 'all') {
+    query = query.eq('role', filters.role)
+  }
+
+  // Apply status filter
+  if (filters?.status && filters.status !== 'all') {
+    query = query.eq('employment_status', filters.status)
+  }
+
+  // Apply can_work filter
+  if (filters?.can_work === 'yes') {
+    query = query.eq('can_work', true)
+  } else if (filters?.can_work === 'no') {
+    query = query.eq('can_work', false)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching employees:', error)
     return []
   }
 
-  return data || []
+  let result = data || []
+
+  // Fallback: If search filter didn't work in query, filter in memory
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim().toLowerCase()
+    result = result.filter((emp: any) => 
+      emp.full_name?.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  return result
 }
 
 // Helper to get expired certificates for an employee
@@ -143,8 +182,18 @@ function getCertificateStatus(employee: any) {
   return { status: 'valid', label: 'Valid', color: 'bg-green-100 text-green-800' }
 }
 
-async function EmployeesTable() {
-  const employees = await getEmployees()
+async function EmployeesTable({
+  search,
+  role,
+  status,
+  can_work,
+}: {
+  search?: string
+  role?: string
+  status?: string
+  can_work?: string
+}) {
+  const employees = await getEmployees({ search, role, status, can_work })
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -251,7 +300,27 @@ async function EmployeesTable() {
   )
 }
 
-export default function EmployeesPage() {
+export default async function EmployeesPage({
+  searchParams,
+}: {
+  searchParams: {
+    search?: string
+    role?: string
+    status?: string
+    can_work?: string
+  }
+}) {
+  // Build filters from search params (Next.js 14 - searchParams is not a Promise)
+  const filters = {
+    search: searchParams?.search || undefined,
+    role: searchParams?.role || undefined,
+    status: searchParams?.status || undefined,
+    can_work: searchParams?.can_work || undefined,
+  }
+
+  // Create a unique key for Suspense based on all filter params
+  const suspenseKey = JSON.stringify(filters)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -269,8 +338,10 @@ export default function EmployeesPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={8} />}>
-        <EmployeesTable />
+      <EmployeeSearchFilters />
+
+      <Suspense key={suspenseKey} fallback={<TableSkeleton rows={5} columns={8} />}>
+        <EmployeesTable {...filters} />
       </Suspense>
     </div>
   )

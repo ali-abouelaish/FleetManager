@@ -3,7 +3,8 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { StatsSkeleton } from '@/components/ui/Skeleton'
-import { Users, Car, School, Route, AlertCircle, UserCheck, MapPinned, ParkingCircle, Calendar, XCircle, UserPlus, MessageSquare, FileText, Truck } from 'lucide-react'
+import { Users, Car, School, Route, AlertCircle, UserCheck, MapPinned, ParkingCircle, Calendar, XCircle, UserPlus, MessageSquare, FileText, Truck, Clock, TrendingUp, Activity } from 'lucide-react'
+import { formatDateTime } from '@/lib/utils'
 
 async function getDashboardStats() {
   const supabase = await createClient()
@@ -200,9 +201,72 @@ async function getSpareVehiclesWithLocation() {
   return data || []
 }
 
+async function getRecentActivities() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('system_activities')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  if (error) {
+    console.error('Error fetching recent activities:', error)
+    return []
+  }
+
+  return data || []
+}
+
+async function getRecentIncidents() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('incidents')
+    .select(`
+      id,
+      incident_type,
+      description,
+      reported_at,
+      resolved,
+      reference_number,
+      routes(route_number),
+      vehicles(vehicle_identifier)
+    `)
+    .order('reported_at', { ascending: false })
+    .limit(5)
+
+  if (error) {
+    console.error('Error fetching recent incidents:', error)
+    return []
+  }
+
+  return data || []
+}
+
+function getActivityIcon(activityType: string) {
+  switch (activityType) {
+    case 'document_upload':
+      return <FileText className="h-4 w-4 text-blue-600" />
+    case 'appointment_booking':
+      return <Calendar className="h-4 w-4 text-green-600" />
+    default:
+      return <Activity className="h-4 w-4 text-gray-600" />
+  }
+}
+
+function getEntityLink(entityType: string, entityId: number): string {
+  if (entityType === 'vehicle') {
+    return `/dashboard/vehicles/${entityId}`
+  } else if (entityType === 'driver' || entityType === 'assistant') {
+    return `/dashboard/employees/${entityId}`
+  }
+  return '#'
+}
+
 async function DashboardStats() {
   const stats = await getDashboardStats()
   const spareVehicles = await getSpareVehiclesWithLocation()
+  const recentActivities = await getRecentActivities()
+  const recentIncidents = await getRecentIncidents()
 
   const cards = [
     {
@@ -338,11 +402,177 @@ async function DashboardStats() {
     },
   ]
 
+  // Calculate urgent alerts
+  const urgentAlerts = [
+    { title: 'Open Incidents', count: stats.incidents, href: '/dashboard/incidents', color: 'text-red-600', bgColor: 'bg-red-100', icon: AlertCircle },
+    { title: 'Expired Employee Certificates', count: stats.employeeExpired, href: '/dashboard/certificates-expiry/employees?period=expired', color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle },
+    { title: 'Expired Vehicle Certificates', count: stats.vehicleExpired, href: '/dashboard/certificates-expiry/vehicles?period=expired', color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle },
+    { title: 'Vehicles Off Road', count: stats.vor, href: '/dashboard/vehicles?status=off-road', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: Car },
+    { title: 'Flagged Employees', count: stats.flaggedEmployees, href: '/dashboard/employees', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: Users },
+  ].filter(alert => alert.count > 0)
+
   return (
     <>
+      {/* Key Metrics - Top Priority */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {cards.slice(0, 4).map((card) => (
+          <Card key={card.title} className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                {card.title}
+              </CardTitle>
+              <div className={`rounded-full p-2 ${card.bgColor}`}>
+                <card.icon className={`h-5 w-5 ${card.color}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{card.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Urgent Alerts */}
+      {urgentAlerts.length > 0 && (
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5" />
+              Urgent Alerts Requiring Attention
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {urgentAlerts.map((alert) => (
+                <Link key={alert.title} href={alert.href} prefetch={true}>
+                  <div className={`flex items-center justify-between p-3 rounded-lg ${alert.bgColor} hover:shadow-md transition-shadow cursor-pointer`}>
+                    <div className="flex items-center gap-3">
+                      <alert.icon className={`h-5 w-5 ${alert.color}`} />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{alert.title}</p>
+                        <p className="text-xs text-gray-600">Click to view</p>
+                      </div>
+                    </div>
+                    <span className={`text-2xl font-bold ${alert.color}`}>{alert.count}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Incidents */}
+      {recentIncidents.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Recent Incidents
+            </CardTitle>
+            <Link href="/dashboard/incidents" prefetch={true} className="text-sm text-navy hover:underline">
+              View All →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentIncidents.map((incident: any) => (
+                <Link
+                  key={incident.id}
+                  href={`/dashboard/incidents/${incident.id}`}
+                  prefetch={true}
+                  className="block p-3 rounded-lg border border-gray-200 hover:border-navy hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                          incident.resolved 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {incident.resolved ? 'Resolved' : 'Open'}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">{incident.incident_type}</span>
+                        {incident.reference_number && (
+                          <span className="text-xs text-gray-500">#{incident.reference_number}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{incident.description || 'No description'}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        {incident.routes && (
+                          <span>Route: {incident.routes.route_number || 'N/A'}</span>
+                        )}
+                        {incident.vehicles && (
+                          <span>Vehicle: {incident.vehicles.vehicle_identifier || 'N/A'}</span>
+                        )}
+                        <span>{formatDateTime(incident.reported_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activities */}
+      {recentActivities.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-600" />
+              Recent Activities
+            </CardTitle>
+            <Link href="/dashboard/activities" prefetch={true} className="text-sm text-navy hover:underline">
+              View All →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentActivities.map((activity: any) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="mt-0.5">
+                    {getActivityIcon(activity.activity_type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-gray-900 capitalize">
+                        {activity.activity_type?.replace('_', ' ')}
+                      </span>
+                      {activity.entity_name && (
+                        <Link
+                          href={getEntityLink(activity.entity_type, activity.entity_id)}
+                          className="text-xs text-navy hover:underline"
+                          prefetch={true}
+                        >
+                          {activity.entity_name}
+                        </Link>
+                      )}
+                    </div>
+                    {activity.certificate_name && (
+                      <p className="text-sm text-gray-600">Certificate: {activity.certificate_name}</p>
+                    )}
+                    {activity.recipient_name && (
+                      <p className="text-sm text-gray-600">Recipient: {activity.recipient_name}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">{formatDateTime(activity.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Additional Stats */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {cards.map((card) => (
-          <Card key={card.title}>
+        {cards.slice(4).map((card) => (
+          <Card key={card.title} className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
                 {card.title}
@@ -408,159 +638,82 @@ async function DashboardStats() {
         </div>
       </div>
 
-      {/* Vehicle Type Breakdown */}
-      {Object.keys(stats.vehicleTypeCounts).length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold text-navy mb-4">🚛 Vehicle Types</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {Object.entries(stats.vehicleTypeCounts)
-              .sort(([, a], [, b]) => b - a)
-              .map(([type, count]) => (
-                <Link key={type} href="/dashboard/vehicles" prefetch={true}>
-                  <Card className="transition-all hover:shadow-lg hover:border-navy cursor-pointer">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">
-                        {type}
-                      </CardTitle>
-                      <div className="rounded-full p-2 bg-blue-100">
-                        <Truck className="h-5 w-5 text-blue-600" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{count}</div>
-                      <p className="text-xs text-gray-500 mt-2">Click to view vehicles →</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Spare Vehicles Section */}
+      {/* Operational Metrics Grid */}
       <div>
-        <h2 className="text-2xl font-bold text-navy mb-4">🚗 Spare Vehicle Management</h2>
-        <div className="grid gap-6 md:grid-cols-2">
-          {spareVehicleCards.map((card) => (
-            <Link key={card.title} href={card.href} prefetch={true}>
-              <Card className="transition-all hover:shadow-lg hover:border-navy cursor-pointer">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    {card.title}
-                  </CardTitle>
-                  <div className={`rounded-full p-2 ${card.bgColor}`}>
-                    <card.icon className={`h-5 w-5 ${card.color}`} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{card.value}</div>
-                  <p className="text-xs text-gray-500 mt-2">Click to view details →</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Spare Vehicles with Location Table */}
-      {spareVehicles.length > 0 && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-navy">📍 Recent Spare Vehicle Locations (Top 5)</CardTitle>
-            <Link href="/dashboard/vehicle-locations" prefetch={true}>
-              <span className="text-sm text-navy hover:underline">View All →</span>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {spareVehicles.map((location: any) => (
-                <div
-                  key={location.id}
-                  className="flex items-center justify-between border-l-4 border-yellow-400 bg-gray-50 p-3 rounded-r-md"
-                >
-                  <div>
-                    <p className="font-medium text-navy">
-                      {location.vehicles?.vehicle_identifier || 'N/A'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {location.vehicles?.make} {location.vehicles?.model}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{location.location_name}</p>
-                    <p className="text-xs text-gray-500">{location.address || 'No address'}</p>
-                  </div>
+        <h2 className="text-2xl font-bold text-navy mb-4">📊 Today's Operations</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Link href="/dashboard/vehicles?filter=spare" prefetch={true}>
+            <Card className="transition-all hover:shadow-lg hover:border-navy cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Spare Vehicles
+                </CardTitle>
+                <div className="rounded-full p-2 bg-yellow-100">
+                  <ParkingCircle className="h-5 w-5 text-yellow-600" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.spareVehicles}</div>
+                <p className="text-xs text-gray-500 mt-2">Available for deployment</p>
+              </CardContent>
+            </Card>
+          </Link>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Link
-              href="/dashboard/employees/create"
-              prefetch={true}
-              className="block w-full rounded-md bg-navy px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 transition-colors"
-            >
-              Add New Employee
-            </Link>
-            <Link
-              href="/dashboard/vehicles/create"
-              prefetch={true}
-              className="block w-full rounded-md bg-navy px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 transition-colors"
-            >
-              Add New Vehicle
-            </Link>
-            <Link
-              href="/dashboard/passengers/create"
-              prefetch={true}
-              className="block w-full rounded-md bg-navy px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 transition-colors"
-            >
-              Add New Passenger
-            </Link>
-            <Link
-              href="/dashboard/vehicle-locations/create"
-              prefetch={true}
-              className="block w-full rounded-md bg-navy px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 transition-colors"
-            >
-              Add Spare Vehicle Location
-            </Link>
-          </CardContent>
-        </Card>
+          <Link href="/dashboard/vehicles?status=off-road" prefetch={true}>
+            <Card className="transition-all hover:shadow-lg hover:border-navy cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Vehicles Off Road
+                </CardTitle>
+                <div className="rounded-full p-2 bg-red-100">
+                  <XCircle className="h-5 w-5 text-red-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.vor}</div>
+                <p className="text-xs text-gray-500 mt-2">Need attention</p>
+              </CardContent>
+            </Card>
+          </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>System Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Database Connection</span>
-                <span className="text-sm font-medium text-green-600">Connected</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Last Sync</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {new Date().toLocaleTimeString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Active Routes</span>
-                <span className="text-sm font-medium text-gray-900">{stats.routes}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Spare Vehicles</span>
-                <span className="text-sm font-medium text-yellow-600">{stats.spareVehicles}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <Link href="/dashboard/incidents" prefetch={true}>
+            <Card className="transition-all hover:shadow-lg hover:border-navy cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Incidents (This Month)
+                </CardTitle>
+                <div className="rounded-full p-2 bg-orange-100">
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.incidentsThisMonth}</div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {stats.incidents} currently open
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/vehicle-locations" prefetch={true}>
+            <Card className="transition-all hover:shadow-lg hover:border-navy cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Spare Locations Tracked
+                </CardTitle>
+                <div className="rounded-full p-2 bg-blue-100">
+                  <MapPinned className="h-5 w-5 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.spareWithLocation}</div>
+                <p className="text-xs text-gray-500 mt-2">
+                  of {stats.spareVehicles} spares
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
       </div>
     </>
   )

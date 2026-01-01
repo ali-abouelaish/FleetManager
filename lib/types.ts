@@ -52,6 +52,7 @@ export interface School {
   id: number
   name: string
   address: string | null
+  ref_number: string | null
   latitude: number | null
   longitude: number | null
   created_at: string
@@ -284,6 +285,57 @@ export interface PassengerAttendanceHistory {
   marked_by_name: string | null
   marked_at: string
   created_at: string
+}
+
+// Vehicle Seating Plan types
+export type SeatType = 'standard' | 'wheelchair' | 'exit_row'
+
+export interface VehicleSeatingPlan {
+  id: number
+  vehicle_id: number
+  name: string
+  total_capacity: number
+  rows: number
+  seats_per_row: number
+  wheelchair_spaces: number
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  created_by: number | null
+  updated_by: number | null
+}
+
+export interface SeatingPlanSeat {
+  id: number
+  seating_plan_id: number
+  seat_number: string
+  seat_type: SeatType
+  is_accessible: boolean
+  notes: string | null
+  created_at: string
+}
+
+export interface SeatingPlanInput {
+  name: string
+  total_capacity: number
+  rows: number
+  seats_per_row: number
+  wheelchair_spaces: number
+  notes?: string | null
+}
+
+export interface SubstitutionVehicle {
+  vehicle_id: number
+  registration_number: string
+  make: string
+  model: string
+  seating_plan_name: string
+  total_capacity: number
+  rows: number
+  seats_per_row: number
+  wheelchair_spaces: number
+  status: string
 }
 
 // Dashboard statistics types

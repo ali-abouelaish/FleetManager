@@ -6,8 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Eye, Plus, Pencil } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { AssistantSearchFilters } from './AssistantSearchFilters'
 
-async function getAssistants() {
+async function getAssistants(filters?: {
+  search?: string
+  status?: string
+  can_work?: string
+}) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('passenger_assistants')
@@ -19,7 +24,29 @@ async function getAssistants() {
     return []
   }
 
-  return data || []
+  // Apply filters in memory for employee-related fields
+  let filtered = data || []
+  
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim().toLowerCase()
+    filtered = filtered.filter((assistant: any) =>
+      assistant.employees?.full_name?.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  if (filters?.status && filters.status !== 'all') {
+    filtered = filtered.filter((assistant: any) =>
+      assistant.employees?.employment_status === filters.status
+    )
+  }
+
+  if (filters?.can_work === 'yes') {
+    filtered = filtered.filter((assistant: any) => assistant.employees?.can_work === true)
+  } else if (filters?.can_work === 'no') {
+    filtered = filtered.filter((assistant: any) => assistant.employees?.can_work === false)
+  }
+
+  return filtered
 }
 
 // Helper to get missing and expired certificates for a PA
@@ -40,8 +67,12 @@ function getMissingAndExpiredCertificates(assistant: any): string[] {
   return issues
 }
 
-async function AssistantsTable() {
-  const assistants = await getAssistants()
+async function AssistantsTable(filters?: {
+  search?: string
+  status?: string
+  can_work?: string
+}) {
+  const assistants = await getAssistants(filters)
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -127,7 +158,22 @@ async function AssistantsTable() {
   )
 }
 
-export default function AssistantsPage() {
+export default async function AssistantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string
+    status?: string
+    can_work?: string
+  }>
+}) {
+  const params = await searchParams
+  const filters = {
+    search: params?.search,
+    status: params?.status,
+    can_work: params?.can_work,
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -143,8 +189,10 @@ export default function AssistantsPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={9} />}>
-        <AssistantsTable />
+      <AssistantSearchFilters />
+
+      <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={9} />}>
+        <AssistantsTable search={filters.search} status={filters.status} can_work={filters.can_work} />
       </Suspense>
     </div>
   )

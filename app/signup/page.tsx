@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function SignupPage() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -29,6 +30,11 @@ export default function SignupPage() {
       return
     }
 
+    if (!name.trim()) {
+      setError('Please enter your full name')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -41,19 +47,33 @@ export default function SignupPage() {
       if (authError) throw authError
 
       if (authData.user) {
-        // Create user record in users table
+        // Create user record in users table with pending approval status
         // Note: In production, this should be handled by a database trigger or Edge Function
         const { error: userError } = await supabase.from('users').insert({
           email: email,
           password_hash: 'managed_by_supabase_auth',
           role: role,
+          approval_status: 'pending',
+          full_name: name.trim(),
         })
 
         if (userError) {
           console.error('Error creating user record:', userError)
+          // More detailed error message
+          if (userError.code === '23505') {
+            throw new Error('An account with this email already exists')
+          } else if (userError.code === '42501') {
+            throw new Error('Permission denied. Please contact an administrator.')
+          } else {
+            throw new Error(`Failed to create user account: ${userError.message}`)
+          }
         }
 
-        router.push('/dashboard')
+        // Sign out the user immediately since they need admin approval
+        await supabase.auth.signOut()
+
+        // Redirect to pending approval page
+        router.push('/signup/pending')
         router.refresh()
       }
     } catch (error: any) {
@@ -81,6 +101,22 @@ export default function SignupPage() {
             </div>
           )}
           <div className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address

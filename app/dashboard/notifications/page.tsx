@@ -21,6 +21,19 @@ async function getNotifications() {
     `)
     .order('created_at', { ascending: false })
     .limit(100)
+  
+  // Parse details JSONB field if it exists
+  if (data) {
+    data.forEach((notification: any) => {
+      if (notification.details && typeof notification.details === 'string') {
+        try {
+          notification.details = JSON.parse(notification.details)
+        } catch (e) {
+          // Keep as is if not valid JSON
+        }
+      }
+    })
+  }
 
   if (error) {
     console.error('Error fetching notifications:', error)
@@ -36,7 +49,7 @@ async function getPendingCount() {
   const { data, error } = await supabase
     .from('notifications')
     .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending')
+    .or('status.eq.pending,admin_response_required.eq.true')
 
   if (error) {
     console.error('Error counting notifications:', error)
@@ -56,7 +69,7 @@ export default async function NotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Compliance certificate expiry notifications
+            Compliance certificates and route activity notifications
           </p>
         </div>
         <div className="flex items-center space-x-4">

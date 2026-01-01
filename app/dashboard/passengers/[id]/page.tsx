@@ -156,6 +156,23 @@ export default async function ViewPassengerPage({ params }: { params: { id: stri
             </div>
           </CardContent>
         </Card>
+
+        {/* Important Notes Section - Prominently Displayed */}
+        {passenger.important_notes && (
+          <Card className="md:col-span-2 border-2 border-orange-500 bg-orange-50">
+            <CardHeader className="bg-orange-600 text-white">
+              <CardTitle className="flex items-center">
+                <AlertCircle className="mr-2 h-5 w-5" />
+                Important Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="p-4 bg-white rounded-lg border-2 border-orange-200">
+                <p className="text-sm text-gray-900 whitespace-pre-wrap font-medium">{passenger.important_notes}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Parent Contacts */}

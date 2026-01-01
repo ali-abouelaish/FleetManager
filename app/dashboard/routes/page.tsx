@@ -6,24 +6,42 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Plus, Eye, Pencil } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { RouteSearchFilters } from './RouteSearchFilters'
 
-async function getRoutes() {
+async function getRoutes(filters?: { search?: string }) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('routes')
     .select('*, schools(name)')
-    .order('created_at', { ascending: false })
+
+  // Apply search filter (route_number or school name)
+  if (filters?.search) {
+    const searchTerm = filters.search.trim().toLowerCase()
+    // We'll filter in memory since we need to search in related school name
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching routes:', error)
     return []
   }
 
-  return data || []
+  // Apply search filter in memory for route_number and school name
+  let filtered = data || []
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim().toLowerCase()
+    filtered = filtered.filter((route: any) =>
+      route.route_number?.toLowerCase().includes(searchTerm) ||
+      route.schools?.name?.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  return filtered
 }
 
-async function RoutesTable() {
-  const routes = await getRoutes()
+async function RoutesTable(filters?: { search?: string }) {
+  const routes = await getRoutes(filters)
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -74,7 +92,14 @@ async function RoutesTable() {
   )
 }
 
-export default function RoutesPage() {
+export default async function RoutesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string }>
+}) {
+  const params = await searchParams
+  const filters = { search: params?.search }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -92,8 +117,10 @@ export default function RoutesPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={5} />}>
-        <RoutesTable />
+      <RouteSearchFilters />
+
+      <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={5} />}>
+        <RoutesTable search={filters.search} />
       </Suspense>
     </div>
   )

@@ -6,23 +6,57 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Eye, Pencil, Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { DriverSearchFilters } from './DriverSearchFilters'
 
-async function getDrivers() {
+async function getDrivers(filters?: {
+  search?: string
+  status?: string
+  can_work?: string
+}) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('drivers')
     .select(`
       *,
       employees(full_name, phone_number, employment_status, can_work)
     `)
-    .order('employee_id')
+
+  // Apply filters through employees relation
+  if (filters?.search || filters?.status || filters?.can_work) {
+    // We need to filter by employee fields, so we'll filter after fetching
+    // or use a more complex query
+  }
+
+  const { data, error } = await query.order('employee_id')
 
   if (error) {
     console.error('Error fetching drivers:', error)
     return []
   }
 
-  return data || []
+  // Apply filters in memory for employee-related fields
+  let filtered = data || []
+  
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim().toLowerCase()
+    filtered = filtered.filter((driver: any) =>
+      driver.employees?.full_name?.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  if (filters?.status && filters.status !== 'all') {
+    filtered = filtered.filter((driver: any) =>
+      driver.employees?.employment_status === filters.status
+    )
+  }
+
+  if (filters?.can_work === 'yes') {
+    filtered = filtered.filter((driver: any) => driver.employees?.can_work === true)
+  } else if (filters?.can_work === 'no') {
+    filtered = filtered.filter((driver: any) => driver.employees?.can_work === false)
+  }
+
+  return filtered
 }
 
 // Helper to get missing and expired certificates for a driver
@@ -43,8 +77,16 @@ function getMissingAndExpiredCertificates(driver: any): string[] {
   return issues
 }
 
-async function DriversTable() {
-  const drivers = await getDrivers()
+async function DriversTable({
+  search,
+  status,
+  can_work,
+}: {
+  search?: string
+  status?: string
+  can_work?: string
+}) {
+  const drivers = await getDrivers({ search, status, can_work })
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -130,7 +172,25 @@ async function DriversTable() {
   )
 }
 
-export default function DriversPage() {
+export default async function DriversPage({
+  searchParams,
+}: {
+  searchParams: {
+    search?: string
+    status?: string
+    can_work?: string
+  }
+}) {
+  // Build filters from search params (Next.js 14 - searchParams is not a Promise)
+  const filters = {
+    search: searchParams?.search || undefined,
+    status: searchParams?.status || undefined,
+    can_work: searchParams?.can_work || undefined,
+  }
+
+  // Create a unique key for Suspense based on all filter params
+  const suspenseKey = JSON.stringify(filters)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -146,8 +206,10 @@ export default function DriversPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={7} />}>
-        <DriversTable />
+      <DriverSearchFilters />
+
+      <Suspense key={suspenseKey} fallback={<TableSkeleton rows={5} columns={7} />}>
+        <DriversTable {...filters} />
       </Suspense>
     </div>
   )

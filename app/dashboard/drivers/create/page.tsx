@@ -69,6 +69,7 @@ export default function CreateDriverPage() {
     paper_licence_file: null,
     taxi_plate_photo_file: null,
     logbook_file: null,
+    badge_photo_file: null,
   })
 
   useEffect(() => {
@@ -164,6 +165,7 @@ export default function CreateDriverPage() {
         paper_licence_file: 'Paper Licence',
         taxi_plate_photo_file: 'Taxi Plate Photo',
         logbook_file: 'Logbook',
+        badge_photo_file: 'ID Badge Photo',
       }
       
       for (const [key, file] of Object.entries(fileUploads)) {
@@ -705,6 +707,132 @@ export default function CreateDriverPage() {
             <CardHeader className="bg-navy text-white">
               <CardTitle>Document Checklist</CardTitle>
             </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="birth_certificate"
+                    name="birth_certificate"
+                    checked={formData.birth_certificate}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="birth_certificate" className="ml-2 text-sm text-gray-700">
+                    Birth Certificate
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="marriage_certificate"
+                    name="marriage_certificate"
+                    checked={formData.marriage_certificate}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="marriage_certificate" className="ml-2 text-sm text-gray-700">
+                    Marriage Certificate
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="photo_taken"
+                    name="photo_taken"
+                    checked={formData.photo_taken}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="photo_taken" className="ml-2 text-sm text-gray-700">
+                    Photo Taken
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="private_hire_badge"
+                    name="private_hire_badge"
+                    checked={formData.private_hire_badge}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="private_hire_badge" className="ml-2 text-sm text-gray-700">
+                    Private Hire Badge
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="paper_licence"
+                    name="paper_licence"
+                    checked={formData.paper_licence}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="paper_licence" className="ml-2 text-sm text-gray-700">
+                    Paper Licence
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="taxi_plate_photo"
+                    name="taxi_plate_photo"
+                    checked={formData.taxi_plate_photo}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="taxi_plate_photo" className="ml-2 text-sm text-gray-700">
+                    Taxi Plate Photo
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="logbook"
+                    name="logbook"
+                    checked={formData.logbook}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                  />
+                  <label htmlFor="logbook" className="ml-2 text-sm text-gray-700">
+                    Logbook
+                  </label>
+                </div>
+              </div>
+
+              {/* Badge Photo Upload */}
+              <div className="mt-6 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                <h3 className="font-semibold text-navy mb-4">Badge Photo</h3>
+                <div>
+                  <Label htmlFor="badge_photo_file">Upload Badge Photo</Label>
+                  <input
+                    type="file"
+                    id="badge_photo_file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('badge_photo_file', e.target.files?.[0] || null)}
+                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Upload a photo for the driver's ID badge (JPG, PNG)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Documents Tab - OLD */}
+        {false && activeTab === 'documents' && (
+          <Card>
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Document Checklist</CardTitle>
+            </CardHeader>
             <CardContent className="pt-6">
               <div className="grid gap-6 md:grid-cols-2">
                 {[
@@ -744,8 +872,29 @@ export default function CreateDriverPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Badge Photo Upload */}
+              <div className="mt-6 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                <h3 className="font-semibold text-navy mb-4">Badge Photo</h3>
+                <div>
+                  <Label htmlFor="badge_photo_file">Upload Badge Photo</Label>
+                  <input
+                    type="file"
+                    id="badge_photo_file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('badge_photo_file', e.target.files?.[0] || null)}
+                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Upload a photo for the driver's ID badge (JPG, PNG)</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Documents Tab - OLD */}
+        {false && activeTab === 'documents' && (
+          <div></div>
         )}
 
         {/* Navigation Buttons for Documents */}

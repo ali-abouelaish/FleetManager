@@ -16,6 +16,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [badgePhotoFile, setBadgePhotoFile] = useState<File | null>(null)
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -68,10 +69,46 @@ function EditEmployeePageClient({ id }: { id: string }) {
     try {
       const { error } = await supabase
         .from('employees')
-        .update(formData)
+        .update({
+          ...formData,
+          end_date: formData.end_date || null, // Set to null if empty
+        })
         .eq('id', id)
 
       if (error) throw error
+
+      // Upload badge photo if provided
+      if (badgePhotoFile) {
+        const fileExt = badgePhotoFile.name.split('.').pop()
+        const fileName = `employees/${id}/badge_photo_${Date.now()}.${fileExt}`
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('EMPLOYEE_DOCUMENTS')
+          .upload(fileName, badgePhotoFile)
+
+        if (uploadError) {
+          console.error('Error uploading badge photo:', uploadError)
+          // Continue even if upload fails
+        } else if (uploadData) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('EMPLOYEE_DOCUMENTS')
+            .getPublicUrl(fileName)
+
+          // Save to documents table
+          const { error: docError } = await supabase.from('documents').insert({
+            employee_id: parseInt(id),
+            file_name: badgePhotoFile.name,
+            file_type: badgePhotoFile.type || 'image/jpeg',
+            file_path: fileName,
+            file_url: publicUrl,
+            doc_type: 'ID Badge Photo',
+            uploaded_by: null,
+          })
+          if (docError) {
+            console.error('Error saving badge photo document:', docError)
+          }
+        }
+      }
 
       // Log audit
       await fetch('/api/audit', {
@@ -277,6 +314,18 @@ function EditEmployeePageClient({ id }: { id: string }) {
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <Label htmlFor="wheelchair_access">Wheelchair Access</Label>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="badge_photo">Badge Photo</Label>
+                <input
+                  type="file"
+                  id="badge_photo"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={(e) => setBadgePhotoFile(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                />
+                <p className="text-xs text-gray-500">Upload a photo for the employee's ID badge (JPG, PNG)</p>
               </div>
             </div>
 

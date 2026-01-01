@@ -35,6 +35,7 @@ export default function CreatePassengerPage() {
     dob: '',
     gender: '',
     address: '',
+    important_notes: '',
     sen_requirements: '',
     school_id: searchParams.get('school_id') || '',
     mobility_type: '',
@@ -320,6 +321,25 @@ export default function CreatePassengerPage() {
                   setFormData({ ...formData, address: e.target.value })
                 }
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="important_notes">
+                Important Notes <span className="text-orange-600 font-semibold">⚠️</span>
+              </Label>
+              <textarea
+                id="important_notes"
+                rows={4}
+                className="flex w-full rounded-md border-2 border-orange-300 bg-orange-50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                value={formData.important_notes}
+                onChange={(e) =>
+                  setFormData({ ...formData, important_notes: e.target.value })
+                }
+                placeholder="Enter any flagged or important information about this passenger that should be prominently displayed..."
+              />
+              <p className="text-xs text-orange-600 mt-1">
+                This information will be prominently displayed on the passenger profile
+              </p>
             </div>
 
             <div className="space-y-2">

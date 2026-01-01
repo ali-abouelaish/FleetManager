@@ -59,6 +59,11 @@ export default async function ViewVehiclePage({
         </div>
         <div className="flex items-center space-x-3">
           <VORToggleButton vehicleId={vehicle.id} currentVORStatus={vehicle.off_the_road || false} />
+          <Link href={`/dashboard/vehicles/${vehicle.id}/seating`}>
+            <Button variant="secondary">
+              🪑 Seating Plan
+            </Button>
+          </Link>
           <Link href={`/dashboard/vehicles/${vehicle.id}/edit`}>
             <Button>
               <Pencil className="mr-2 h-4 w-4" />

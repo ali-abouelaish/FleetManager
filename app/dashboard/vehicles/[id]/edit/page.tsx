@@ -492,6 +492,26 @@ function EditVehiclePageClient({ id }: { id: string }) {
               </div>
             </div>
 
+            {/* Seating Plan Note */}
+            <div className="pt-6 border-t border-gray-200">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">🪑</div>
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-1">Seating Plan Configuration</h4>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Manage the seating layout and capacity for this vehicle on the dedicated seating plan page.
+                    </p>
+                    <Link href={`/dashboard/vehicles/${id}/seating`}>
+                      <Button type="button" variant="secondary" size="sm">
+                        Manage Seating Plan
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <textarea

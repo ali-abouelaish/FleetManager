@@ -95,6 +95,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
     paper_licence_file: null,
     taxi_plate_photo_file: null,
     logbook_file: null,
+    badge_photo_file: null,
   })
 
   useEffect(() => {
@@ -196,6 +197,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         paper_licence_file: 'Paper Licence',
         taxi_plate_photo_file: 'Taxi Plate Photo',
         logbook_file: 'Logbook',
+        badge_photo_file: 'ID Badge Photo',
       }
       
       for (const [key, file] of Object.entries(fileUploads)) {
@@ -738,6 +740,22 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                   <label htmlFor="logbook" className="ml-2 text-sm text-gray-700">
                     Logbook
                   </label>
+                </div>
+              </div>
+
+              {/* Badge Photo Upload */}
+              <div className="mt-6 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                <h3 className="font-semibold text-navy mb-4">Badge Photo</h3>
+                <div>
+                  <Label htmlFor="badge_photo_file">Upload Badge Photo</Label>
+                  <input
+                    type="file"
+                    id="badge_photo_file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('badge_photo_file', e.target.files?.[0] || null)}
+                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Upload a photo for the driver's ID badge (JPG, PNG)</p>
                 </div>
               </div>
             </CardContent>

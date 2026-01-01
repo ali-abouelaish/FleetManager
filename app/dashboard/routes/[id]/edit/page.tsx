@@ -41,6 +41,7 @@ function EditRoutePageClient({ id }: { id: string }) {
     vehicle_id: '',
     am_start_time: '',
     pm_start_time: '',
+    pm_start_time_friday: '',
     days_of_week: [] as string[],
   })
 
@@ -157,6 +158,7 @@ function EditRoutePageClient({ id }: { id: string }) {
           vehicle_id: routeResult.data.vehicle_id || '',
           am_start_time: formatTime(routeResult.data.am_start_time),
           pm_start_time: formatTime(routeResult.data.pm_start_time),
+          pm_start_time_friday: formatTime(routeResult.data.pm_start_time_friday),
           days_of_week: Array.isArray(routeResult.data.days_of_week) 
             ? routeResult.data.days_of_week 
             : [],
@@ -659,6 +661,29 @@ function EditRoutePageClient({ id }: { id: string }) {
                   />
                 </div>
               </div>
+
+              {/* Friday PM Start Time - Only show if Friday is selected */}
+              {formData.days_of_week.includes('Friday') && (
+                <div className="mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pm_start_time_friday">
+                      PM Start Time (Friday) <span className="text-gray-500 text-sm">(Optional - different from regular PM time)</span>
+                    </Label>
+                    <Input
+                      id="pm_start_time_friday"
+                      type="time"
+                      value={formData.pm_start_time_friday}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pm_start_time_friday: e.target.value })
+                      }
+                      placeholder="Leave empty to use regular PM time"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      If Friday has a different PM start time, enter it here. Otherwise, leave empty to use the regular PM time above.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4">
                 <Label className="mb-2 block">Days of Week</Label>

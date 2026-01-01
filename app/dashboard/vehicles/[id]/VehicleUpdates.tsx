@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Label } from '@/components/ui/Label'
-import { Plus, MessageSquare, Edit2, Trash2 } from 'lucide-react'
+import { Plus, MessageSquare, Edit2, Trash2, Image, FileText, Download } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { VehicleUpdate } from '@/lib/types'
 
@@ -34,7 +34,14 @@ export default function VehicleUpdates({ vehicleId }: VehicleUpdatesProps) {
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      setUpdates(data)
+      // Parse file_urls if they exist
+      const parsedUpdates = data.map(update => ({
+        ...update,
+        file_urls: typeof update.file_urls === 'string' 
+          ? JSON.parse(update.file_urls) 
+          : (update.file_urls || [])
+      }))
+      setUpdates(parsedUpdates)
     }
     setLoadingUpdates(false)
   }
@@ -177,7 +184,51 @@ export default function VehicleUpdates({ vehicleId }: VehicleUpdatesProps) {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{update.update_text}</p>
+                  <>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{update.update_text}</p>
+                    
+                    {/* Display attached files */}
+                    {update.file_urls && update.file_urls.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-xs font-medium text-gray-700 mb-2">Attachments:</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          {update.file_urls.map((fileUrl: string, idx: number) => {
+                            const isImage = fileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                            const fileName = fileUrl.split('/').pop() || `file-${idx + 1}`
+                            return (
+                              <a
+                                key={idx}
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative group border border-gray-200 rounded p-2 hover:bg-gray-100 transition-colors"
+                              >
+                                {isImage ? (
+                                  <div className="relative">
+                                    <img
+                                      src={fileUrl}
+                                      alt={`Attachment ${idx + 1}`}
+                                      className="w-full h-20 object-cover rounded"
+                                    />
+                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded flex items-center justify-center">
+                                      <Download className="h-4 w-4 text-white opacity-0 group-hover:opacity-100" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center h-20">
+                                    <FileText className="h-8 w-8 text-gray-400 mb-1" />
+                                    <span className="text-xs text-gray-600 truncate w-full text-center px-1">
+                                      {fileName.length > 15 ? fileName.substring(0, 15) + '...' : fileName}
+                                    </span>
+                                  </div>
+                                )}
+                              </a>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}

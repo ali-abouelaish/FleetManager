@@ -25,6 +25,7 @@ export default function CreateEmployeePage() {
     personal_email: '',
     address: '',
     start_date: '',
+    end_date: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,7 +38,7 @@ export default function CreateEmployeePage() {
         .from('employees')
         .insert([{
           ...formData,
-          end_date: null, // Explicitly set to null since field is removed from form
+          end_date: formData.end_date || null, // Set to null if empty
           wheelchair_access: null, // Explicitly set to null since field is removed from form
         }])
         .select()
@@ -185,6 +186,18 @@ export default function CreateEmployeePage() {
                   value={formData.start_date}
                   onChange={(e) =>
                     setFormData({ ...formData, start_date: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="end_date">End Date</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, end_date: e.target.value })
                   }
                 />
               </div>

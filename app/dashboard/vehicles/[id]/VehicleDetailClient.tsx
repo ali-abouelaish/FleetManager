@@ -1,13 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { formatDate } from '@/lib/utils'
 import VehicleUpdates from './VehicleUpdates'
 import VehicleDocuments from './VehicleDocuments'
 import VehicleComplianceDocuments from './VehicleComplianceDocuments'
+import VehicleQRCode from './VehicleQRCode'
+import VehiclePreChecks from './VehiclePreChecks'
+import { VehicleSeatingPlan } from '@/lib/types'
 
-type TabType = 'overview' | 'compliance' | 'documents'
+type TabType = 'overview' | 'compliance' | 'documents' | 'daily-checks'
 
 interface VehicleDetailClientProps {
   vehicle: any
@@ -25,6 +30,10 @@ interface FieldAuditInfo {
 export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetailClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [fieldAudit, setFieldAudit] = useState<Record<string, FieldAuditInfo>>({})
+  const [seatingPlan, setSeatingPlan] = useState<VehicleSeatingPlan | null>(null)
+  const [loadingSeating, setLoadingSeating] = useState(true)
+  const [routes, setRoutes] = useState<any[]>([])
+  const [loadingRoutes, setLoadingRoutes] = useState(true)
 
   useEffect(() => {
     async function fetchFieldAudit() {
@@ -39,7 +48,37 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
       }
     }
 
+    async function fetchSeatingPlan() {
+      try {
+        const response = await fetch(`/api/vehicles/${vehicleId}/seating-plan`)
+        if (response.ok) {
+          const data = await response.json()
+          setSeatingPlan(data.seatingPlan || null)
+        }
+      } catch (error) {
+        console.error('Error fetching seating plan:', error)
+      } finally {
+        setLoadingSeating(false)
+      }
+    }
+
+    async function fetchRoutes() {
+      try {
+        const response = await fetch(`/api/vehicles/${vehicleId}/routes`)
+        if (response.ok) {
+          const data = await response.json()
+          setRoutes(data.routes || [])
+        }
+      } catch (error) {
+        console.error('Error fetching routes:', error)
+      } finally {
+        setLoadingRoutes(false)
+      }
+    }
+
     fetchFieldAudit()
+    fetchSeatingPlan()
+    fetchRoutes()
   }, [vehicleId])
 
   const getFieldAuditInfo = (fieldName: string) => {
@@ -56,6 +95,15 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const formatTime = (time: string | null): string => {
+    if (!time) return 'N/A'
+    if (time.includes(':')) {
+      const parts = time.split(':')
+      return `${parts[0]}:${parts[1]}`
+    }
+    return time
   }
 
   const FieldWithAudit = ({ fieldName, label, value, formatValue }: { 
@@ -117,6 +165,17 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             `}
           >
             📄 All Documents
+          </button>
+          <button
+            onClick={() => setActiveTab('daily-checks')}
+            className={`
+              border-b-2 px-1 py-4 text-sm font-medium transition-colors
+              ${activeTab === 'daily-checks' 
+                ? 'border-navy text-navy' 
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+            `}
+          >
+            ✅ Daily Checks
           </button>
         </nav>
       </div>
@@ -216,6 +275,69 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
               </CardContent>
             </Card>
 
+            {/* Vehicle QR Code */}
+            <VehicleQRCode vehicleId={vehicleId} />
+
+            {/* Seating Plan Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Seating Plan</CardTitle>
+                  <Link href={`/dashboard/vehicles/${vehicleId}/seating`}>
+                    <Button variant="secondary" size="sm">
+                      {seatingPlan ? 'View/Edit' : 'Configure'}
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingSeating ? (
+                  <div className="text-sm text-gray-500">Loading seating plan...</div>
+                ) : seatingPlan ? (
+                  <div className="space-y-3">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Plan Name</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{seatingPlan.name}</dd>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Total Capacity</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.total_capacity} passengers</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Wheelchair Spaces</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.wheelchair_spaces}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Rows</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.rows}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Seats per Row</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.seats_per_row}</dd>
+                      </div>
+                    </div>
+                    {seatingPlan.notes && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.notes}</dd>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="text-4xl mb-2">🪑</div>
+                    <p className="text-sm text-gray-500 mb-3">No seating plan configured</p>
+                    <Link href={`/dashboard/vehicles/${vehicleId}/seating`}>
+                      <Button variant="secondary" size="sm">
+                        Configure Seating Plan
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {vehicle.notes && (
               <Card>
                 <CardHeader>
@@ -234,6 +356,68 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                 </CardContent>
               </Card>
             )}
+
+            {/* Assigned Routes */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Routes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingRoutes ? (
+                  <div className="text-sm text-gray-500">Loading routes...</div>
+                ) : routes.length > 0 ? (
+                  <div className="space-y-4">
+                    {routes.map((route) => (
+                      <div key={route.id} className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <Link
+                              href={`/dashboard/routes/${route.id}`}
+                              className="font-semibold text-navy hover:text-blue-800 transition-colors"
+                            >
+                              {route.route_number || `Route ${route.id}`}
+                            </Link>
+                            {route.schools && (
+                              <div className="text-sm text-gray-600 mt-1">
+                                {route.schools.name}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <dt className="text-xs font-medium text-gray-500">AM Start Time</dt>
+                            <dd className="mt-1 text-gray-900">{formatTime(route.am_start_time)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs font-medium text-gray-500">PM Start Time</dt>
+                            <dd className="mt-1 text-gray-900">{formatTime(route.pm_start_time)}</dd>
+                          </div>
+                          {route.pm_start_time_friday && route.pm_start_time_friday !== route.pm_start_time && (
+                            <div className="col-span-2">
+                              <dt className="text-xs font-medium text-gray-500">PM Start Time (Friday)</dt>
+                              <dd className="mt-1 text-gray-900 font-semibold text-navy">
+                                {formatTime(route.pm_start_time_friday)}
+                              </dd>
+                            </div>
+                          )}
+                          {route.days_of_week && Array.isArray(route.days_of_week) && route.days_of_week.length > 0 && (
+                            <div className="col-span-2">
+                              <dt className="text-xs font-medium text-gray-500">Days</dt>
+                              <dd className="mt-1 text-gray-900">{route.days_of_week.join(', ')}</dd>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">No routes assigned to this vehicle</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Vehicle Updates */}
@@ -249,6 +433,11 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
       {/* All Documents Tab */}
       {activeTab === 'documents' && (
         <VehicleDocuments vehicleId={vehicleId} />
+      )}
+
+      {/* Daily Checks Tab */}
+      {activeTab === 'daily-checks' && (
+        <VehiclePreChecks vehicleId={vehicleId} />
       )}
     </div>
   )

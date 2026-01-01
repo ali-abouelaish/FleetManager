@@ -6,21 +6,40 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Plus, Eye, Pencil, MessageSquare } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { PassengerSearchFilters } from './PassengerSearchFilters'
 
-async function getPassengers() {
+async function getPassengers(filters?: {
+  search?: string
+  mobility_type?: string
+}) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('passengers')
     .select('*, schools(name), routes(route_number)')
-    .order('id', { ascending: false })
+
+  // Apply mobility type filter
+  if (filters?.mobility_type && filters.mobility_type !== 'all') {
+    query = query.eq('mobility_type', filters.mobility_type)
+  }
+
+  const { data, error } = await query.order('id', { ascending: false })
 
   if (error) {
     console.error('Error fetching passengers:', error)
     return []
   }
 
+  // Apply search filter in memory (for name)
+  let filtered = data || []
+  if (filters?.search && filters.search.trim()) {
+    const searchTerm = filters.search.trim().toLowerCase()
+    filtered = filtered.filter((passenger: any) =>
+      passenger.full_name?.toLowerCase().includes(searchTerm)
+    )
+  }
+
   // Fetch update counts for each passenger
-  const passengerIds = data?.map(p => p.id) || []
+  const passengerIds = filtered?.map(p => p.id) || []
   const { data: updateCounts } = await supabase
     .from('passenger_updates')
     .select('passenger_id')
@@ -32,7 +51,7 @@ async function getPassengers() {
   })
 
   // Attach counts to passengers
-  const passengersWithCounts = data?.map(passenger => ({
+  const passengersWithCounts = filtered?.map(passenger => ({
     ...passenger,
     updateCount: countsMap.get(passenger.id) || 0
   }))
@@ -40,8 +59,11 @@ async function getPassengers() {
   return passengersWithCounts || []
 }
 
-async function PassengersTable() {
-  const passengers = await getPassengers()
+async function PassengersTable(filters?: {
+  search?: string
+  mobility_type?: string
+}) {
+  const passengers = await getPassengers(filters)
 
   return (
     <div className="rounded-md border bg-white shadow-sm">
@@ -107,7 +129,20 @@ async function PassengersTable() {
   )
 }
 
-export default function PassengersPage() {
+export default async function PassengersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string
+    mobility_type?: string
+  }>
+}) {
+  const params = await searchParams
+  const filters = {
+    search: params?.search,
+    mobility_type: params?.mobility_type,
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -125,8 +160,10 @@ export default function PassengersPage() {
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={8} />}>
-        <PassengersTable />
+      <PassengerSearchFilters />
+
+      <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={8} />}>
+        <PassengersTable search={filters.search} mobility_type={filters.mobility_type} />
       </Suspense>
     </div>
   )

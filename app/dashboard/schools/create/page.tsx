@@ -19,6 +19,7 @@ export default function CreateSchoolPage() {
   const [formData, setFormData] = useState({
     name: '',
     address: '',
+    ref_number: '',
     phone_number: '',
     contact_name: '',
     contact_phone: '',
@@ -98,6 +99,18 @@ export default function CreateSchoolPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ref_number">Ref Number</Label>
+              <Input
+                id="ref_number"
+                value={formData.ref_number}
+                onChange={(e) =>
+                  setFormData({ ...formData, ref_number: e.target.value })
+                }
+                placeholder="e.g., SCH001"
               />
             </div>
 

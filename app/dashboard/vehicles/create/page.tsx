@@ -48,6 +48,13 @@ export default function CreateVehiclePage() {
     off_the_road: false,
     assigned_to: '',
     notes: '',
+    // Seating plan fields
+    seating_plan_name: '',
+    total_capacity: '',
+    rows: '',
+    seats_per_row: '',
+    wheelchair_spaces: '',
+    seating_notes: '',
   })
 
   useEffect(() => {
@@ -104,6 +111,27 @@ export default function CreateVehiclePage() {
       if (error) throw error
 
       if (data && data[0]) {
+        // Create seating plan if provided
+        if (formData.seating_plan_name && formData.total_capacity && formData.rows && formData.seats_per_row) {
+          try {
+            await fetch(`/api/vehicles/${data[0].id}/seating`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: formData.seating_plan_name,
+                total_capacity: parseInt(formData.total_capacity),
+                rows: parseInt(formData.rows),
+                seats_per_row: parseInt(formData.seats_per_row),
+                wheelchair_spaces: parseInt(formData.wheelchair_spaces) || 0,
+                notes: formData.seating_notes || null,
+              }),
+            })
+          } catch (seatingError) {
+            console.error('Error creating seating plan:', seatingError)
+            // Don't fail the vehicle creation if seating plan fails
+          }
+        }
+
         await fetch('/api/audit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -406,6 +434,98 @@ export default function CreateVehiclePage() {
                   }))}
                   placeholder="Select driver for MOT & service follow-up..."
                 />
+              </div>
+            </div>
+
+            {/* Seating Plan Section */}
+            <div className="pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Seating Plan (Optional)</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Configure the seating layout for this vehicle. You can also add this later from the vehicle detail page.
+              </p>
+              
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="seating_plan_name">Plan Name</Label>
+                  <Input
+                    id="seating_plan_name"
+                    value={formData.seating_plan_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seating_plan_name: e.target.value })
+                    }
+                    placeholder="e.g., Standard Coach (45 passengers)"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="total_capacity">Total Capacity</Label>
+                  <Input
+                    id="total_capacity"
+                    type="number"
+                    min="1"
+                    value={formData.total_capacity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, total_capacity: e.target.value })
+                    }
+                    placeholder="e.g., 4"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="wheelchair_spaces">Wheelchair Spaces</Label>
+                  <Input
+                    id="wheelchair_spaces"
+                    type="number"
+                    min="0"
+                    value={formData.wheelchair_spaces}
+                    onChange={(e) =>
+                      setFormData({ ...formData, wheelchair_spaces: e.target.value })
+                    }
+                    placeholder="e.g., 0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rows">Number of Rows</Label>
+                  <Input
+                    id="rows"
+                    type="number"
+                    min="1"
+                    value={formData.rows}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rows: e.target.value })
+                    }
+                    placeholder="e.g., 2"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="seats_per_row">Seats per Row</Label>
+                  <Input
+                    id="seats_per_row"
+                    type="number"
+                    min="1"
+                    value={formData.seats_per_row}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seats_per_row: e.target.value })
+                    }
+                    placeholder="e.g., 2"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="seating_notes">Seating Notes</Label>
+                  <textarea
+                    id="seating_notes"
+                    rows={2}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    value={formData.seating_notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seating_notes: e.target.value })
+                    }
+                    placeholder="e.g., 2 wheelchair lifts, emergency exit row 5"
+                  />
+                </div>
               </div>
             </div>
 

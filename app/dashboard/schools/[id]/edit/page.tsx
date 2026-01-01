@@ -19,6 +19,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
   const [formData, setFormData] = useState({
     name: '',
     address: '',
+    ref_number: '',
     phone_number: '',
     contact_name: '',
     contact_phone: '',
@@ -48,6 +49,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
         setFormData({
           name: data.name || '',
           address: data.address || '',
+          ref_number: data.ref_number || '',
           phone_number: data.phone_number || '',
           contact_name: data.contact_name || '',
           contact_phone: data.contact_phone || '',
@@ -166,6 +168,18 @@ function EditSchoolPageClient({ id }: { id: string }) {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ref_number">Ref Number</Label>
+              <Input
+                id="ref_number"
+                value={formData.ref_number}
+                onChange={(e) =>
+                  setFormData({ ...formData, ref_number: e.target.value })
+                }
+                placeholder="e.g., SCH001"
               />
             </div>
 

@@ -30,6 +30,7 @@ export default function CreatePassengerAssistantPage() {
     tas_badge_expiry_date: '',
     dbs_number: '',
   })
+  const [badgePhotoFile, setBadgePhotoFile] = useState<File | null>(null)
 
   useEffect(() => {
     async function loadEmployees() {
@@ -112,6 +113,40 @@ export default function CreatePassengerAssistantPage() {
         .select()
 
       if (insertError) throw insertError
+
+      // Upload badge photo if provided
+      if (badgePhotoFile && assistantResult && assistantResult[0]) {
+        const employeeId = parseInt(formData.employee_id)
+        const fileExt = badgePhotoFile.name.split('.').pop()
+        const fileName = `assistants/${employeeId}/badge_photo_${Date.now()}.${fileExt}`
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('ROUTE_DOCUMENTS')
+          .upload(fileName, badgePhotoFile)
+
+        if (uploadError) {
+          console.error('Error uploading badge photo:', uploadError)
+          // Continue even if upload fails
+        } else if (uploadData) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('ROUTE_DOCUMENTS')
+            .getPublicUrl(fileName)
+
+          // Save to documents table
+          const { error: docError } = await supabase.from('documents').insert({
+            employee_id: employeeId,
+            file_name: badgePhotoFile.name,
+            file_type: badgePhotoFile.type || 'image/jpeg',
+            file_path: fileName,
+            file_url: publicUrl,
+            doc_type: 'ID Badge Photo',
+            uploaded_by: null,
+          })
+          if (docError) {
+            console.error('Error saving badge photo document:', docError)
+          }
+        }
+      }
 
       // Audit log
       if (assistantResult && assistantResult[0]) {
@@ -268,6 +303,22 @@ export default function CreatePassengerAssistantPage() {
                   onChange={handleInputChange}
                   placeholder="e.g., DBS123456789"
                 />
+              </div>
+            </div>
+
+            {/* Badge Photo Upload */}
+            <div className="space-y-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+              <h3 className="font-semibold text-navy">Badge Photo</h3>
+              <div>
+                <Label htmlFor="badge_photo">Upload Badge Photo</Label>
+                <input
+                  type="file"
+                  id="badge_photo"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={(e) => setBadgePhotoFile(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                />
+                <p className="text-xs text-gray-500 mt-1">Upload a photo for the passenger assistant's ID badge (JPG, PNG)</p>
               </div>
             </div>
           </CardContent>

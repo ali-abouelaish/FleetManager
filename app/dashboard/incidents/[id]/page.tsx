@@ -7,6 +7,7 @@ import { formatDateTime } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import IncidentToggleButton from './IncidentToggleButton'
 import IncidentDocuments from './IncidentDocuments'
+import IncidentReportForms from './IncidentReportForms'
 
 async function getIncident(id: string) {
   const supabase = await createClient()
@@ -16,12 +17,14 @@ async function getIncident(id: string) {
     .from('incidents')
     .select(`
       *,
-      vehicles(id, vehicle_identifier, make, model),
+      vehicles(id, vehicle_identifier, make, model, registration, plate_number),
       routes(id, route_number),
       route_sessions(
         id,
         session_date,
         session_type,
+        driver_id,
+        passenger_assistant_id,
         routes(route_number)
       ),
       created_by_user:created_by(id, email, role)
@@ -31,7 +34,7 @@ async function getIncident(id: string) {
 
   if (error || !incident) return null
 
-  // Fetch related employees
+  // Fetch related employees with driver/PA info
   const { data: relatedEmployees } = await supabase
     .from('incident_employees')
     .select('*, employees(id, full_name, role)')
@@ -43,10 +46,115 @@ async function getIncident(id: string) {
     .select('*, passengers(id, full_name, schools(name))')
     .eq('incident_id', id)
 
+  // Get driver and PA TAS numbers from route session or route
+  let driverInfo = null
+  let paInfo = null
+
+  const routeSessions = incident.route_sessions
+  if (routeSessions) {
+    const session = Array.isArray(routeSessions) ? routeSessions[0] : routeSessions
+    
+    if (session.driver_id) {
+      const { data: driverData } = await supabase
+        .from('drivers')
+        .select('tas_badge_number, employees(full_name)')
+        .eq('employee_id', session.driver_id)
+        .maybeSingle()
+      
+      if (driverData) {
+        driverInfo = {
+          name: (driverData.employees as any)?.full_name || null,
+          tasNumber: driverData.tas_badge_number || null,
+        }
+      }
+    }
+
+    if (session.passenger_assistant_id) {
+      const { data: paData } = await supabase
+        .from('passenger_assistants')
+        .select('tas_badge_number, employees(full_name)')
+        .eq('employee_id', session.passenger_assistant_id)
+        .maybeSingle()
+      
+      if (paData) {
+        paInfo = {
+          name: (paData.employees as any)?.full_name || null,
+          tasNumber: paData.tas_badge_number || null,
+        }
+      }
+    }
+  } else if (incident.routes) {
+    // Try to get from route directly
+    const { data: routeData } = await supabase
+      .from('routes')
+      .select(`
+        driver_id,
+        passenger_assistant_id,
+        driver:driver_id(drivers(tas_badge_number), employees(full_name)),
+        pa:passenger_assistant_id(passenger_assistants(tas_badge_number), employees(full_name))
+      `)
+      .eq('id', incident.routes.id)
+      .maybeSingle()
+
+    if (routeData) {
+      if (routeData.driver) {
+        const driver = routeData.driver as any
+        driverInfo = {
+          name: driver.employees?.full_name || null,
+          tasNumber: driver.drivers?.tas_badge_number || null,
+        }
+      }
+      if (routeData.pa) {
+        const pa = routeData.pa as any
+        paInfo = {
+          name: pa.employees?.full_name || null,
+          tasNumber: pa.passenger_assistants?.tas_badge_number || null,
+        }
+      }
+    }
+  }
+
+  // If still no driver/PA info, try from incident employees
+  if (!driverInfo || !paInfo) {
+    if (relatedEmployees && relatedEmployees.length > 0) {
+      for (const emp of relatedEmployees) {
+        if (emp.employees?.role === 'Driver' && !driverInfo) {
+          const { data: driverData } = await supabase
+            .from('drivers')
+            .select('tas_badge_number')
+            .eq('employee_id', emp.employees.id)
+            .maybeSingle()
+          
+          if (driverData) {
+            driverInfo = {
+              name: emp.employees.full_name,
+              tasNumber: driverData.tas_badge_number || null,
+            }
+          }
+        } else if (emp.employees?.role === 'PA' && !paInfo) {
+          const { data: paData } = await supabase
+            .from('passenger_assistants')
+            .select('tas_badge_number')
+            .eq('employee_id', emp.employees.id)
+            .maybeSingle()
+          
+          if (paData) {
+            paInfo = {
+              name: emp.employees.full_name,
+              tasNumber: paData.tas_badge_number || null,
+            }
+          }
+        }
+      }
+    }
+  }
+
   return {
     ...incident,
     incident_employees: relatedEmployees || [],
     incident_passengers: relatedPassengers || [],
+    driverInfo,
+    paInfo,
   }
 }
 
@@ -250,6 +358,13 @@ export default async function ViewIncidentPage({ params }: { params: { id: strin
           </CardContent>
         </Card>
       </div>
+
+      {/* Incident Report Forms (TR5, TR6, TR7) */}
+      <IncidentReportForms 
+        incident={incident} 
+        driverInfo={incident.driverInfo}
+        paInfo={incident.paInfo}
+      />
 
       {/* Incident Documents */}
       <IncidentDocuments incidentId={incident.id} />

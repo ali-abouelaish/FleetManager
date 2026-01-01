@@ -118,6 +118,10 @@ export default async function ViewSchoolPage({
               <dd className="mt-1 text-sm text-gray-900">{school.name}</dd>
             </div>
             <div>
+              <dt className="text-sm font-medium text-gray-500">Ref Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{school.ref_number || 'N/A'}</dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-gray-500">Address</dt>
               <dd className="mt-1 text-sm text-gray-900">{school.address || 'N/A'}</dd>
             </div>

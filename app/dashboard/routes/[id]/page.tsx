@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { ArrowLeft, Pencil, FileDown } from 'lucide-react'
-import RoutePDFExport from './RoutePDFExport'
-import TR1Export from './TR1Export'
+import ExportTR1Button from './ExportTR1Button'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import RouteSessionsClient from './RouteSessionsClient'
+import RouteDetailClient from './RouteDetailClient'
 
 // Helper function to format time (HH:MM:SS to HH:MM)
 function formatTime(time: string | null): string {
@@ -105,8 +105,7 @@ export default async function ViewRoutePage({
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <TR1Export routeId={route.id} routeNumber={route.route_number} />
-          <RoutePDFExport routeId={route.id} routeNumber={route.route_number} />
+          <ExportTR1Button routeId={route.id} />
           <Link href={`/dashboard/routes/${route.id}/edit`}>
             <Button>
               <Pencil className="mr-2 h-4 w-4" />
@@ -116,77 +115,29 @@ export default async function ViewRoutePage({
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Route ID</dt>
-              <dd className="mt-1 text-sm text-gray-900">{route.id}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Route Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{route.route_number || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">School</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {route.schools ? (
-                  <Link href={`/dashboard/schools/${route.school_id}`} className="text-blue-600 hover:underline">
-                    {route.schools.name}
-                  </Link>
-                ) : (
-                  'N/A'
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">AM Start Time</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatTime(route.am_start_time)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">PM Start Time</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatTime(route.pm_start_time)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Days of Week</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {route.days_of_week && Array.isArray(route.days_of_week) && route.days_of_week.length > 0
-                  ? route.days_of_week.join(', ')
-                  : 'N/A'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Created At</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDate(route.created_at)}</dd>
-            </div>
-          </CardContent>
-        </Card>
+      <RouteDetailClient route={route} routeId={route.id} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Statistics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Total Passengers</span>
-              <span className="text-2xl font-bold text-gray-900">{passengers.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Crew Members</span>
-              <span className="text-2xl font-bold text-gray-900">
-                {((route.driver_id ? 1 : 0) + (route.passenger_assistant_id ? 1 : 0))}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Pick-up Points</span>
-              <span className="text-2xl font-bold text-gray-900">{routePoints.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Statistics</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Total Passengers</span>
+            <span className="text-2xl font-bold text-gray-900">{passengers.length}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Crew Members</span>
+            <span className="text-2xl font-bold text-gray-900">
+              {((route.driver_id ? 1 : 0) + (route.passenger_assistant_id ? 1 : 0))}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Pick-up Points</span>
+            <span className="text-2xl font-bold text-gray-900">{routePoints.length}</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Crew Section */}
       <Card>

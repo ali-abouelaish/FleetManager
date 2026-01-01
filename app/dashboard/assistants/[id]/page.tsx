@@ -6,6 +6,13 @@ import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle } from 'l
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import AssistantDetailClient from './AssistantDetailClient'
+
+// Dynamically import badge photo upload component (client component)
+const BadgePhotoUpload = dynamic(
+  () => import('./BadgePhotoUpload'),
+  { ssr: false }
+)
 
 // Dynamically import the QR code component (client component)
 const PassengerAssistantQRCodeWrapper = dynamic(
@@ -93,6 +100,8 @@ export default async function ViewPassengerAssistantPage({
               Back
             </Button>
           </Link>
+          {/* Profile Picture - TAS Badge */}
+          <AssistantDetailClient assistant={assistant} />
           <div>
             <h1 className="text-3xl font-bold text-navy">{employee?.full_name || 'Unknown'}</h1>
             <p className="mt-2 text-sm text-gray-600">Passenger Assistant Profile</p>
@@ -188,6 +197,24 @@ export default async function ViewPassengerAssistantPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Badge Photo Upload */}
+        {employee && (
+          <Card className="md:col-span-2">
+            <CardHeader className="bg-navy text-white">
+              <CardTitle>Badge Photo</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <BadgePhotoUpload 
+                employeeId={employee.id} 
+                onUpload={() => {
+                  // The badge photo will be automatically refreshed by the AssistantDetailClient component
+                  // which fetches it from the documents table
+                }} 
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* QR Code for Document Upload */}
         <div className="md:col-span-2">

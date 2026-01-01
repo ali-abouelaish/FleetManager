@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Label } from '@/components/ui/Label'
-import { Upload, CheckCircle, XCircle, FileText, Image as ImageIcon, Loader2, Eye, Download } from 'lucide-react'
+import { Upload, CheckCircle, XCircle, FileText, Image as ImageIcon, Loader2, Eye, Download, Wrench } from 'lucide-react'
 import { uploadAssistantDocument } from '@/lib/supabase/assistantDocuments'
 import { formatDate, formatDateTime } from '@/lib/utils'
 
@@ -49,6 +49,8 @@ function AssistantUploadContent() {
     success: boolean
     message: string
   } | null>(null)
+  const [reportingBreakdown, setReportingBreakdown] = useState(false)
+  const [breakdownReported, setBreakdownReported] = useState<number | null>(null)
 
   const supabase = createClient()
 
@@ -164,6 +166,32 @@ function AssistantUploadContent() {
       setUploadedDocuments(documents)
     }
     setLoadingDocuments(false)
+  }
+
+  const handleReportBreakdown = async (sessionId: number) => {
+    if (!confirm('Report vehicle breakdown? This will create an urgent notification for administrators.')) {
+      return
+    }
+
+    setReportingBreakdown(true)
+    try {
+      const { data, error } = await supabase.rpc('report_vehicle_breakdown', {
+        p_route_session_id: sessionId,
+        p_description: 'Vehicle breakdown reported via PA QR code',
+        p_location: null
+      })
+
+      if (error) {
+        alert('Error reporting breakdown: ' + error.message)
+      } else {
+        setBreakdownReported(sessionId)
+        alert('Breakdown reported successfully! Administrators have been notified.')
+      }
+    } catch (err: any) {
+      alert('Error: ' + (err.message || 'Failed to report breakdown'))
+    } finally {
+      setReportingBreakdown(false)
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,6 +373,45 @@ function AssistantUploadContent() {
                   <p className="text-sm text-yellow-900">
                     No active sessions found. Please start a route session first before uploading documents.
                   </p>
+                </div>
+              )}
+
+              {/* Breakdown Reporting */}
+              {activeSessions.length > 0 && (
+                <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <Wrench className="h-5 w-5 text-red-600" />
+                      <h3 className="font-semibold text-red-900">Vehicle Breakdown</h3>
+                    </div>
+                  </div>
+                  <p className="text-sm text-red-800 mb-3">
+                    Report a vehicle breakdown for any active session. This will create an urgent notification.
+                  </p>
+                  <div className="space-y-2">
+                    {activeSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-2 bg-white rounded border border-red-200"
+                      >
+                        <div className="text-sm">
+                          <span className="font-medium">{formatDate(session.session_date)} - {session.session_type}</span>
+                          {session.route_name && (
+                            <span className="text-gray-600 ml-2">({session.route_name})</span>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleReportBreakdown(session.id)}
+                          disabled={reportingBreakdown || breakdownReported === session.id}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          <Wrench className="mr-2 h-4 w-4" />
+                          {breakdownReported === session.id ? 'Reported' : 'Report Breakdown'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

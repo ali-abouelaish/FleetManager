@@ -27,6 +27,73 @@ export default function LoginPage() {
       if (error) throw error
 
       if (data.user) {
+        // Check user approval status
+        // Use lowercase email for comparison to avoid case sensitivity issues
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('approval_status, email, role')
+          .ilike('email', email) // Case-insensitive comparison
+          .single()
+
+        // If user doesn't exist in users table, create it automatically (for existing admin accounts)
+        if (userError && userError.code === 'PGRST116') {
+          // User not found in users table - create it automatically with approved status
+          // This handles existing admin accounts that were created before the approval system
+          // Extract name from email if possible (first part before @)
+          const nameFromEmail = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+          
+          const { error: createError } = await supabase.from('users').insert({
+            email: email,
+            password_hash: 'managed_by_supabase_auth',
+            role: 'admin', // Default to admin for existing accounts
+            approval_status: 'approved', // Auto-approve existing accounts
+            full_name: nameFromEmail, // Generate name from email
+          })
+
+          if (createError) {
+            console.error('Error creating user record:', createError)
+            throw new Error('Failed to create user account. Please contact an administrator.')
+          }
+
+          // Proceed to dashboard after creating the record
+          router.push('/dashboard')
+          router.refresh()
+          return
+        }
+
+        if (userError) {
+          console.error('Error fetching user data:', userError)
+          throw new Error(`Failed to verify user account: ${userError.message}`)
+        }
+
+        if (!userData) {
+          throw new Error('User account not found')
+        }
+
+        // Check approval status (case-insensitive comparison and handle null)
+        const approvalStatus = (userData.approval_status || '').toLowerCase().trim()
+        
+        console.log('User approval status:', approvalStatus, 'for email:', email)
+        
+        if (approvalStatus === 'pending') {
+          await supabase.auth.signOut()
+          setError('Your account is pending admin approval. Please wait for an administrator to review your account.')
+          return
+        }
+
+        if (approvalStatus === 'rejected') {
+          await supabase.auth.signOut()
+          setError('Your account has been rejected. Please contact an administrator for more information.')
+          return
+        }
+
+        if (approvalStatus !== 'approved') {
+          await supabase.auth.signOut()
+          setError(`Your account is not approved (status: ${userData.approval_status || 'null'}). Please contact an administrator.`)
+          return
+        }
+
+        // User is approved, proceed to dashboard
         router.push('/dashboard')
         router.refresh()
       }
