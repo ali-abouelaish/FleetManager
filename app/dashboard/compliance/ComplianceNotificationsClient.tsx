@@ -55,6 +55,9 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
   const [loadingTemplate, setLoadingTemplate] = useState(false)
   const [holdOnSend, setHoldOnSend] = useState(true)
   const [includeAppointmentLink, setIncludeAppointmentLink] = useState(true)
+  const [selectedRecipient, setSelectedRecipient] = useState<string>('')
+  const [availableRecipients, setAvailableRecipients] = useState<Array<{ email: string; name: string; type: string }>>([])
+  const [loadingRecipients, setLoadingRecipients] = useState(false)
   const previousNotificationIds = useRef<Set<number>>(new Set(initialNotifications.map(n => n.id)))
   const audioContextRef = useRef<AudioContext | null>(null)
 
@@ -216,11 +219,32 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
   const handleOpenEmailEditor = async (notification: Notification) => {
     setEditingNotification(notification)
     setLoadingTemplate(true)
+    setLoadingRecipients(true)
     setEmailEditorOpen(true)
     setHoldOnSend(true)
     setIncludeAppointmentLink(true)
+    setSelectedRecipient(notification.recipient_email || '')
 
     try {
+      // Fetch available recipients
+      const recipientsResponse = await fetch('/api/notifications/get-recipients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: notification.id }),
+      })
+
+      if (recipientsResponse.ok) {
+        const recipientsData = await recipientsResponse.json()
+        setAvailableRecipients(recipientsData.recipients || [])
+        // Set default recipient if available
+        if (recipientsData.recipients && recipientsData.recipients.length > 0) {
+          const defaultRecipient = recipientsData.recipients.find((r: any) => r.email === notification.recipient_email) 
+            || recipientsData.recipients[0]
+          setSelectedRecipient(defaultRecipient.email)
+        }
+      }
+
+      // Fetch email template
       const response = await fetch('/api/notifications/get-email-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,12 +257,13 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
         throw new Error(data.error || 'Failed to load email template')
       }
 
-      setEmailSubject(data.subject || '')
-      setEmailBody(data.body || '')
+      setEmailSubject(data.emailTemplate?.subject || '')
+      setEmailBody(data.emailTemplate?.body || '')
     } catch (error: any) {
       alert('Error loading email template: ' + error.message)
     } finally {
       setLoadingTemplate(false)
+      setLoadingRecipients(false)
     }
   }
 
@@ -256,6 +281,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
           emailBody: emailBody,
           hold: holdOnSend,
           includeAppointmentLink: includeAppointmentLink,
+          recipientEmail: selectedRecipient, // Send to selected recipient
         }),
       })
 
@@ -633,6 +659,8 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                     setEditingNotification(null)
                     setEmailSubject('')
                     setEmailBody('')
+                    setSelectedRecipient('')
+                    setAvailableRecipients([])
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -681,13 +709,37 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                   </div>
 
                   <div>
-                    <Label htmlFor="email-to">To</Label>
-                    <Input
-                      id="email-to"
-                      value={editingNotification.recipient_email || ''}
-                      disabled
-                      className="bg-gray-50"
-                    />
+                    <Label htmlFor="email-to">To *</Label>
+                    {loadingRecipients ? (
+                      <div className="text-sm text-gray-500">Loading recipients...</div>
+                    ) : availableRecipients.length > 0 ? (
+                      <select
+                        id="email-to"
+                        value={selectedRecipient}
+                        onChange={(e) => setSelectedRecipient(e.target.value)}
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        required
+                      >
+                        {availableRecipients.map((recipient) => (
+                          <option key={recipient.email} value={recipient.email}>
+                            {recipient.name} ({recipient.type === 'driver' ? 'Driver' : recipient.type === 'passenger_assistant' ? 'PA' : 'Assigned Employee'}) - {recipient.email}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        id="email-to"
+                        value={selectedRecipient}
+                        onChange={(e) => setSelectedRecipient(e.target.value)}
+                        placeholder="Enter email address"
+                        required
+                      />
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      {editingNotification.entity_type === 'vehicle' 
+                        ? 'Select the driver, PA, or assigned employee to send the email to.'
+                        : 'Email will be sent to the driver/PA.'}
+                    </p>
                   </div>
 
                   <div>
@@ -723,13 +775,15 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                         setEditingNotification(null)
                         setEmailSubject('')
                         setEmailBody('')
+                        setSelectedRecipient('')
+                        setAvailableRecipients([])
                       }}
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleSendEmail}
-                      disabled={sendingEmail === editingNotification.id || !emailSubject.trim() || !emailBody.trim()}
+                      disabled={sendingEmail === editingNotification.id || !emailSubject.trim() || !emailBody.trim() || !selectedRecipient.trim()}
                     >
                       <Mail className="h-4 w-4 mr-2" />
                       {sendingEmail === editingNotification.id ? 'Sending...' : 'Send Email'}

@@ -152,6 +152,8 @@ Fleet Management System`
 
     return NextResponse.json({ 
       success: true,
+      subject,
+      body: emailBody,
       emailTemplate: {
         to: notification.recipient_email,
         subject,

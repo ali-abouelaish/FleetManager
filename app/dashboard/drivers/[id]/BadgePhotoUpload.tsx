@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/Label'
 
 interface BadgePhotoUploadProps {
   employeeId: number
-  onUpload: () => void
+  onUpload?: () => void
 }
 
 export default function BadgePhotoUpload({ employeeId, onUpload }: BadgePhotoUploadProps) {
@@ -63,7 +63,9 @@ export default function BadgePhotoUpload({ employeeId, onUpload }: BadgePhotoUpl
         }
 
         setSuccess(true)
-        onUpload()
+        if (onUpload) {
+          onUpload()
+        }
         
         // Reset file input
         e.target.value = ''

@@ -15,6 +15,7 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
   const [loading, setLoading] = useState(true)
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
   const [assistantName, setAssistantName] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -24,7 +25,8 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
 
   const loadQrToken = async () => {
     setLoading(true)
-    const { data, error } = await supabase
+    setError(null)
+    const { data, error: fetchError } = await supabase
       .from('passenger_assistants')
       .select(`
         qr_token,
@@ -33,13 +35,50 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
       .eq('id', assistantId)
       .single()
 
-    if (!error && data) {
+    if (fetchError) {
+      setError(`Failed to load QR token: ${fetchError.message}`)
+      setLoading(false)
+      return
+    }
+
+    if (!data) {
+      setError('Passenger assistant not found')
+      setLoading(false)
+      return
+    }
+
+    const employee = Array.isArray(data.employees) ? data.employees[0] : data.employees
+    setAssistantName(employee?.full_name || null)
+
+    // If no QR token exists, generate one automatically
+    if (!data.qr_token) {
+      await generateToken()
+    } else {
       setQrToken(data.qr_token)
-      const employee = Array.isArray(data.employees) ? data.employees[0] : data.employees
-      setAssistantName(employee?.full_name || null)
-      if (data.qr_token) {
-        generateQRCode(data.qr_token)
-      }
+      generateQRCode(data.qr_token)
+    }
+    setLoading(false)
+  }
+
+  const generateToken = async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: updateError } = await supabase
+      .from('passenger_assistants')
+      .update({ qr_token: crypto.randomUUID() })
+      .eq('id', assistantId)
+      .select('qr_token')
+      .single()
+
+    if (updateError) {
+      setError(`Failed to generate QR token: ${updateError.message}`)
+      setLoading(false)
+      return
+    }
+
+    if (data?.qr_token) {
+      setQrToken(data.qr_token)
+      generateQRCode(data.qr_token)
     }
     setLoading(false)
   }
@@ -102,14 +141,48 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
     )
   }
 
-  if (!qrToken) {
+  if (error && !loading) {
     return (
       <Card>
         <CardHeader className="bg-blue-900 text-white">
           <CardTitle className="text-white">Document Upload QR Code</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <p className="text-center text-gray-500">No QR token found. Please contact administrator.</p>
+          <div className="text-center space-y-4">
+            <p className="text-red-600">{error}</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadQrToken}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!qrToken && !loading) {
+    return (
+      <Card>
+        <CardHeader className="bg-blue-900 text-white">
+          <CardTitle className="text-white">Document Upload QR Code</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <p className="text-gray-500">No QR token found. Click below to generate one.</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={generateToken}
+              disabled={loading}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Generate QR Code
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )
@@ -147,13 +220,14 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
             Scan this QR code to upload required documents
           </div>
           
-          {qrCodeUrl && (
+          {qrCodeUrl ? (
             <div className="flex flex-col items-center space-y-4">
               <div className="p-4 bg-white rounded-lg border-2 border-gray-200">
                 <img 
                   src={qrCodeUrl} 
                   alt="Passenger Assistant QR Code" 
                   className="w-64 h-64"
+                  onError={() => setError('Failed to load QR code image')}
                 />
               </div>
               
@@ -174,6 +248,10 @@ export default function PassengerAssistantQRCode({ assistantId }: PassengerAssis
                   Passenger assistants can scan this code with their mobile device to upload required documents (images, PDFs, etc.).
                 </p>
               </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              <p>Generating QR code...</p>
             </div>
           )}
         </div>

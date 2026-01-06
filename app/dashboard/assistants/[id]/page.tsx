@@ -206,11 +206,7 @@ export default async function ViewPassengerAssistantPage({
             </CardHeader>
             <CardContent className="pt-6">
               <BadgePhotoUpload 
-                employeeId={employee.id} 
-                onUpload={() => {
-                  // The badge photo will be automatically refreshed by the AssistantDetailClient component
-                  // which fetches it from the documents table
-                }} 
+                employeeId={employee.id}
               />
             </CardContent>
           </Card>

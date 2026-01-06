@@ -11,6 +11,7 @@ export async function POST(request: Request) {
       emailBody,
       hold = true,
       includeAppointmentLink = true,
+      recipientEmail, // Optional: custom recipient email
     } = body
 
     const supabase = await createClient()
@@ -41,13 +42,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Notification not found' }, { status: 404 })
     }
 
-    if (!notification.recipient_email) {
+    // Use custom recipient email if provided, otherwise use notification's default
+    const finalRecipientEmail = recipientEmail || notification.recipient_email
+    
+    if (!finalRecipientEmail) {
       return NextResponse.json({ error: 'No recipient email address' }, { status: 400 })
     }
 
     // Get recipient employee name for greeting
-    let recipientName = notification.recipient_email.split('@')[0]
-    if (notification.recipient_employee_id) {
+    // Try to find employee by email first
+    let recipientName = finalRecipientEmail.split('@')[0]
+    const { data: recipientEmployeeByEmail } = await supabase
+      .from('employees')
+      .select('full_name, id')
+      .eq('personal_email', finalRecipientEmail)
+      .maybeSingle()
+    
+    if (recipientEmployeeByEmail?.full_name) {
+      recipientName = recipientEmployeeByEmail.full_name
+    } else if (notification.recipient_employee_id) {
       const { data: recipientEmployee } = await supabase
         .from('employees')
         .select('full_name')
@@ -214,7 +227,7 @@ ${appointmentLink}`
 
       await transporter.sendMail({
         from: smtpFrom,
-        to: notification.recipient_email,
+        to: finalRecipientEmail, // Use the selected recipient email
         subject: finalSubject,
         text: finalBody,
         html: htmlBody,
@@ -299,7 +312,7 @@ ${appointmentLink}`
       // In development, return the email content for testing
       ...(process.env.NODE_ENV === 'development' && {
         emailContent: {
-          to: notification.recipient_email,
+          to: finalRecipientEmail,
           subject: finalSubject,
           body: finalBody,
           uploadLink,
