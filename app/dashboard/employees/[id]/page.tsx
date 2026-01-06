@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic'
 
 // Dynamically import the QR code component (client component)
 const PassengerAssistantQRCodeWrapper = dynamic(
-  () => import('../../passenger-assistants/[id]/qr-code'),
+  () => import('@/components/dashboard/PassengerAssistantQRCode'),
   { ssr: false }
 )
 
