@@ -105,7 +105,8 @@ async function fillFromDatabase(routeId, year, month) {
       schools(name),
       driver:driver_id(
         employees(full_name),
-        tas_badge_number
+        tas_badge_number,
+        taxi_badge_number
       ),
       pa:passenger_assistant_id(
         employees(full_name),
@@ -139,8 +140,8 @@ async function fillFromDatabase(routeId, year, month) {
     refNumber: route.route_number,
     operatorName: 'Fleet Transport Services',
     vehicleRegNo: route.vehicles?.registration,
-    licensingBadgeNo: route.vehicles?.taxi_badge_number,
-    psvDiscVehiclePlateNo: route.vehicles?.taxi_license,
+    licensingBadgeNo: route.driver?.taxi_badge_number || route.vehicles?.taxi_badge_number,
+    psvDiscVehiclePlateNo: route.vehicles?.taxi_badge_number,
     driverName: route.driver?.employees?.full_name,
     driverTasNo: route.driver?.tas_badge_number,
     passengerAssistantNames: [route.pa?.employees?.full_name].filter(Boolean),

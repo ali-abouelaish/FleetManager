@@ -16,6 +16,8 @@ interface Driver {
   employee_id: number
   tas_badge_number: string | null
   tas_badge_expiry_date: string | null
+  taxi_badge_number: string | null
+  taxi_badge_expiry_date: string | null
   psv_license: boolean
   first_aid_certificate_expiry_date: string | null
   passport_expiry_date: string | null
@@ -56,6 +58,8 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
   const [formData, setFormData] = useState({
     tas_badge_number: '',
     tas_badge_expiry_date: '',
+    taxi_badge_number: '',
+    taxi_badge_expiry_date: '',
     dbs_number: '',
     psv_license: false,
     first_aid_certificate_expiry_date: '',
@@ -126,6 +130,8 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
     setFormData({
       tas_badge_number: data.tas_badge_number || '',
       tas_badge_expiry_date: data.tas_badge_expiry_date ? data.tas_badge_expiry_date.split('T')[0] : '',
+      taxi_badge_number: data.taxi_badge_number || '',
+      taxi_badge_expiry_date: data.taxi_badge_expiry_date ? data.taxi_badge_expiry_date.split('T')[0] : '',
       dbs_number: data.dbs_number || '',
       psv_license: data.psv_license || false,
       first_aid_certificate_expiry_date: data.first_aid_certificate_expiry_date ? data.first_aid_certificate_expiry_date.split('T')[0] : '',
@@ -244,6 +250,8 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         .update({
           tas_badge_number: formData.tas_badge_number || null,
           tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
+          taxi_badge_number: formData.taxi_badge_number || null,
+          taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
           dbs_number: formData.dbs_number || null,
           psv_license: formData.psv_license,
           first_aid_certificate_expiry_date: formData.first_aid_certificate_expiry_date || null,
@@ -487,6 +495,31 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('tas_badge_file', e.target.files?.[0] || null)}
                       className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Taxi Badge */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-navy">Taxi Badge</h3>
+                  <div>
+                    <Label htmlFor="taxi_badge_number">Badge Number</Label>
+                    <Input
+                      id="taxi_badge_number"
+                      name="taxi_badge_number"
+                      value={formData.taxi_badge_number}
+                      onChange={handleInputChange}
+                      placeholder="e.g., TAXI12345"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="taxi_badge_expiry_date">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      id="taxi_badge_expiry_date"
+                      name="taxi_badge_expiry_date"
+                      value={formData.taxi_badge_expiry_date}
+                      onChange={handleInputChange}
                     />
                   </div>
                 </div>

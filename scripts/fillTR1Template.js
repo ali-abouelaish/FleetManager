@@ -78,8 +78,8 @@ async function fillTR1Template(options) {
       refNumber: 'C4',
       operator: 'C5',
       vehicleRegNo: 'C6',
-      licensingBadgeNo: 'C7',
-      psvDiscVehiclePlateNo: 'C8',
+      licensingBadgeNo: 'AC6',
+      psvDiscVehiclePlateNo: 'AV6',
       driverName: 'C9',
       driverTasNo: 'C10',
       passengerAssistantName: 'C11', // First PA
@@ -148,15 +148,21 @@ async function fillTR1Template(options) {
     }
     
     // Licensing Badge No
+    // Always set the value (even if empty) to ensure the cell is filled/cleared
+    worksheet.getCell(cellLocations.licensingBadgeNo).value = licensingBadgeNo || '';
     if (licensingBadgeNo) {
-      worksheet.getCell(cellLocations.licensingBadgeNo).value = licensingBadgeNo;
       console.log(`   ✓ Licensing Badge No: ${licensingBadgeNo}`);
+    } else {
+      console.log(`   ⚠ Licensing Badge No: (empty)`);
     }
     
     // PSV Disc / Vehicle Plate No
+    // Always set the value (even if empty) to ensure the cell is filled/cleared
+    worksheet.getCell(cellLocations.psvDiscVehiclePlateNo).value = psvDiscVehiclePlateNo || '';
     if (psvDiscVehiclePlateNo) {
-      worksheet.getCell(cellLocations.psvDiscVehiclePlateNo).value = psvDiscVehiclePlateNo;
       console.log(`   ✓ PSV Disc / Vehicle Plate No: ${psvDiscVehiclePlateNo}`);
+    } else {
+      console.log(`   ⚠ PSV Disc / Vehicle Plate No: (empty)`);
     }
     
     // Driver Name

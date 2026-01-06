@@ -76,6 +76,7 @@ export async function GET(
         driver:driver_id (
           employee_id,
           tas_badge_number,
+          taxi_badge_number,
           employees (
             id,
             full_name
@@ -204,8 +205,18 @@ export async function GET(
     const vehicle = Array.isArray(route.vehicles) ? route.vehicles[0] : route.vehicles
     if (vehicle) {
       worksheet.getCell(cellLocations.vehicleRegNo).value = vehicle.registration || ''
-      worksheet.getCell(cellLocations.licensingBadgeNo).value = vehicle.taxi_badge_number || ''
-      worksheet.getCell(cellLocations.psvDiscVehiclePlateNo).value = vehicle.taxi_badge_number || ''
+      console.log(`  ✓ Vehicle Reg No: ${vehicle.registration || ''} → Cell ${cellLocations.vehicleRegNo}`)
+      
+      // Use vehicle taxi badge for PSV disc/vehicle plate number, fallback to plate_number
+      const psvDiscValue = vehicle.taxi_badge_number || vehicle.plate_number || ''
+      worksheet.getCell(cellLocations.psvDiscVehiclePlateNo).value = psvDiscValue
+      console.log(`  ✓ PSV Disc / Vehicle Plate No: ${psvDiscValue || '(empty)'} → Cell ${cellLocations.psvDiscVehiclePlateNo}`)
+      console.log(`    - taxi_badge_number: ${vehicle.taxi_badge_number || '(not set)'}`)
+      console.log(`    - plate_number: ${vehicle.plate_number || '(not set)'}`)
+    } else {
+      // Set empty value even if no vehicle to ensure cell is cleared
+      worksheet.getCell(cellLocations.psvDiscVehiclePlateNo).value = ''
+      console.log(`  ⚠ No vehicle found - PSV Disc / Vehicle Plate No set to empty`)
     }
 
     // Driver details
@@ -215,9 +226,28 @@ export async function GET(
       : null
     if (driverEmployee) {
       worksheet.getCell(cellLocations.driverName).value = driverEmployee.full_name || ''
+      console.log(`  ✓ Driver Name: ${driverEmployee.full_name || '(empty)'} → Cell ${cellLocations.driverName}`)
+    } else {
+      worksheet.getCell(cellLocations.driverName).value = ''
     }
+    
     if (driver) {
       worksheet.getCell(cellLocations.driverTasNo).value = driver.tas_badge_number || ''
+      console.log(`  ✓ Driver TAS No: ${driver.tas_badge_number || '(empty)'} → Cell ${cellLocations.driverTasNo}`)
+    } else {
+      worksheet.getCell(cellLocations.driverTasNo).value = ''
+    }
+    
+    // Licensing Badge No - Use driver's taxi badge number, fallback to vehicle taxi badge
+    const licensingBadgeNo = driver?.taxi_badge_number || vehicle?.taxi_badge_number || ''
+    worksheet.getCell(cellLocations.licensingBadgeNo).value = licensingBadgeNo
+    console.log(`  ✓ Licensing Badge No: ${licensingBadgeNo || '(empty)'} → Cell ${cellLocations.licensingBadgeNo}`)
+    if (driver?.taxi_badge_number) {
+      console.log(`    - Using driver taxi badge: ${driver.taxi_badge_number}`)
+    } else if (vehicle?.taxi_badge_number) {
+      console.log(`    - Using vehicle taxi badge (driver has none): ${vehicle.taxi_badge_number}`)
+    } else {
+      console.log(`    - No taxi badge found (driver or vehicle)`)
     }
 
     // PA details

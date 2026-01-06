@@ -17,6 +17,8 @@ interface Driver {
   employee_id: number
   tas_badge_number: string | null
   tas_badge_expiry_date: string | null
+  taxi_badge_number: string | null
+  taxi_badge_expiry_date: string | null
   dbs_number: string | null
   psv_license: boolean
   first_aid_certificate_expiry_date: string | null
@@ -708,6 +710,7 @@ export function DriverDetailClient({ id }: { id: string }) {
               <div className="grid gap-4 md:grid-cols-3">
                 {[
                   { label: 'TAS Badge', date: driver.tas_badge_expiry_date, badge: driver.tas_badge_number },
+                  { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, badge: driver.taxi_badge_number },
                   { label: 'Driving License', date: driver.driving_license_expiry_date },
                   { label: 'CPC', date: driver.cpc_expiry_date },
                   { label: 'First Aid', date: driver.first_aid_certificate_expiry_date },
@@ -763,6 +766,7 @@ export function DriverDetailClient({ id }: { id: string }) {
                   <tbody>
                     {[
                       { label: 'TAS Badge', date: driver.tas_badge_expiry_date, ref: driver.tas_badge_number, docType: 'TAS Badge' },
+                      { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, ref: driver.taxi_badge_number, docType: 'Taxi Badge' },
                       { label: 'DBS Certificate', date: null, ref: driver.dbs_number, docType: 'DBS Certificate' },
                       { label: 'First Aid Certificate', date: driver.first_aid_certificate_expiry_date, ref: null, docType: 'First Aid Certificate' },
                       { label: 'Passport', date: driver.passport_expiry_date, ref: null, docType: 'Passport' },

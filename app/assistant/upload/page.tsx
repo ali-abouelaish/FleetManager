@@ -85,23 +85,33 @@ function AssistantUploadContent() {
       .select(`
         id,
         employee_id,
-        employees(full_name),
-        crew!inner(
-          route_id,
-          routes(route_number)
-        )
+        employees(full_name)
       `)
       .eq('qr_token', token)
       .single()
 
     if (!error && data) {
       const employee = Array.isArray(data.employees) ? data.employees[0] : data.employees
-      const crew = Array.isArray(data.crew) ? data.crew[0] : data.crew
-      const route = Array.isArray(crew?.routes) ? crew?.routes[0] : crew?.routes
+      
+      // Get route information directly from routes table
+      let routeName: string | null = null
+      if (data.employee_id) {
+        const { data: routeData } = await supabase
+          .from('routes')
+          .select('route_number')
+          .eq('passenger_assistant_id', data.employee_id)
+          .limit(1)
+          .maybeSingle()
+        
+        if (routeData) {
+          routeName = routeData.route_number || null
+        }
+      }
+      
       setAssistantInfo({
         id: data.id,
         name: employee?.full_name || 'Unknown Assistant',
-        routeName: route?.route_number || null,
+        routeName: routeName,
         employeeId: data.employee_id,
       })
     }
