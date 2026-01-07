@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye, Pencil } from 'lucide-react'
+import { Plus, Eye, Pencil, Route } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { RouteSearchFilters } from './RouteSearchFilters'
 
@@ -44,7 +44,7 @@ async function RoutesTable(filters?: { search?: string }) {
   const routes = await getRoutes(filters)
 
   return (
-    <div className="rounded-md border bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -58,26 +58,28 @@ async function RoutesTable(filters?: { search?: string }) {
         <TableBody>
           {routes.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-gray-500">
-                No routes found. Add your first route to get started.
+              <TableCell colSpan={5} className="text-center py-12">
+                <Route className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No routes found</p>
+                <p className="text-sm text-slate-400">Add your first route to get started</p>
               </TableCell>
             </TableRow>
           ) : (
             routes.map((route: any) => (
-              <TableRow key={route.id}>
-                <TableCell>{route.id}</TableCell>
-                <TableCell className="font-medium">{route.route_number || `Route ${route.id}`}</TableCell>
-                <TableCell>{route.schools?.name || 'N/A'}</TableCell>
-                <TableCell>{formatDate(route.created_at)}</TableCell>
+              <TableRow key={route.id} className="hover:bg-slate-50">
+                <TableCell className="text-slate-500">#{route.id}</TableCell>
+                <TableCell className="font-semibold text-slate-800">{route.route_number || `Route ${route.id}`}</TableCell>
+                <TableCell className="text-slate-600">{route.schools?.name || 'N/A'}</TableCell>
+                <TableCell className="text-slate-500">{formatDate(route.created_at)}</TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center gap-1">
                     <Link href={`/dashboard/routes/${route.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/routes/${route.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -103,14 +105,17 @@ export default async function RoutesPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Routes</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage all routes in your fleet system
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <Route className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Routes</h1>
+            <p className="text-sm text-slate-500">Manage all routes in your fleet system</p>
+          </div>
         </div>
         <Link href="/dashboard/routes/create" prefetch={true}>
-          <Button>
+          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Route
           </Button>
@@ -125,4 +130,5 @@ export default async function RoutesPage({
     </div>
   )
 }
+
 

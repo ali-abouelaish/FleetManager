@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye, Pencil, Map } from 'lucide-react'
+import { Plus, Eye, Pencil, Map, School } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { SchoolsMap } from '@/components/maps/SchoolsMap'
 import { SchoolSearchFilters } from './SchoolSearchFilters'
@@ -36,7 +36,7 @@ async function SchoolsTable(filters?: { search?: string }) {
   const schools = await getSchools(filters)
 
   return (
-    <div className="rounded-md border bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -51,27 +51,29 @@ async function SchoolsTable(filters?: { search?: string }) {
         <TableBody>
           {schools.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-gray-500">
-                No schools found. Add your first school to get started.
+              <TableCell colSpan={6} className="text-center py-12">
+                <School className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No schools found</p>
+                <p className="text-sm text-slate-400">Add your first school to get started</p>
               </TableCell>
             </TableRow>
           ) : (
             schools.map((school) => (
-              <TableRow key={school.id}>
-                <TableCell>{school.id}</TableCell>
-                <TableCell className="font-medium">{school.name}</TableCell>
-                <TableCell>{school.ref_number || 'N/A'}</TableCell>
-                <TableCell>{school.address || 'N/A'}</TableCell>
-                <TableCell>{formatDate(school.created_at)}</TableCell>
+              <TableRow key={school.id} className="hover:bg-slate-50">
+                <TableCell className="text-slate-500">#{school.id}</TableCell>
+                <TableCell className="font-semibold text-slate-800">{school.name}</TableCell>
+                <TableCell className="text-slate-600">{school.ref_number || 'N/A'}</TableCell>
+                <TableCell className="text-slate-600">{school.address || 'N/A'}</TableCell>
+                <TableCell className="text-slate-500">{formatDate(school.created_at)}</TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center gap-1">
                     <Link href={`/dashboard/schools/${school.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/schools/${school.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -95,7 +97,7 @@ export default async function SchoolsPage({
   const filters = { search: params?.search }
   const schools = await getSchools(filters)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ''
-  
+
   // Debug: Log if key is missing (only in development)
   if (!apiKey && process.env.NODE_ENV === 'development') {
     console.warn('⚠️ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set or is empty')
@@ -105,14 +107,17 @@ export default async function SchoolsPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Schools</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage all schools in your fleet system
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <School className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Schools</h1>
+            <p className="text-sm text-slate-500">Manage all schools in your fleet system</p>
+          </div>
         </div>
         <Link href="/dashboard/schools/create" prefetch={true}>
-          <Button>
+          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
             Add School
           </Button>
@@ -121,8 +126,8 @@ export default async function SchoolsPage({
 
       {/* Map View */}
       {schools.length > 0 && (
-        <Card>
-          <CardHeader className="bg-navy text-white">
+        <Card className="overflow-hidden border-slate-200">
+          <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
             <CardTitle className="flex items-center">
               <Map className="mr-2 h-5 w-5" />
               Schools Map View
@@ -166,8 +171,8 @@ export default async function SchoolsPage({
       <SchoolSearchFilters />
 
       {/* Table View */}
-      <Card>
-        <CardHeader className="bg-navy text-white">
+      <Card className="overflow-hidden border-slate-200">
+        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
           <CardTitle>Schools List</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">

@@ -1,12 +1,15 @@
 import { cn } from '@/lib/utils'
 import { HTMLAttributes } from 'react'
 
-interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {}
+interface SkeletonProps extends HTMLAttributes<HTMLDivElement> { }
 
 export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
-      className={cn('animate-pulse rounded-md bg-gray-200', className)}
+      className={cn(
+        'animate-pulse rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%]',
+        className
+      )}
       role="status"
       aria-label="Loading..."
       {...props}
@@ -14,38 +17,46 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
   )
 }
 
-export function TableSkeleton({ 
-  rows = 5, 
+export function TableSkeleton({
+  rows = 5,
   columns = 5,
-  headers 
-}: { 
+  headers
+}: {
   rows?: number
   columns?: number
   headers?: string[]
 }) {
   return (
-    <div className="rounded-md border bg-white shadow-sm" role="status" aria-label="Loading table...">
+    <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden" role="status" aria-label="Loading table...">
       <div className="w-full overflow-auto">
         <table className="w-full caption-bottom text-sm">
           {/* Static headers - NEVER animated, always visible */}
-          <thead className="bg-navy">
-            <tr className="border-b">
+          <thead className="bg-gradient-to-r from-navy to-blue-700">
+            <tr>
               {headers ? (
                 headers.map((header, i) => (
-                  <th 
-                    key={i} 
-                    className="h-12 px-4 text-left align-middle font-semibold text-white"
+                  <th
+                    key={i}
+                    className={cn(
+                      'h-12 px-4 text-left align-middle font-semibold text-white',
+                      i === 0 && 'rounded-tl-lg',
+                      i === headers.length - 1 && 'rounded-tr-lg'
+                    )}
                   >
                     {header}
                   </th>
                 ))
               ) : (
                 Array.from({ length: columns }).map((_, i) => (
-                  <th 
-                    key={i} 
-                    className="h-12 px-4 text-left align-middle font-semibold text-white"
+                  <th
+                    key={i}
+                    className={cn(
+                      'h-12 px-4 text-left align-middle font-semibold text-white',
+                      i === 0 && 'rounded-tl-lg',
+                      i === columns - 1 && 'rounded-tr-lg'
+                    )}
                   >
-                    <div className="h-4 w-24 rounded bg-blue-800" />
+                    <div className="h-4 w-24 rounded bg-white/20" />
                   </th>
                 ))
               )}
@@ -57,13 +68,13 @@ export function TableSkeleton({
               <tr
                 key={rowIndex}
                 className={cn(
-                  'border-b transition-opacity',
-                  rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  'border-b border-gray-100',
+                  rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                 )}
               >
                 {Array.from({ length: columns }).map((_, colIndex) => (
                   <td key={colIndex} className="p-4 align-middle">
-                    <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+                    <Skeleton className="h-4 w-full" />
                   </td>
                 ))}
               </tr>
@@ -77,7 +88,7 @@ export function TableSkeleton({
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-lg border bg-white p-6 shadow-sm" role="status" aria-label="Loading card...">
+    <div className="rounded-xl border bg-white p-6 shadow-sm" role="status" aria-label="Loading card...">
       <Skeleton className="mb-4 h-6 w-1/3" />
       <div className="space-y-3">
         <Skeleton className="h-4 w-full" />
@@ -90,18 +101,18 @@ export function CardSkeleton() {
 
 export function FormSkeleton({ fields = 5 }: { fields?: number }) {
   return (
-    <div className="rounded-lg border bg-white p-6 shadow-sm" role="status" aria-label="Loading form...">
+    <div className="rounded-xl border bg-white p-6 shadow-sm" role="status" aria-label="Loading form...">
       <Skeleton className="mb-6 h-8 w-1/4" />
       <div className="space-y-6">
         {Array.from({ length: fields }).map((_, i) => (
           <div key={i} className="space-y-2">
             <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full rounded-lg" />
           </div>
         ))}
         <div className="flex justify-end space-x-3 pt-4">
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-24 rounded-lg" />
+          <Skeleton className="h-10 w-32 rounded-lg" />
         </div>
       </div>
     </div>
@@ -112,9 +123,12 @@ export function StatsSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-lg border bg-white p-6 shadow-sm">
-          <Skeleton className="mb-2 h-4 w-24" />
-          <Skeleton className="mb-2 h-8 w-16" />
+        <div key={i} className="rounded-xl border bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-16 mb-2" />
           <Skeleton className="h-3 w-32" />
         </div>
       ))}
@@ -128,8 +142,8 @@ export function DetailViewSkeleton() {
       <div className="flex items-center justify-between">
         <Skeleton className="h-9 w-48" />
         <div className="flex space-x-2">
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24 rounded-lg" />
+          <Skeleton className="h-10 w-24 rounded-lg" />
         </div>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
@@ -141,3 +155,18 @@ export function DetailViewSkeleton() {
   )
 }
 
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Skeleton className="h-9 w-40 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <StatsSkeleton />
+      <div className="grid gap-6 md:grid-cols-2">
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    </div>
+  )
+}

@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, ShieldCheck } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { ComplianceNotificationsClient } from './ComplianceNotificationsClient'
 import { RefreshNotificationsButton } from '../notifications/RefreshNotificationsButton'
 
 async function getComplianceNotifications() {
   const supabase = await createClient()
-  
+
   const { data, error } = await supabase
     .from('notifications')
     .select(`
@@ -17,7 +17,7 @@ async function getComplianceNotifications() {
     .eq('notification_type', 'certificate_expiry')
     .order('created_at', { ascending: false })
     .limit(100)
-  
+
   // Parse details JSONB field if it exists
   if (data) {
     data.forEach((notification: any) => {
@@ -41,7 +41,7 @@ async function getComplianceNotifications() {
 
 async function getPendingCount() {
   const supabase = await createClient()
-  
+
   const { data, error } = await supabase
     .from('notifications')
     .select('id', { count: 'exact', head: true })
@@ -63,17 +63,18 @@ export default async function CompliancePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Compliance Notifications</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Certificate expiry notifications for employees, drivers, and vehicles
-          </p>
+        <div className="flex items-center gap-4">
+
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Compliance Notifications</h1>
+            <p className="text-sm text-slate-500">Certificate expiry notifications for employees, drivers, and vehicles</p>
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           {pendingCount > 0 && (
-            <div className="flex items-center space-x-2 text-sm text-orange-600">
-              <Bell className="h-5 w-5" />
-              <span>{pendingCount} pending notification{pendingCount !== 1 ? 's' : ''}</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700">
+              <Bell className="h-4 w-4" />
+              <span className="text-sm font-medium">{pendingCount} pending</span>
             </div>
           )}
           <RefreshNotificationsButton />
@@ -86,4 +87,5 @@ export default async function CompliancePage() {
     </div>
   )
 }
+
 

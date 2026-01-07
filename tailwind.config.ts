@@ -9,7 +9,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        navy: '#1e3a8a',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -51,10 +50,15 @@ const config: Config = {
       },
       animation: {
         'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'bounce-slow': 'bounce 2s infinite',
+      },
+      boxShadow: {
+        'glow-sm': '0 0 15px -3px rgba(139, 92, 246, 0.3)',
+        'glow': '0 0 25px -5px rgba(139, 92, 246, 0.4)',
+        'glow-lg': '0 0 35px -5px rgba(139, 92, 246, 0.5)',
       },
     },
   },
   plugins: [],
 }
 export default config
-

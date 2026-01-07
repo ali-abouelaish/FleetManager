@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { CheckCircle, XCircle, Clock as ClockIcon, Car, Wrench } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Car, AlertTriangle, Eye, Wrench } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import ReplacementVehicleFinder from '@/components/ReplacementVehicleFinder'
@@ -178,11 +178,11 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
       // Check for new notifications
       const currentIds = new Set(data.map((n: Notification) => n.id))
       const newNotifications = data.filter((n: Notification) => !previousNotificationIds.current.has(n.id))
-      
+
       if (newNotifications.length > 0) {
         // Play sound for new notifications
         playNotificationSound()
-        
+
         // Show browser notification for each new notification
         newNotifications.forEach(notification => {
           showBrowserNotification(notification)
@@ -248,8 +248,8 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
 
       setNotifications(prev =>
         prev.map(n =>
-          n.id === notificationId 
-            ? { ...n, status: 'resolved' as const, resolved_at: new Date().toISOString(), admin_response_required: false } 
+          n.id === notificationId
+            ? { ...n, status: 'resolved' as const, resolved_at: new Date().toISOString(), admin_response_required: false }
             : n
         )
       )
@@ -366,17 +366,17 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
 
   const getStatusBadge = (status: string) => {
     if (status === 'resolved') {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-green-100 text-green-800">Resolved</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">Resolved</span>
     }
     if (status === 'dismissed') {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800">Dismissed</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600">Dismissed</span>
     }
-    return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800">Pending</span>
+    return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700">Pending</span>
   }
 
-  const breakdownNotifications = notifications.filter(n => 
-    n.notification_type === 'vehicle_breakdown' && 
-    n.status !== 'resolved' && 
+  const breakdownNotifications = notifications.filter(n =>
+    n.notification_type === 'vehicle_breakdown' &&
+    n.status !== 'resolved' &&
     n.status !== 'dismissed'
   )
   const tardinessNotifications = notifications.filter(n =>
@@ -391,203 +391,222 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
 
   return (
     <div className="space-y-6">
-      {/* Breakdown Notifications - Urgent Red Banner */}
+      {/* Breakdown Notifications - Clean Table */}
       {breakdownNotifications.length > 0 && (
-        <Card className="border-2 border-red-500">
+        <Card className="border-slate-200 overflow-hidden rounded-2xl">
+          <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800">Vehicle Breakdowns</h2>
+            <span className="px-3 py-1 bg-rose-50 text-rose-700 rounded-full text-sm font-semibold border border-rose-100">
+              {breakdownNotifications.length} Active
+            </span>
+          </div>
           <CardContent className="p-0">
-            <div className="bg-red-600 text-white px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Wrench className="h-5 w-5" />
-                  <h2 className="text-lg font-bold">🚨 URGENT: Vehicle Breakdowns</h2>
-                </div>
-                <span className="px-3 py-1 bg-red-700 rounded-full text-sm font-semibold">
-                  {breakdownNotifications.length} Active
-                </span>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              {breakdownNotifications.map((notification) => {
-                const details = notification.details || {}
-                return (
-                  <div
-                    key={notification.id}
-                    className="p-4 bg-red-50 border-2 border-red-200 rounded-lg"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-red-900">Vehicle Breakdown Reported</h3>
-                          <span className="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">
-                            URGENT
-                          </span>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Vehicle</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Reported</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {breakdownNotifications.map((notification) => {
+                  const details = notification.details || {}
+                  return (
+                    <TableRow key={notification.id} className="hover:bg-slate-50">
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
+                          <AlertTriangle className="h-3 w-3" />
+                          URGENT
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/dashboard/vehicles/${notification.entity_id}`} className="font-medium text-slate-900 hover:text-violet-600">
+                          Vehicle {notification.entity_id}
+                        </Link>
+                        <div className="text-xs text-slate-500">{details.location || 'No location'}</div>
+                      </TableCell>
+                      <TableCell>
+                        {details.route_id ? (
+                          <Link href={`/dashboard/routes/${details.route_id}`} className="text-sm text-slate-600 hover:text-violet-600 hover:underline">
+                            Route {details.route_number || details.route_id}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-slate-400">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-slate-700 line-clamp-2" title={details.description}>
+                          {details.description || 'No description provided'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-slate-500 text-sm">
+                        {formatDateTime(details.reported_at || notification.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleFindReplacement(notification)}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-violet-600 hover:bg-violet-50"
+                            title="Find Replacement Vehicle"
+                          >
+                            <Car className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleResolve(notification.id)}
+                            disabled={resolving === notification.id}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                            title={resolving === notification.id ? 'Resolving...' : 'Resolve Breakdown'}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <div className="text-sm text-gray-700 space-y-1">
-                          <p><strong>Vehicle:</strong> <Link href={`/dashboard/vehicles/${notification.entity_id}`} className="text-blue-600 hover:underline font-medium">View Vehicle {notification.entity_id}</Link></p>
-                          {details.route_id && (
-                            <p><strong>Route:</strong> <Link href={`/dashboard/routes/${details.route_id}`} className="text-blue-600 hover:underline font-medium">{details.route_number ? `Route ${details.route_number}` : `View Route ${details.route_id}`}</Link></p>
-                          )}
-                          {details.description && (
-                            <p><strong>Description:</strong> {details.description}</p>
-                          )}
-                          {details.location && (
-                            <p><strong>Location:</strong> {details.location}</p>
-                          )}
-                          <p><strong>Reported:</strong> {formatDateTime(details.reported_at || notification.created_at)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          onClick={() => handleFindReplacement(notification)}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          <Car className="mr-2 h-4 w-4" />
-                          Find Replacement
-                        </Button>
-                        <Button
-                          onClick={() => handleResolve(notification.id)}
-                          disabled={resolving === notification.id}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          {resolving === notification.id ? 'Resolving...' : 'Resolve'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
 
-      {/* Tardiness Notifications */}
+      {/* Tardiness Notifications - Clean Table */}
       {tardinessNotifications.length > 0 && (
-        <Card className="border-2 border-orange-500">
+        <Card className="border-slate-200 overflow-hidden rounded-2xl">
+          <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800">Driver Tardiness</h2>
+            <span className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold border border-amber-100">
+              {tardinessNotifications.length} Pending
+            </span>
+          </div>
           <CardContent className="p-0">
-            <div className="bg-orange-600 text-white px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <ClockIcon className="h-5 w-5" />
-                  <h2 className="text-lg font-bold">Driver Tardiness Reports</h2>
-                </div>
-                <span className="px-3 py-1 bg-orange-700 rounded-full text-sm font-semibold">
-                  {tardinessNotifications.length} Pending
-                </span>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              {tardinessNotifications.map((notification) => {
-                const details = notification.details || {}
-                const tardinessReportId = parseInt(notification.certificate_type)
-                return (
-                  <div
-                    key={notification.id}
-                    className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-orange-900">Driver Tardiness Report</h3>
-                          <span className="px-2 py-1 bg-orange-600 text-white text-xs font-semibold rounded">
-                            PENDING REVIEW
-                          </span>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Driver</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Session</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Reported</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tardinessNotifications.map((notification) => {
+                  const details = notification.details || {}
+                  return (
+                    <TableRow key={notification.id} className="hover:bg-slate-50">
+                      <TableCell>
+                        <Link href={`/dashboard/drivers/${notification.entity_id}`} className="font-medium text-slate-900 hover:text-violet-600">
+                          {details.driver_name || 'Unknown Driver'}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        {details.route_id ? (
+                          <Link href={`/dashboard/routes/${details.route_id}`} className="text-sm text-slate-600 hover:text-violet-600 hover:underline">
+                            Route {details.route_number || details.route_id}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-slate-400">{details.route_number || 'N/A'}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-slate-700">
+                          {details.session_type || 'N/A'}
                         </div>
-                        <div className="text-sm text-gray-700 space-y-1">
-                          <p><strong>Driver:</strong> <Link href={`/dashboard/drivers/${notification.entity_id}`} className="text-blue-600 hover:underline font-medium">{details.driver_name || 'View Driver'}</Link></p>
-                          {details.route_id && (
-                            <p><strong>Route:</strong> <Link href={`/dashboard/routes/${details.route_id}`} className="text-blue-600 hover:underline font-medium">{details.route_number ? `Route ${details.route_number}` : `View Route ${details.route_id}`}</Link></p>
-                          )}
-                          {details.route_number && !details.route_id && (
-                            <p><strong>Route:</strong> {details.route_number}</p>
-                          )}
-                          <p><strong>Session:</strong> {details.session_type || 'N/A'} - {formatDate(notification.expiry_date)}</p>
-                          <p><strong>Reason:</strong> {notification.certificate_name}</p>
-                          {details.reported_at && (
-                            <p><strong>Reported:</strong> {formatDateTime(details.reported_at)}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
+                        <div className="text-xs text-slate-500">{formatDate(notification.expiry_date)}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-slate-700">
+                          {notification.certificate_name}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-slate-500 text-sm">
+                        {details.reported_at ? formatDateTime(details.reported_at) : formatDateTime(notification.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
                         {showTardinessModal === notification.id ? (
-                          <div className="flex flex-col gap-2 min-w-[200px]">
+                          <div className="absolute right-4 mt-2 z-10 bg-white shadow-xl border border-slate-200 rounded-lg p-3 w-64">
                             <textarea
-                              rows={3}
+                              rows={2}
                               value={tardinessNotes[notification.id] || ''}
                               onChange={(e) => setTardinessNotes(prev => ({ ...prev, [notification.id]: e.target.value }))}
-                              placeholder="Add notes (optional)..."
-                              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              placeholder="Add notes..."
+                              className="w-full text-sm border rounded p-2 mb-2 focus:ring-2 focus:ring-violet-500 outline-none"
+                              autoFocus
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 justify-end">
                               <Button
-                                onClick={() => handleApproveTardiness(notification)}
-                                disabled={approvingTardiness === notification.id}
-                                className="bg-green-600 hover:bg-green-700 text-white flex-1"
                                 size="sm"
+                                variant="ghost"
+                                onClick={() => setShowTardinessModal(null)}
+                                className="h-7 px-2 text-xs"
                               >
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                {approvingTardiness === notification.id ? 'Approving...' : 'Approve'}
+                                Cancel
                               </Button>
                               <Button
+                                size="sm"
                                 onClick={() => handleDeclineTardiness(notification)}
                                 disabled={decliningTardiness === notification.id}
-                                className="bg-red-600 hover:bg-red-700 text-white flex-1"
-                                size="sm"
+                                className="h-7 px-2 text-xs bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800"
                               >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                {decliningTardiness === notification.id ? 'Declining...' : 'Decline'}
+                                Decline
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveTardiness(notification)}
+                                disabled={approvingTardiness === notification.id}
+                                className="h-7 px-2 text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:text-emerald-800"
+                              >
+                                Approve
                               </Button>
                             </div>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => {
-                                setShowTardinessModal(null)
-                                setTardinessNotes(prev => {
-                                  const updated = { ...prev }
-                                  delete updated[notification.id]
-                                  return updated
-                                })
-                              }}
-                            >
-                              Cancel
-                            </Button>
                           </div>
                         ) : (
                           <Button
-                            onClick={() => setShowTardinessModal(notification.id)}
-                            className="bg-orange-600 hover:bg-orange-700 text-white"
                             size="sm"
+                            variant="ghost"
+                            onClick={() => setShowTardinessModal(notification.id)}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-violet-600 hover:bg-violet-50"
+                            title="Review Report"
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Review
+                            <Eye className="h-4 w-4" />
                           </Button>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
 
       {breakdownNotifications.length === 0 && tardinessNotifications.length === 0 ? (
-        <Card>
+        <Card className="border-slate-200">
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">No pending route activity notifications</p>
+            <CheckCircle className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500 font-medium">No pending route activity</p>
+            <p className="text-sm text-slate-400">Everything is running smoothly</p>
           </CardContent>
         </Card>
       ) : null}
 
       {routeActivityResolved.length > 0 && (
         <details className="mt-6">
-          <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">
-            Show resolved/dismissed route activity notifications ({routeActivityResolved.length})
+          <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-700 font-medium">
+            ▶ Show resolved/dismissed activity ({routeActivityResolved.length})
           </summary>
-          <Card className="mt-4">
+          <Card className="mt-4 border-slate-200 rounded-2xl overflow-hidden">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -600,31 +619,34 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
                 </TableHeader>
                 <TableBody>
                   {routeActivityResolved.map((notification) => (
-                    <TableRow key={notification.id}>
+                    <TableRow key={notification.id} className="hover:bg-slate-50">
                       <TableCell>
-                        {notification.notification_type === 'vehicle_breakdown' ? '🚨 Breakdown' : '⏰ Tardiness'}
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold ${notification.notification_type === 'vehicle_breakdown' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {notification.notification_type === 'vehicle_breakdown' ? <Wrench className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                          {notification.notification_type === 'vehicle_breakdown' ? 'Breakdown' : 'Tardiness'}
+                        </span>
                       </TableCell>
                       <TableCell>{getStatusBadge(notification.status)}</TableCell>
                       <TableCell>
                         {notification.notification_type === 'vehicle_breakdown' ? (
-                          <Link href={`/dashboard/vehicles/${notification.entity_id}`} className="text-blue-600 hover:underline font-medium">
+                          <Link href={`/dashboard/vehicles/${notification.entity_id}`} className="text-slate-700 hover:text-violet-600 hover:underline font-medium">
                             Vehicle {notification.entity_id}
                           </Link>
                         ) : (
-                          <Link href={`/dashboard/drivers/${notification.entity_id}`} className="text-blue-600 hover:underline font-medium">
+                          <Link href={`/dashboard/drivers/${notification.entity_id}`} className="text-slate-700 hover:text-violet-600 hover:underline font-medium">
                             Driver {notification.entity_id}
                           </Link>
                         )}
                         {notification.details?.route_id && (
-                          <span className="ml-2">
+                          <span className="ml-2 text-slate-500">
                             {' • '}
-                            <Link href={`/dashboard/routes/${notification.details.route_id}`} className="text-blue-600 hover:underline font-medium">
+                            <Link href={`/dashboard/routes/${notification.details.route_id}`} className="hover:text-violet-600 hover:underline">
                               Route {notification.details.route_number || notification.details.route_id}
                             </Link>
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-slate-500">
                         {notification.resolved_at ? formatDateTime(notification.resolved_at) : 'N/A'}
                       </TableCell>
                     </TableRow>

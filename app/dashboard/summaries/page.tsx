@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import DailySummariesClient from './DailySummariesClient'
+import { BarChart3 } from 'lucide-react'
 
 async function getDailySummaries(date: string) {
   const supabase = await createClient()
-  
+
   // Try querying the view directly first (more reliable)
   const { data: viewData, error: viewError } = await supabase
     .from('daily_route_summaries')
@@ -17,7 +18,7 @@ async function getDailySummaries(date: string) {
     return viewData.map((item: any) => ({
       ...item,
       incident_count: item.incident_count || 0,
-      incident_refs: Array.isArray(item.incident_refs) 
+      incident_refs: Array.isArray(item.incident_refs)
         ? item.incident_refs.filter((ref: any) => ref !== null && ref !== undefined)
         : []
     }))
@@ -52,11 +53,14 @@ export default async function DailySummariesPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Daily Summaries</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            View route session summaries with attendance and incidents
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-500 flex items-center justify-center shadow-lg shadow-fuchsia-500/20">
+            <BarChart3 className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Daily Summaries</h1>
+            <p className="text-sm text-slate-500">View route session summaries with attendance and incidents</p>
+          </div>
         </div>
       </div>
 

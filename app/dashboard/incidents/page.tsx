@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye } from 'lucide-react'
+import { Plus, Eye, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 
 async function getIncidents(routeSessionId?: string) {
@@ -32,7 +32,7 @@ async function IncidentsTable({ routeSessionId }: { routeSessionId?: string }) {
   const incidents = await getIncidents(routeSessionId)
 
   return (
-    <div className="rounded-md border bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -50,50 +50,60 @@ async function IncidentsTable({ routeSessionId }: { routeSessionId?: string }) {
         <TableBody>
           {incidents.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-gray-500">
-                No incidents found.
+              <TableCell colSpan={9} className="text-center py-12">
+                <CheckCircle className="h-12 w-12 text-emerald-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No incidents found</p>
+                <p className="text-sm text-slate-400">Great news! Your fleet is running smoothly</p>
               </TableCell>
             </TableRow>
           ) : (
             incidents.map((incident: any) => (
-              <TableRow key={incident.id}>
-                <TableCell>{incident.id}</TableCell>
-                <TableCell className="font-medium">{incident.incident_type || 'N/A'}</TableCell>
-                <TableCell>{incident.employees?.full_name || 'N/A'}</TableCell>
-                <TableCell>{incident.vehicles?.vehicle_identifier || 'N/A'}</TableCell>
-                <TableCell>{incident.routes?.route_number || 'N/A'}</TableCell>
+              <TableRow key={incident.id} className="hover:bg-slate-50">
+                <TableCell className="text-slate-500">#{incident.id}</TableCell>
+                <TableCell className="font-semibold text-slate-800">{incident.incident_type || 'N/A'}</TableCell>
+                <TableCell className="text-slate-600">{incident.employees?.full_name || 'N/A'}</TableCell>
+                <TableCell className="text-slate-600">{incident.vehicles?.vehicle_identifier || 'N/A'}</TableCell>
+                <TableCell className="text-slate-600">{incident.routes?.route_number || 'N/A'}</TableCell>
                 <TableCell>
                   {incident.route_sessions ? (
                     Array.isArray(incident.route_sessions) && incident.route_sessions.length > 0 ? (
                       <div className="space-y-1">
                         {incident.route_sessions.map((session: any) => (
-                          <div key={session.id} className="text-xs">
+                          <div key={session.id} className="text-xs text-slate-500">
                             {formatDateTime(session.session_date)} - {session.session_type}
                             {session.routes?.route_number && ` (${session.routes.route_number})`}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-xs">
+                      <div className="text-xs text-slate-500">
                         {formatDateTime((incident.route_sessions as any).session_date)} - {(incident.route_sessions as any).session_type}
                         {(incident.route_sessions as any).routes?.route_number && ` (${(incident.route_sessions as any).routes.route_number})`}
                       </div>
                     )
                   ) : (
-                    <span className="text-gray-400">—</span>
+                    <span className="text-slate-300">—</span>
                   )}
                 </TableCell>
                 <TableCell>
-                  <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                    incident.resolved ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {incident.resolved ? 'Resolved' : 'Open'}
-                  </span>
+                  {incident.resolved ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">
+                      <CheckCircle className="h-3 w-3" />
+                      Resolved
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-rose-100 text-rose-700">
+                      <XCircle className="h-3 w-3" />
+                      Open
+                    </span>
+                  )}
                 </TableCell>
-                <TableCell>{formatDateTime(incident.reported_at)}</TableCell>
+                <TableCell className="text-sm text-slate-500">{formatDateTime(incident.reported_at)}</TableCell>
                 <TableCell>
                   <Link href={`/dashboard/incidents/${incident.id}`} prefetch={true}>
-                    <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </Link>
                 </TableCell>
               </TableRow>
@@ -116,14 +126,19 @@ export default async function IncidentsPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Incidents</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            {routeSessionId ? 'Incidents for Route Session' : 'Track and manage all incidents'}
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
+            <AlertCircle className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Incidents</h1>
+            <p className="text-sm text-slate-500">
+              {routeSessionId ? 'Incidents for Route Session' : 'Track and manage all incidents'}
+            </p>
+          </div>
         </div>
         <Link href="/dashboard/incidents/create" prefetch={true}>
-          <Button>
+          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
             Report Incident
           </Button>
@@ -136,3 +151,4 @@ export default async function IncidentsPage({
     </div>
   )
 }
+

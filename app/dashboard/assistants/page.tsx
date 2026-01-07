@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Eye, Plus, Pencil } from 'lucide-react'
+import { Eye, Plus, Pencil, UserCheck, CheckCircle, XCircle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { AssistantSearchFilters } from './AssistantSearchFilters'
 
@@ -26,7 +26,7 @@ async function getAssistants(filters?: {
 
   // Apply filters in memory for employee-related fields
   let filtered = data || []
-  
+
   if (filters?.search && filters.search.trim()) {
     const searchTerm = filters.search.trim().toLowerCase()
     filtered = filtered.filter((assistant: any) =>
@@ -53,7 +53,7 @@ async function getAssistants(filters?: {
 function getMissingAndExpiredCertificates(assistant: any): string[] {
   const today = new Date()
   const issues: string[] = []
-  
+
   // Check TAS Badge (required)
   if (!assistant.tas_badge_expiry_date) {
     issues.push('Missing TAS Badge expiry date')
@@ -63,7 +63,7 @@ function getMissingAndExpiredCertificates(assistant: any): string[] {
       issues.push('Expired TAS Badge')
     }
   }
-  
+
   return issues
 }
 
@@ -75,7 +75,7 @@ async function AssistantsTable(filters?: {
   const assistants = await getAssistants(filters)
 
   return (
-    <div className="rounded-md border bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -93,58 +93,61 @@ async function AssistantsTable(filters?: {
         <TableBody>
           {assistants.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-gray-500">
-                No passenger assistants found.
+              <TableCell colSpan={9} className="text-center py-12">
+                <UserCheck className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No passenger assistants found</p>
+                <p className="text-sm text-slate-400">Add your first passenger assistant to get started</p>
               </TableCell>
             </TableRow>
           ) : (
             assistants.map((assistant: any) => {
               const missingAndExpired = getMissingAndExpiredCertificates(assistant)
-              
+
               return (
-                <TableRow key={assistant.employee_id}>
-                  <TableCell>{assistant.employee_id}</TableCell>
-                  <TableCell className="font-medium">{assistant.employees?.full_name || 'N/A'}</TableCell>
-                  <TableCell>{assistant.employees?.phone_number || 'N/A'}</TableCell>
+                <TableRow key={assistant.employee_id} className="hover:bg-slate-50">
+                  <TableCell className="text-slate-500">#{assistant.employee_id}</TableCell>
+                  <TableCell className="font-semibold text-slate-800">{assistant.employees?.full_name || 'N/A'}</TableCell>
+                  <TableCell className="text-slate-600">{assistant.employees?.phone_number || 'N/A'}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      assistant.employees?.employment_status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${assistant.employees?.employment_status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
                       {assistant.employees?.employment_status || 'N/A'}
                     </span>
                   </TableCell>
                   <TableCell>
                     {assistant.employees?.can_work === false ? (
                       <div className="space-y-1">
-                        <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-red-100 text-red-800">
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-rose-100 text-rose-700">
+                          <XCircle className="h-3 w-3" />
                           CANNOT WORK
                         </span>
                         {missingAndExpired.length > 0 ? (
-                          <div className="text-xs text-red-700 font-medium">
+                          <div className="text-xs text-rose-600 font-medium">
                             {missingAndExpired.join(', ')}
                           </div>
                         ) : (
-                          <div className="text-xs text-orange-700 font-medium">
-                            Status may be out of sync. Try editing and saving the record to refresh.
+                          <div className="text-xs text-amber-600 font-medium">
+                            Status may be out of sync
                           </div>
                         )}
                       </div>
                     ) : (
-                      <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-green-100 text-green-800">
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-700">
+                        <CheckCircle className="h-3 w-3" />
                         Authorized
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>{assistant.tas_badge_number || 'N/A'}</TableCell>
-                  <TableCell>{formatDate(assistant.tas_badge_expiry_date)}</TableCell>
-                  <TableCell>{assistant.dbs_number || 'N/A'}</TableCell>
+                  <TableCell className="text-slate-600">{assistant.tas_badge_number || 'N/A'}</TableCell>
+                  <TableCell className="text-slate-600">{formatDate(assistant.tas_badge_expiry_date)}</TableCell>
+                  <TableCell className="text-slate-600">{assistant.dbs_number || 'N/A'}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center gap-1">
                       <Link href={`/dashboard/assistants/${assistant.id}`} prefetch={true}>
-                        <Button variant="ghost" size="sm" title="View PA Profile"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50" title="View PA Profile"><Eye className="h-4 w-4" /></Button>
                       </Link>
                       <Link href={`/dashboard/assistants/${assistant.id}/edit`} prefetch={true}>
-                        <Button variant="ghost" size="sm" title="Edit Passenger Assistant"><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50" title="Edit Passenger Assistant"><Pencil className="h-4 w-4" /></Button>
                       </Link>
                     </div>
                   </TableCell>
@@ -177,12 +180,17 @@ export default async function AssistantsPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Passenger Assistants</h1>
-          <p className="mt-2 text-sm text-gray-600">View all passenger assistants and their certifications</p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+            <UserCheck className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Passenger Assistants</h1>
+            <p className="text-sm text-slate-500">View all passenger assistants and their certifications</p>
+          </div>
         </div>
         <Link href="/dashboard/assistants/create" prefetch={true}>
-          <Button>
+          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Passenger Assistant
           </Button>
@@ -197,3 +205,4 @@ export default async function AssistantsPage({
     </div>
   )
 }
+

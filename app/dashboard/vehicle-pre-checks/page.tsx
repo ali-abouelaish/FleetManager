@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import VehiclePreChecksClient from './VehiclePreChecksClient'
+import { ClipboardList } from 'lucide-react'
 
 async function getVehiclePreChecks(date: string) {
   const supabase = await createClient()
-  
+
   const { data, error } = await supabase
     .from('vehicle_pre_checks')
     .select(`
@@ -45,11 +46,14 @@ export default async function VehiclePreChecksPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Daily Vehicle Pre-Checks</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            View all vehicle pre-check reports completed by drivers
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lime-500 to-green-500 flex items-center justify-center shadow-lg shadow-lime-500/20">
+            <ClipboardList className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Daily Vehicle Pre-Checks</h1>
+            <p className="text-sm text-slate-500">View all vehicle pre-check reports completed by drivers</p>
+          </div>
         </div>
       </div>
 

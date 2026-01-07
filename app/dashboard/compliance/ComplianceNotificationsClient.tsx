@@ -121,7 +121,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
     if (Notification.permission !== 'granted') return
 
     const title = 'New Compliance Notification'
-    const body = notification.certificate_name 
+    const body = notification.certificate_name
       ? `${notification.certificate_name} expires in ${notification.days_until_expiry} days`
       : 'New compliance notification received'
 
@@ -161,11 +161,11 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
       // Check for new notifications
       const currentIds = new Set(data.map((n: Notification) => n.id))
       const newNotifications = data.filter((n: Notification) => !previousNotificationIds.current.has(n.id))
-      
+
       if (newNotifications.length > 0) {
         // Play sound for new notifications
         playNotificationSound()
-        
+
         // Show browser notification for each new notification
         newNotifications.forEach(notification => {
           showBrowserNotification(notification)
@@ -238,7 +238,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
         setAvailableRecipients(recipientsData.recipients || [])
         // Set default recipient if available
         if (recipientsData.recipients && recipientsData.recipients.length > 0) {
-          const defaultRecipient = recipientsData.recipients.find((r: any) => r.email === notification.recipient_email) 
+          const defaultRecipient = recipientsData.recipients.find((r: any) => r.email === notification.recipient_email)
             || recipientsData.recipients[0]
           setSelectedRecipient(defaultRecipient.email)
         }
@@ -355,8 +355,8 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
 
       setNotifications(prev =>
         prev.map(n =>
-          n.id === notificationId 
-            ? { ...n, status: 'resolved' as const, resolved_at: new Date().toISOString(), admin_response_required: false } 
+          n.id === notificationId
+            ? { ...n, status: 'resolved' as const, resolved_at: new Date().toISOString(), admin_response_required: false }
             : n
         )
       )
@@ -384,21 +384,21 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
 
   const getStatusBadge = (status: string, daysUntil: number) => {
     if (status === 'resolved') {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-green-100 text-green-800">Resolved</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">Resolved</span>
     }
     if (status === 'dismissed') {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800">Dismissed</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600">Dismissed</span>
     }
     if (status === 'sent') {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800">Email Sent</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-sky-100 text-sky-700">Email Sent</span>
     }
     if (daysUntil < 0) {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-red-100 text-red-800">Expired</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-rose-100 text-rose-700">Expired</span>
     }
     if (daysUntil <= 7) {
-      return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-800">Urgent</span>
+      return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700">Urgent</span>
     }
-    return <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800">Pending</span>
+    return <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700">Pending</span>
   }
 
   const getEntityLink = (entityType: string, entityId: number) => {
@@ -411,24 +411,26 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
     return '#'
   }
 
-  const complianceNotifications = notifications.filter(n => 
-    n.status !== 'resolved' && 
+  const complianceNotifications = notifications.filter(n =>
+    n.status !== 'resolved' &&
     n.status !== 'dismissed'
   )
-  const complianceResolved = notifications.filter(n => 
+  const complianceResolved = notifications.filter(n =>
     n.status === 'resolved' || n.status === 'dismissed'
   )
 
   return (
     <div className="space-y-6">
       {complianceNotifications.length === 0 ? (
-        <Card>
+        <Card className="border-slate-200">
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">No pending compliance notifications</p>
+            <CheckCircle className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500 font-medium">No pending compliance notifications</p>
+            <p className="text-sm text-slate-400">All certificates are up to date</p>
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="border-slate-200 overflow-hidden rounded-2xl">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -445,26 +447,26 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
               </TableHeader>
               <TableBody>
                 {complianceNotifications.map((notification) => (
-                  <TableRow 
+                  <TableRow
                     key={notification.id}
-                    className={notification.admin_response_required ? 'bg-orange-50 border-l-4 border-orange-500' : ''}
+                    className={`hover:bg-slate-50 ${notification.admin_response_required ? 'bg-amber-50 border-l-4 border-amber-400' : ''}`}
                   >
                     <TableCell>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2">
                         {getStatusIcon(notification.status, notification.days_until_expiry)}
                         {getStatusBadge(notification.status, notification.days_until_expiry)}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{notification.certificate_name}</div>
-                        <div className="text-sm text-gray-500">{notification.entity_type}</div>
+                        <div className="font-semibold text-slate-800">{notification.certificate_name}</div>
+                        <div className="text-xs text-slate-500">{notification.entity_type}</div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Link
                         href={getEntityLink(notification.entity_type, notification.entity_id)}
-                        className="text-blue-600 hover:underline flex items-center space-x-1"
+                        className="text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1 font-medium"
                       >
                         <span>View {notification.entity_type}</span>
                         <ExternalLink className="h-3 w-3" />
@@ -472,13 +474,13 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="text-sm">{notification.recipient?.full_name || 'N/A'}</div>
-                        <div className="text-xs text-gray-500">{notification.recipient_email || 'No email'}</div>
+                        <div className="text-sm font-medium text-slate-800">{notification.recipient?.full_name || 'N/A'}</div>
+                        <div className="text-xs text-slate-400">{notification.recipient_email || 'No email'}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{formatDate(notification.expiry_date)}</TableCell>
+                    <TableCell className="text-slate-600">{formatDate(notification.expiry_date)}</TableCell>
                     <TableCell>
-                      <span className={notification.days_until_expiry < 0 ? 'text-red-600 font-semibold' : notification.days_until_expiry <= 7 ? 'text-orange-600 font-semibold' : ''}>
+                      <span className={`font-semibold ${notification.days_until_expiry < 0 ? 'text-rose-600' : notification.days_until_expiry <= 7 ? 'text-orange-600' : 'text-slate-700'}`}>
                         {notification.days_until_expiry < 0
                           ? `Expired ${Math.abs(notification.days_until_expiry)} days ago`
                           : `${notification.days_until_expiry} days`}
@@ -534,41 +536,40 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2 flex-wrap gap-2">
+                      <div className="flex items-center gap-1">
                         {notification.status === 'pending' && notification.recipient_email && (
                           <Button
                             size="sm"
                             onClick={() => handleOpenEmailEditor(notification)}
                             disabled={sendingEmail === notification.id}
+                            className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-sm h-8 w-8 p-0"
+                            title="Send Email"
                           >
-                            <Mail className="h-4 w-4 mr-1" />
-                            Send Email
+                            <Mail className="h-4 w-4" />
                           </Button>
                         )}
                         {notification.status === 'sent' && notification.recipient_email && (
-                          <>
-                            <span className="text-sm text-gray-500">
-                              Sent {notification.email_sent_at ? formatDateTime(notification.email_sent_at) : ''}
-                            </span>
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenEmailEditor(notification)}
-                              disabled={sendingEmail === notification.id}
-                              variant="secondary"
-                            >
-                              <Mail className="h-4 w-4 mr-1" />
-                              Resend Email
-                            </Button>
-                          </>
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenEmailEditor(notification)}
+                            disabled={sendingEmail === notification.id}
+                            variant="ghost"
+                            className="text-violet-600 hover:text-violet-700 hover:bg-violet-50 h-8 w-8 p-0"
+                            title="Resend Email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
                         )}
                         {notification.status === 'pending' && (
                           <Button
                             size="sm"
-                            variant="secondary"
+                            variant="ghost"
                             onClick={() => handleDismiss(notification.id)}
                             disabled={dismissing === notification.id}
+                            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 h-8 w-8 p-0"
+                            title="Ignore"
                           >
-                            {dismissing === notification.id ? 'Dismissing...' : 'Ignore'}
+                            <XCircle className="h-4 w-4" />
                           </Button>
                         )}
                         {notification.admin_response_required && (
@@ -576,21 +577,22 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                             size="sm"
                             onClick={() => handleResolve(notification.id)}
                             disabled={resolving === notification.id}
-                            className="bg-orange-600 hover:bg-orange-700 text-white"
+                            className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm h-8 w-8 p-0"
+                            title="Approve"
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            {resolving === notification.id ? 'Resolving...' : 'Approve & Resolve'}
+                            <CheckCircle className="h-4 w-4" />
                           </Button>
                         )}
                         {(notification.status === 'pending' || notification.status === 'sent') && !notification.admin_response_required && (
                           <Button
                             size="sm"
-                            variant="secondary"
+                            variant="ghost"
                             onClick={() => handleResolve(notification.id)}
                             disabled={resolving === notification.id}
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 w-8 p-0"
+                            title="Mark Resolved"
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            {resolving === notification.id ? 'Resolving...' : 'Mark Resolved'}
+                            <CheckCircle className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
@@ -605,10 +607,10 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
 
       {complianceResolved.length > 0 && (
         <details className="mt-6">
-          <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">
-            Show resolved/dismissed compliance notifications ({complianceResolved.length})
+          <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-700 font-medium">
+            ▶ Show resolved/dismissed compliance notifications ({complianceResolved.length})
           </summary>
-          <Card className="mt-4">
+          <Card className="mt-4 border-slate-200 rounded-2xl overflow-hidden">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -622,19 +624,19 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                 </TableHeader>
                 <TableBody>
                   {complianceResolved.map((notification) => (
-                    <TableRow key={notification.id}>
+                    <TableRow key={notification.id} className="hover:bg-slate-50">
                       <TableCell>{getStatusBadge(notification.status, notification.days_until_expiry)}</TableCell>
-                      <TableCell>{notification.certificate_name}</TableCell>
+                      <TableCell className="font-medium text-slate-700">{notification.certificate_name}</TableCell>
                       <TableCell>
                         <Link
                           href={getEntityLink(notification.entity_type, notification.entity_id)}
-                          className="text-blue-600 hover:underline"
+                          className="text-violet-600 hover:underline"
                         >
                           View {notification.entity_type}
                         </Link>
                       </TableCell>
-                      <TableCell>{formatDate(notification.expiry_date)}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-slate-600">{formatDate(notification.expiry_date)}</TableCell>
+                      <TableCell className="text-slate-500">
                         {notification.resolved_at ? formatDateTime(notification.resolved_at) : 'N/A'}
                       </TableCell>
                     </TableRow>
@@ -648,11 +650,11 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
 
       {/* Email Editor Modal */}
       {emailEditorOpen && editingNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto border-slate-200 shadow-2xl">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Edit Email</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-slate-900">Edit Email</h2>
                 <button
                   onClick={() => {
                     setEmailEditorOpen(false)
@@ -662,7 +664,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                     setSelectedRecipient('')
                     setAvailableRecipients([])
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -670,38 +672,38 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
 
               {loadingTemplate ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Loading email template...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                  <p className="mt-2 text-slate-500">Loading email template...</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="flex items-start space-x-2">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
                       <input
                         id="hold-on-send"
                         type="checkbox"
                         checked={holdOnSend}
                         onChange={(e) => setHoldOnSend(e.target.checked)}
-                        className="mt-1 h-4 w-4"
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
                       <div>
-                        <Label htmlFor="hold-on-send">Put on hold until admin clears</Label>
-                        <p className="text-xs text-gray-500">
+                        <Label htmlFor="hold-on-send" className="text-slate-800">Put on hold until admin clears</Label>
+                        <p className="text-xs text-slate-500">
                           Flags the recipient, vehicle, and related routes as ON HOLD after sending.
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-start space-x-2">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
                       <input
                         id="include-appointment-link"
                         type="checkbox"
                         checked={includeAppointmentLink}
                         onChange={(e) => setIncludeAppointmentLink(e.target.checked)}
-                        className="mt-1 h-4 w-4"
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
                       <div>
-                        <Label htmlFor="include-appointment-link">Include appointment booking link</Label>
-                        <p className="text-xs text-gray-500">
+                        <Label htmlFor="include-appointment-link" className="text-slate-800">Include appointment booking link</Label>
+                        <p className="text-xs text-slate-500">
                           Adds a link so the recipient can book an available slot.
                         </p>
                       </div>
@@ -709,15 +711,15 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                   </div>
 
                   <div>
-                    <Label htmlFor="email-to">To *</Label>
+                    <Label htmlFor="email-to" className="text-slate-700">To *</Label>
                     {loadingRecipients ? (
-                      <div className="text-sm text-gray-500">Loading recipients...</div>
+                      <div className="text-sm text-slate-500">Loading recipients...</div>
                     ) : availableRecipients.length > 0 ? (
                       <select
                         id="email-to"
                         value={selectedRecipient}
                         onChange={(e) => setSelectedRecipient(e.target.value)}
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="mt-1 flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                         required
                       >
                         {availableRecipients.map((recipient) => (
@@ -732,44 +734,46 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                         value={selectedRecipient}
                         onChange={(e) => setSelectedRecipient(e.target.value)}
                         placeholder="Enter email address"
+                        className="mt-1"
                         required
                       />
                     )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      {editingNotification.entity_type === 'vehicle' 
+                    <p className="text-xs text-slate-400 mt-1">
+                      {editingNotification.entity_type === 'vehicle'
                         ? 'Select the driver, PA, or assigned employee to send the email to.'
                         : 'Email will be sent to the driver/PA.'}
                     </p>
                   </div>
 
                   <div>
-                    <Label htmlFor="email-subject">Subject *</Label>
+                    <Label htmlFor="email-subject" className="text-slate-700">Subject *</Label>
                     <Input
                       id="email-subject"
                       value={emailSubject}
                       onChange={(e) => setEmailSubject(e.target.value)}
+                      className="mt-1"
                       required
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="email-body">Message *</Label>
+                    <Label htmlFor="email-body" className="text-slate-700">Message *</Label>
                     <textarea
                       id="email-body"
                       rows={15}
                       value={emailBody}
                       onChange={(e) => setEmailBody(e.target.value)}
                       required
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="mt-1 flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-slate-400 mt-1">
                       You can edit the email content above. The upload link will be automatically included.
                     </p>
                   </div>
 
-                  <div className="flex justify-end space-x-2 pt-4">
+                  <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       onClick={() => {
                         setEmailEditorOpen(false)
                         setEditingNotification(null)
@@ -778,12 +782,14 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                         setSelectedRecipient('')
                         setAvailableRecipients([])
                       }}
+                      className="text-slate-600 hover:text-slate-800"
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleSendEmail}
                       disabled={sendingEmail === editingNotification.id || !emailSubject.trim() || !emailBody.trim() || !selectedRecipient.trim()}
+                      className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
                     >
                       <Mail className="h-4 w-4 mr-2" />
                       {sendingEmail === editingNotification.id ? 'Sending...' : 'Send Email'}

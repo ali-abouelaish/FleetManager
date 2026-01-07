@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
-import { Eye, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Eye, AlertTriangle, CheckCircle, GraduationCap, Building } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 async function getSchools() {
@@ -42,10 +42,8 @@ export default async function SchoolOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-navy">School Route Overview</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Comprehensive view of schools with routes, crew, vehicles, and passengers
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">School Route Overview</h1>
+        <p className="text-sm text-slate-500">Comprehensive view of schools with routes, crew, vehicles, and passengers</p>
       </div>
 
       {schools.map((school) => (
@@ -53,11 +51,11 @@ export default async function SchoolOverviewPage() {
       ))}
 
       {schools.length === 0 && (
-        <Card>
+        <Card className="border-slate-200">
           <CardContent className="py-12">
-            <p className="text-center text-gray-500">
-              No schools found. Add your first school to get started.
-            </p>
+            <Building className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-center text-slate-500 font-medium">No schools found</p>
+            <p className="text-center text-sm text-slate-400">Add your first school to get started</p>
           </CardContent>
         </Card>
       )}
@@ -69,24 +67,23 @@ async function SchoolOverviewCard({ school }: { school: any }) {
   const routes = await getSchoolOverview(school.id)
 
   return (
-    <Card>
-      <CardHeader className="bg-gray-50 border-b">
+    <Card className="overflow-hidden border-slate-200 shadow-sm">
+      <CardHeader className="bg-white border-b border-slate-100 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-xl">{school.name}</CardTitle>
-            <div className="text-sm text-gray-600 mt-1">
+            <CardTitle className="text-xl text-slate-800">{school.name}</CardTitle>
+            <div className="text-sm text-slate-500 mt-1">
               {school.ref_number && <span className="font-medium">Ref: {school.ref_number} • </span>}
               {school.address || 'No address'}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">{routes.length}</p>
-              <p className="text-xs text-gray-500">Routes</p>
+              <p className="text-2xl font-bold text-violet-600">{routes.length}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Routes</p>
             </div>
             <Link href={`/dashboard/schools/${school.id}`} prefetch={true}>
-              <Button size="sm">
-                <Eye className="mr-2 h-4 w-4" />
+              <Button size="sm" variant="outline" className="text-violet-600 border-violet-200 hover:bg-violet-50">
                 View Details
               </Button>
             </Link>
@@ -95,8 +92,9 @@ async function SchoolOverviewCard({ school }: { school: any }) {
       </CardHeader>
       <CardContent className="p-0">
         {routes.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">
-            No routes assigned to this school yet.
+          <div className="py-12 text-center">
+            <AlertTriangle className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500">No routes assigned to this school yet</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -110,6 +108,7 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                   <TableHead>Capacity</TableHead>
                   <TableHead>Passengers</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -118,112 +117,102 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                   const wheelchairPassengers = route.wheelchair_passengers || 0
                   const seatsTotal = route.seats_total || 0
                   const wheelchairCapacity = route.wheelchair_capacity || 0
-                  
+
                   const isOvercapacity = seatsTotal > 0 && totalPassengers > seatsTotal
                   const isWheelchairOvercapacity = wheelchairCapacity > 0 && wheelchairPassengers > wheelchairCapacity
                   const hasIssues = isOvercapacity || isWheelchairOvercapacity || (!route.driver_id && !route.pa_id) || !route.vehicle_id
 
                   return (
-                    <TableRow key={route.route_id}>
+                    <TableRow key={route.route_id} className="hover:bg-slate-50">
                       <TableCell>
-                        <div>
-                          <div className="font-medium">{route.route_number || `Route ${route.route_id}`}</div>
-                          {route.route_id && (
-                            <Link 
-                              href={`/dashboard/routes/${route.route_id}`}
-                              className="text-xs text-blue-600 hover:underline"
-                            >
-                              View Route
-                            </Link>
-                          )}
-                        </div>
+                        <div className="font-semibold text-slate-800">{route.route_number || `Route ${route.route_id}`}</div>
                       </TableCell>
                       <TableCell>
                         {route.driver_name ? (
                           <div>
-                            <div className="font-medium text-sm">{route.driver_name}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="font-semibold text-sm text-slate-800">{route.driver_name}</div>
+                            <div className="text-xs text-slate-500">
                               {route.driver_phone || 'No phone'}
                             </div>
                             {route.driver_dbs_expiry && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-slate-400">
                                 DBS: {formatDate(route.driver_dbs_expiry)}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-red-600 text-sm">Not Assigned</span>
+                          <span className="text-rose-600 text-sm font-medium">Not Assigned</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {route.pa_name ? (
                           <div>
-                            <div className="font-medium text-sm">{route.pa_name}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="font-semibold text-sm text-slate-800">{route.pa_name}</div>
+                            <div className="text-xs text-slate-500">
                               {route.pa_phone || 'No phone'}
                             </div>
                             {route.pa_dbs_expiry && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-slate-400">
                                 DBS: {formatDate(route.pa_dbs_expiry)}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-red-600 text-sm">Not Assigned</span>
+                          <span className="text-rose-600 text-sm font-medium">Not Assigned</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {route.vehicle_identifier ? (
                           <div>
-                            <div className="font-medium text-sm">{route.vehicle_identifier}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="font-semibold text-sm text-slate-800">{route.vehicle_identifier}</div>
+                            <div className="text-xs text-slate-500">
                               {route.vehicle_registration || 'No reg'}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-slate-400">
                               {route.vehicle_make} {route.vehicle_model}
                             </div>
                             {route.vehicle_off_road && (
-                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                              <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
                                 VOR
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-orange-600 text-sm">No Vehicle</span>
+                          <span className="text-amber-600 text-sm font-medium">No Vehicle</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {seatsTotal > 0 ? (
                           <div>
                             <div className="text-sm">
-                              <span className={totalPassengers > seatsTotal ? 'text-red-600 font-bold' : ''}>
+                              <span className={totalPassengers > seatsTotal ? 'text-rose-600 font-bold' : 'text-slate-800'}>
                                 {totalPassengers}
                               </span>
-                              <span className="text-gray-500"> / {seatsTotal} seats</span>
+                              <span className="text-slate-500"> / {seatsTotal} seats</span>
                             </div>
                             {wheelchairCapacity > 0 && (
-                              <div className="text-xs text-gray-600">
-                                <span className={wheelchairPassengers > wheelchairCapacity ? 'text-red-600 font-bold' : ''}>
+                              <div className="text-xs text-slate-500">
+                                <span className={wheelchairPassengers > wheelchairCapacity ? 'text-rose-600 font-bold' : ''}>
                                   {wheelchairPassengers}
                                 </span>
-                                <span className="text-gray-500"> / {wheelchairCapacity} ♿</span>
+                                <span className="text-slate-400"> / {wheelchairCapacity} ♿</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">No config</span>
+                          <span className="text-slate-300 text-sm">No config</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">{totalPassengers}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-800">{totalPassengers}</span>
                           {wheelchairPassengers > 0 && (
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">
                               {wheelchairPassengers} ♿
                             </span>
                           )}
                           {route.sen_passengers > 0 && (
-                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
+                            <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
                               {route.sen_passengers} SEN
                             </span>
                           )}
@@ -231,9 +220,9 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                       </TableCell>
                       <TableCell>
                         {hasIssues ? (
-                          <div className="flex items-center space-x-1 text-red-600">
+                          <div className="flex items-center gap-1 text-rose-600">
                             <AlertTriangle className="h-4 w-4" />
-                            <span className="text-xs">
+                            <span className="text-xs font-medium">
                               {[
                                 (!route.driver_id && !route.pa_id) && 'No Crew',
                                 !route.vehicle_id && 'No Vehicle',
@@ -243,11 +232,18 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                             </span>
                           </div>
                         ) : (
-                          <div className="flex items-center space-x-1 text-green-600">
+                          <div className="flex items-center gap-1 text-emerald-600">
                             <CheckCircle className="h-4 w-4" />
-                            <span className="text-xs">OK</span>
+                            <span className="text-xs font-medium">OK</span>
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/dashboard/routes/${route.route_id}`} prefetch={true}>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-violet-600 hover:bg-violet-50">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   )

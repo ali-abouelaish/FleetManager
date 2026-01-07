@@ -11,7 +11,7 @@ import { VehicleLocationsMap } from '@/components/maps/VehicleLocationsMap'
 
 async function getVehicleLocations() {
   const supabase = await createClient()
-  
+
   // Only fetch locations for spare vehicles that are not off the road
   const { data, error } = await supabase
     .from('vehicle_locations')
@@ -43,7 +43,7 @@ async function VehicleLocationsTable() {
   const locations = await getVehicleLocations()
 
   return (
-    <div className="rounded-md border bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -59,34 +59,35 @@ async function VehicleLocationsTable() {
         <TableBody>
           {locations.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-gray-500">
-                No spare vehicle locations found. Add your first spare vehicle location to get started.
+              <TableCell colSpan={7} className="text-center py-12">
+                <MapPin className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No spare vehicle locations found</p>
+                <p className="text-sm text-slate-400">Add your first spare vehicle location to get started</p>
               </TableCell>
             </TableRow>
           ) : (
             locations.map((location: any) => (
-              <TableRow key={location.id}>
+              <TableRow key={location.id} className="hover:bg-slate-50">
                 <TableCell>
                   <div>
-                    <div className="font-medium">
+                    <div className="font-semibold text-slate-800">
                       {location.vehicles?.vehicle_identifier || 'N/A'}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-slate-500">
                       {location.vehicles?.make} {location.vehicles?.model}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-slate-400">
                       {location.vehicles?.registration || 'No reg'}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
-                    {/* Always show "Spare" since we only query spare vehicles */}
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                       Spare Available
                     </span>
                     {location.vehicles?.off_the_road && (
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
                         (Filtered - VOR)
                       </span>
                     )}
@@ -94,37 +95,37 @@ async function VehicleLocationsTable() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center">
-                    <MapPin className="mr-2 h-4 w-4 text-navy" />
-                    <span className="font-medium">{location.location_name}</span>
+                    <MapPin className="mr-2 h-4 w-4 text-violet-500" />
+                    <span className="font-semibold text-slate-800">{location.location_name}</span>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="max-w-xs truncate text-sm">
+                  <div className="max-w-xs truncate text-sm text-slate-600">
                     {location.address || 'No address'}
                   </div>
                 </TableCell>
                 <TableCell>
                   {location.latitude && location.longitude ? (
-                    <div className="text-xs font-mono">
+                    <div className="text-xs font-mono text-slate-500">
                       <div>{location.latitude}°N</div>
                       <div>{location.longitude}°E</div>
                     </div>
                   ) : (
-                    <span className="text-gray-400 text-xs">No coordinates</span>
+                    <span className="text-slate-300 text-xs">No coordinates</span>
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm">{formatDateTime(location.last_updated)}</div>
+                  <div className="text-sm text-slate-600">{formatDateTime(location.last_updated)}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center gap-1">
                     <Link href={`/dashboard/vehicle-locations/${location.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/vehicle-locations/${location.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -142,7 +143,7 @@ async function VehicleLocationsTable() {
 export default async function VehicleLocationsPage() {
   const locations = await getVehicleLocations()
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ''
-  
+
   // Debug: Log if key is missing (only in development)
   if (!apiKey && process.env.NODE_ENV === 'development') {
     console.warn('⚠️ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set or is empty')
@@ -152,14 +153,17 @@ export default async function VehicleLocationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Spare Vehicle Locations</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Track and manage locations for spare vehicles in your fleet
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+            <MapPin className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Spare Vehicle Locations</h1>
+            <p className="text-sm text-slate-500">Track and manage locations for spare vehicles in your fleet</p>
+          </div>
         </div>
         <Link href="/dashboard/vehicle-locations/create" prefetch={true}>
-          <Button>
+          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Spare Vehicle Location
           </Button>
@@ -168,8 +172,8 @@ export default async function VehicleLocationsPage() {
 
       {/* Map View */}
       {locations.length > 0 && (
-        <Card>
-          <CardHeader className="bg-navy text-white">
+        <Card className="overflow-hidden border-slate-200">
+          <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
             <CardTitle className="flex items-center">
               <Map className="mr-2 h-5 w-5" />
               Spare Vehicles Map View
@@ -201,14 +205,14 @@ export default async function VehicleLocationsPage() {
       )}
 
       {/* Table View */}
-      <Card>
-        <CardHeader className="bg-navy text-white">
+      <Card className="overflow-hidden border-slate-200">
+        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
           <CardTitle>Spare Vehicle Locations List</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <Suspense fallback={
-            <TableSkeleton 
-              rows={8} 
+            <TableSkeleton
+              rows={8}
               columns={7}
               headers={['Vehicle', 'Status', 'Location Name', 'Address', 'Coordinates', 'Last Updated', 'Actions']}
             />

@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye, Pencil, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Eye, Pencil, AlertTriangle, CheckCircle, XCircle, Users } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { EmployeeSearchFilters } from './EmployeeSearchFilters'
 
@@ -15,7 +15,7 @@ async function getEmployees(filters?: {
   can_work?: string
 }) {
   const supabase = await createClient()
-  
+
   let query = supabase
     .from('employees')
     .select(`
@@ -72,7 +72,7 @@ async function getEmployees(filters?: {
   // Fallback: If search filter didn't work in query, filter in memory
   if (filters?.search && filters.search.trim()) {
     const searchTerm = filters.search.trim().toLowerCase()
-    result = result.filter((emp: any) => 
+    result = result.filter((emp: any) =>
       emp.full_name?.toLowerCase().includes(searchTerm)
     )
   }
@@ -84,7 +84,7 @@ async function getEmployees(filters?: {
 function getExpiredCertificates(employee: any): string[] {
   const today = new Date()
   const expiredCerts: string[] = []
-  
+
   const checkDate = (date: string | null, certName: string) => {
     if (!date) return
     const expiry = new Date(date)
@@ -92,7 +92,7 @@ function getExpiredCertificates(employee: any): string[] {
       expiredCerts.push(certName)
     }
   }
-  
+
   // Check driver certificates (one-to-one relationship - single object, not array)
   if (employee.drivers) {
     const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
@@ -108,7 +108,7 @@ function getExpiredCertificates(employee: any): string[] {
       checkDate(driver.mot_expiry_date, 'MOT')
     }
   }
-  
+
   // Check PA certificates (one-to-one relationship - single object, not array)
   if (employee.passenger_assistants) {
     const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
@@ -117,7 +117,7 @@ function getExpiredCertificates(employee: any): string[] {
       checkDate(pa.dbs_expiry_date, 'DBS')
     }
   }
-  
+
   return expiredCerts
 }
 
@@ -125,11 +125,11 @@ function getExpiredCertificates(employee: any): string[] {
 function getCertificateStatus(employee: any) {
   const today = new Date()
   const fourteenDays = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
-  
+
   let hasExpired = false
   let expiringCritical = false
   let expiringWarning = false
-  
+
   const checkDate = (date: string | null) => {
     if (!date) return
     const expiry = new Date(date)
@@ -141,7 +141,7 @@ function getCertificateStatus(employee: any) {
       expiringWarning = true
     }
   }
-  
+
   // Check driver certificates (one-to-one relationship - single object, not array)
   if (employee.drivers) {
     const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
@@ -157,7 +157,7 @@ function getCertificateStatus(employee: any) {
       checkDate(driver.mot_expiry_date)
     }
   }
-  
+
   // Check PA certificates (one-to-one relationship - single object, not array)
   if (employee.passenger_assistants) {
     const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
@@ -166,20 +166,20 @@ function getCertificateStatus(employee: any) {
       checkDate(pa.dbs_expiry_date)
     }
   }
-  
+
   if (hasExpired || employee.can_work === false) {
-    return { 
-      status: 'expired', 
-      label: 'Expired', 
-      color: 'bg-red-100 text-red-800'
+    return {
+      status: 'expired',
+      label: 'Expired',
+      color: 'bg-rose-100 text-rose-700'
     }
   } else if (expiringCritical) {
-    return { status: 'critical', label: '< 14 Days', color: 'bg-orange-100 text-orange-800' }
+    return { status: 'critical', label: '< 14 Days', color: 'bg-orange-100 text-orange-700' }
   } else if (expiringWarning) {
-    return { status: 'warning', label: '< 30 Days', color: 'bg-yellow-100 text-yellow-800' }
+    return { status: 'warning', label: '< 30 Days', color: 'bg-amber-100 text-amber-700' }
   }
-  
-  return { status: 'valid', label: 'Valid', color: 'bg-green-100 text-green-800' }
+
+  return { status: 'valid', label: 'Valid', color: 'bg-emerald-100 text-emerald-700' }
 }
 
 async function EmployeesTable({
@@ -196,7 +196,7 @@ async function EmployeesTable({
   const employees = await getEmployees({ search, role, status, can_work })
 
   return (
-    <div className="rounded-md border bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -213,8 +213,10 @@ async function EmployeesTable({
         <TableBody>
           {employees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-gray-500">
-                No employees found. Add your first employee to get started.
+              <TableCell colSpan={8} className="text-center py-12">
+                <Users className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No employees found</p>
+                <p className="text-sm text-slate-400">Add your first employee to get started</p>
               </TableCell>
             </TableRow>
           ) : (
@@ -223,7 +225,7 @@ async function EmployeesTable({
               const expiredCerts = getExpiredCertificates(employee)
               const isDriver = employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers.length > 0 : true)
               const isPA = employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants.length > 0 : true)
-              
+
               return (
                 <TableRow key={employee.id}>
                   <TableCell>{employee.id}</TableCell>
@@ -231,11 +233,10 @@ async function EmployeesTable({
                   <TableCell>{employee.role || 'N/A'}</TableCell>
                   <TableCell>
                     <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        employee.employment_status === 'Active'
+                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${employee.employment_status === 'Active'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
-                      }`}
+                        }`}
                     >
                       {employee.employment_status || 'N/A'}
                     </span>
@@ -324,14 +325,17 @@ export default async function EmployeesPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Employees</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage all employees in your fleet
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+            <Users className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Employees</h1>
+            <p className="text-sm text-slate-500">Manage all employees in your fleet</p>
+          </div>
         </div>
         <Link href="/dashboard/employees/create" prefetch={true}>
-          <Button>
+          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Employee
           </Button>

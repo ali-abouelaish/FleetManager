@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard,
   Users,
@@ -20,11 +21,20 @@ import {
   BarChart3,
   Bell,
   ChevronDown,
-  ChevronRight,
   Briefcase,
   TrendingUp,
   Mail,
   Shield,
+  LogOut,
+  Truck,
+  Menu,
+  X,
+  Activity,
+  ClipboardCheck,
+  GraduationCap,
+  FileCheck,
+  BadgeCheck,
+  FileText,
 } from 'lucide-react'
 import { useNotificationCount } from '@/hooks/useNotificationCount'
 import { useComplianceNotificationCount } from '@/hooks/useComplianceNotificationCount'
@@ -43,12 +53,11 @@ interface NavGroup {
   items: NavItem[]
 }
 
-// Top-level items that are always visible (never collapsed)
 const topLevelItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Compliance', href: '/dashboard/compliance', icon: Bell },
-  { name: 'Route Activity', href: '/dashboard/route-activity', icon: Bell },
-  { name: 'School Overview', href: '/dashboard/school-overview', icon: MapPin },
+  { name: 'Compliance', href: '/dashboard/compliance', icon: ClipboardCheck },
+  { name: 'Route Activity', href: '/dashboard/route-activity', icon: Activity },
+  { name: 'School Overview', href: '/dashboard/school-overview', icon: GraduationCap },
 ]
 
 const navigationGroups: NavGroup[] = [
@@ -86,10 +95,10 @@ const navigationGroups: NavGroup[] = [
     name: 'Reports',
     icon: TrendingUp,
     items: [
-      { name: 'Daily Summaries', href: '/dashboard/summaries', icon: BarChart3 },
+      { name: 'Daily Summaries', href: '/dashboard/summaries', icon: FileText },
       { name: 'Daily Vehicle Checks', href: '/dashboard/vehicle-pre-checks', icon: ClipboardList },
-      { name: 'Employee Certificates', href: '/dashboard/certificates-expiry/employees', icon: Calendar },
-      { name: 'Vehicle Certificates', href: '/dashboard/certificates-expiry/vehicles', icon: Calendar },
+      { name: 'Employee Certificates', href: '/dashboard/certificates-expiry/employees', icon: BadgeCheck },
+      { name: 'Vehicle Certificates', href: '/dashboard/certificates-expiry/vehicles', icon: FileCheck },
     ],
   },
   {
@@ -103,10 +112,14 @@ const navigationGroups: NavGroup[] = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
   const { count: notificationCount } = useNotificationCount()
   const { count: complianceCount } = useComplianceNotificationCount()
   const { count: routeActivityCount } = useRouteActivityNotificationCount()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const toggleGroup = (groupName: string) => {
     setExpandedGroups((prev) => {
@@ -131,7 +144,19 @@ export function Sidebar() {
     return items.some((item) => isItemActive(item.href))
   }
 
-  // Auto-expand groups that contain active items on mount and pathname change
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+      router.refresh()
+    } catch (error) {
+      console.error('Error logging out:', error)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
   useEffect(() => {
     const groupsToExpand = new Set<string>()
     navigationGroups.forEach((group) => {
@@ -148,28 +173,30 @@ export function Sidebar() {
     setExpandedGroups(groupsToExpand)
   }, [pathname])
 
-  return (
-    <div className="flex h-full w-64 flex-col bg-gradient-to-b from-gray-900 to-gray-800 text-white shadow-2xl">
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileOpen(false)
+  }, [pathname])
+
+  const sidebarContent = (
+    <>
       {/* Header */}
-      <div className="flex h-16 items-center justify-center border-b border-gray-700 bg-gradient-to-r from-blue-900 to-navy">
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg bg-white/10 p-2 backdrop-blur-sm">
-            <Car className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">Fleet Admin</h1>
-            <p className="text-xs text-blue-200">Management System</p>
-          </div>
-        </div>
+      <div className="relative flex h-16 items-center justify-center border-b border-slate-200/60 transition-all duration-300">
+        <h1 className="text-xl font-bold text-violet-700 tracking-tight">CountyCars</h1>
+        <button
+          className="lg:hidden absolute right-4 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          onClick={() => setIsMobileOpen(false)}
+        >
+          <X className="h-5 w-5 text-slate-500" />
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 px-3 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-        {/* Top-level items - always visible */}
-        <div className="space-y-1 mb-4 pb-4 border-b border-gray-700">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin space-y-1">
+        {/* Top-level items */}
+        <div className="space-y-1 mb-4 pb-4 border-b border-slate-200/60">
           {topLevelItems.map((item) => {
             const isActive = isItemActive(item.href)
-            // Show badge with appropriate count for each page
             let badgeCount = 0
             let showBadge = false
             if (item.href === '/dashboard/compliance') {
@@ -186,21 +213,24 @@ export function Sidebar() {
                 href={item.href}
                 prefetch={true}
                 className={cn(
-                  'group flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 relative',
+                  'group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200',
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-900/50'
-                    : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 )}
               >
                 <item.icon
                   className={cn(
-                    'h-4 w-4 flex-shrink-0 transition-colors',
-                    isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'
+                    'h-[18px] w-[18px] flex-shrink-0 transition-colors',
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'
                   )}
                 />
                 <span className="flex-1">{item.name}</span>
                 {showBadge && (
-                  <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full shadow-lg animate-pulse">
+                  <span className={cn(
+                    "flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full",
+                    isActive ? "bg-white/20 text-white" : "bg-rose-500 text-white"
+                  )}>
                     {badgeCount > 99 ? '99+' : badgeCount}
                   </span>
                 )}
@@ -215,35 +245,35 @@ export function Sidebar() {
           const hasActiveItem = isGroupActive(group.items)
 
           return (
-            <div key={group.name}>
+            <div key={group.name} className="mb-1">
               <button
                 onClick={() => toggleGroup(group.name)}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200',
+                  'w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200',
                   hasActiveItem
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-900/50'
-                    : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                    ? 'bg-violet-50 text-violet-700'
+                    : 'text-slate-600 hover:bg-slate-100'
                 )}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-3">
                   <group.icon className={cn(
-                    "h-4 w-4 flex-shrink-0",
-                    hasActiveItem ? "text-white" : "text-gray-400"
+                    "h-[18px] w-[18px] flex-shrink-0",
+                    hasActiveItem ? "text-violet-500" : "text-slate-400"
                   )} />
                   <span>{group.name}</span>
                 </div>
                 <ChevronDown className={cn(
                   "h-4 w-4 transition-transform duration-200",
-                  isExpanded ? "rotate-180" : "rotate-0"
+                  hasActiveItem ? "text-violet-500" : "text-slate-400",
+                  isExpanded && "rotate-180"
                 )} />
               </button>
-              
-              {/* Animated dropdown */}
+
               <div className={cn(
                 "overflow-hidden transition-all duration-200 ease-in-out",
-                isExpanded ? "max-h-96 opacity-100 mt-1" : "max-h-0 opacity-0"
+                isExpanded ? "max-h-[400px] opacity-100 mt-1" : "max-h-0 opacity-0"
               )}>
-                <div className="ml-3 space-y-1 border-l-2 border-gray-700 pl-3">
+                <div className="ml-4 space-y-1 border-l-2 border-slate-200 pl-3">
                   {group.items.map((item) => {
                     const isActive = isItemActive(item.href)
                     const showBadge = item.href === '/dashboard/notifications' && notificationCount > 0
@@ -254,21 +284,21 @@ export function Sidebar() {
                         href={item.href}
                         prefetch={true}
                         className={cn(
-                          'group flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 relative',
+                          'group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150',
                           isActive
-                            ? 'bg-blue-600/20 text-white border-l-2 border-blue-400 -ml-px shadow-sm'
-                            : 'text-gray-400 hover:bg-gray-700/50 hover:text-white hover:border-l-2 hover:border-gray-500 hover:-ml-px'
+                            ? 'bg-violet-50 text-violet-700 border-l-2 border-violet-500 -ml-[11px] pl-[21px]'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                         )}
                       >
                         <item.icon
                           className={cn(
                             'h-4 w-4 flex-shrink-0 transition-colors',
-                            isActive ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300'
+                            isActive ? 'text-violet-500' : 'text-slate-400 group-hover:text-slate-500'
                           )}
                         />
                         <span className="flex-1">{item.name}</span>
                         {showBadge && (
-                          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full shadow-lg animate-pulse">
+                          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-rose-500 rounded-full">
                             {notificationCount > 99 ? '99+' : notificationCount}
                           </span>
                         )}
@@ -282,14 +312,54 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-gray-700 px-4 py-3 bg-gray-900/50">
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-          <span>System Online</span>
+      {/* Footer with Logout */}
+      <div className="border-t border-slate-200/60 p-4 space-y-3">
+        <div className="flex items-center gap-3 px-2">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold">
+            A
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-700 truncate">Admin User</p>
+            <p className="text-xs text-slate-500">Fleet Manager</p>
+          </div>
         </div>
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>{isLoggingOut ? 'Logging out...' : 'Sign out'}</span>
+        </button>
       </div>
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile menu button */}
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-xl shadow-lg border border-slate-200"
+        onClick={() => setIsMobileOpen(true)}
+      >
+        <Menu className="h-5 w-5 text-slate-600" />
+      </button>
+
+      {/* Mobile overlay */}
+      {isMobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={cn(
+        "fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col bg-white/80 backdrop-blur-xl border-r border-slate-200/60 transition-transform duration-300 lg:translate-x-0",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        {sidebarContent}
+      </aside>
+    </>
   )
 }
-

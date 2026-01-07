@@ -9,14 +9,14 @@ import EmailSummariesClient from './EmailSummariesClient'
 
 async function getEmailSummaries() {
   const supabase = await createClient()
-  
+
   const { data, error } = await supabase
     .from('email_summaries')
     .select('*')
     .order('received_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(100)
-  
+
   if (error) {
     console.error('Error fetching email summaries:', error)
     return []
@@ -31,11 +31,14 @@ export default async function EmailSummariesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Email Summaries</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            View email summaries and notifications sent to employees
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <Mail className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Email Summaries</h1>
+            <p className="text-sm text-slate-500">View email summaries and notifications sent to employees</p>
+          </div>
         </div>
       </div>
 

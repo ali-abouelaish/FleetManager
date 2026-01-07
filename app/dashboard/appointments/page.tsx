@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { formatDateTime } from '@/lib/utils'
+import { Calendar, Clock } from 'lucide-react'
 
 interface AppointmentBooking {
   id: number
@@ -97,14 +98,19 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-sm text-gray-600">Create available slots and view bookings.</p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+            <Calendar className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
+            <p className="text-sm text-slate-500">Create available slots and view bookings</p>
+          </div>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden border-slate-200">
+        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
           <CardTitle>Create Slot</CardTitle>
         </CardHeader>
         <CardContent>
@@ -158,8 +164,8 @@ export default function AppointmentsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden border-slate-200">
+        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
           <CardTitle>Slots & Bookings</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -180,35 +186,37 @@ export default function AppointmentsPage() {
                 </TableRow>
               ) : slots.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-6 text-gray-500">
-                    No slots yet. Create one above.
+                  <TableCell colSpan={3} className="text-center py-12">
+                    <Clock className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">No slots yet</p>
+                    <p className="text-sm text-slate-400">Create one above to get started</p>
                   </TableCell>
                 </TableRow>
               ) : (
                 slots.map((slot) => {
                   const booking = slot.appointment_bookings?.[0]
                   return (
-                    <TableRow key={slot.id}>
+                    <TableRow key={slot.id} className="hover:bg-slate-50">
                       <TableCell>
-                        <div className="font-medium">{formatDateTime(slot.slot_start)}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="font-semibold text-slate-800">{formatDateTime(slot.slot_start)}</div>
+                        <div className="text-sm text-slate-500">
                           Ends {formatDateTime(slot.slot_end)}
                         </div>
                       </TableCell>
-                      <TableCell>{slot.notes || '-'}</TableCell>
+                      <TableCell className="text-slate-600">{slot.notes || '-'}</TableCell>
                       <TableCell>
                         {booking ? (
                           <div className="space-y-1">
-                            <div className="text-sm font-medium">Booked</div>
-                            <div className="text-sm text-gray-600">
+                            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-violet-100 text-violet-700">Booked</span>
+                            <div className="text-sm text-slate-600">
                               {booking.booked_by_name || booking.booked_by_email || 'Recipient'}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-slate-400">
                               {booking.booked_at ? formatDateTime(booking.booked_at) : ''}
                             </div>
                           </div>
                         ) : (
-                          <span className="text-sm text-green-700">Available</span>
+                          <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">Available</span>
                         )}
                       </TableCell>
                     </TableRow>

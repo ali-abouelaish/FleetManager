@@ -106,7 +106,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
     return time
   }
 
-  const FieldWithAudit = ({ fieldName, label, value, formatValue }: { 
+  const FieldWithAudit = ({ fieldName, label, value, formatValue }: {
     fieldName: string
     label: string
     value: any
@@ -114,7 +114,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
   }) => {
     const auditInfo = getFieldAuditInfo(fieldName)
     const displayValue = formatValue ? formatValue(value) : (value || 'N/A')
-    
+
     return (
       <div>
         <dt className="text-sm font-medium text-gray-500">{label}</dt>
@@ -137,9 +137,9 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             onClick={() => setActiveTab('overview')}
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'overview' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+              ${activeTab === 'overview'
+                ? 'border-violet-500 text-violet-600'
+                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
             📋 Overview
@@ -148,9 +148,9 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             onClick={() => setActiveTab('compliance')}
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'compliance' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+              ${activeTab === 'compliance'
+                ? 'border-violet-500 text-violet-600'
+                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
             📜 Compliance Documents
@@ -159,9 +159,9 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             onClick={() => setActiveTab('documents')}
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'documents' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+              ${activeTab === 'documents'
+                ? 'border-violet-500 text-violet-600'
+                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
             📄 All Documents
@@ -170,9 +170,9 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             onClick={() => setActiveTab('daily-checks')}
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'daily-checks' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+              ${activeTab === 'daily-checks'
+                ? 'border-violet-500 text-violet-600'
+                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
             ✅ Daily Checks
@@ -215,13 +215,12 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                   <dt className="text-sm font-medium text-gray-500">Status</dt>
                   <dd className="mt-1">
                     <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        vehicle.off_the_road
-                          ? 'bg-red-100 text-red-800'
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${vehicle.off_the_road
+                          ? 'bg-rose-100 text-rose-700'
                           : vehicle.spare_vehicle
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}
                     >
                       {vehicle.off_the_road ? 'VOR' : vehicle.spare_vehicle ? 'Spare' : 'Active'}
                     </span>
@@ -231,15 +230,15 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                 <FieldWithAudit fieldName="spare_vehicle" label="Spare Vehicle" value={vehicle.spare_vehicle} formatValue={(val) => val ? 'Yes' : 'No'} />
                 <FieldWithAudit fieldName="off_the_road" label="Off the Road" value={vehicle.off_the_road} formatValue={(val) => val ? 'Yes' : 'No'} />
                 {(() => {
-                  const assignedEmployee = Array.isArray(vehicle.assigned_employee) 
-                    ? vehicle.assigned_employee[0] 
+                  const assignedEmployee = Array.isArray(vehicle.assigned_employee)
+                    ? vehicle.assigned_employee[0]
                     : vehicle.assigned_employee
                   const assignedName = assignedEmployee?.full_name || (vehicle.assigned_to ? 'Unknown' : 'N/A')
                   return (
-                    <FieldWithAudit 
-                      fieldName="assigned_to" 
-                      label="Assigned To (MOT & Service Follow-up)" 
-                      value={assignedName} 
+                    <FieldWithAudit
+                      fieldName="assigned_to"
+                      label="Assigned To (MOT & Service Follow-up)"
+                      value={assignedName}
                     />
                   )
                 })()}
@@ -373,7 +372,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                           <div className="flex-1">
                             <Link
                               href={`/dashboard/routes/${route.id}`}
-                              className="font-semibold text-navy hover:text-blue-800 transition-colors"
+                              className="font-semibold text-violet-600 hover:text-violet-800 transition-colors"
                             >
                               {route.route_number || `Route ${route.id}`}
                             </Link>

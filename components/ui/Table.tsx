@@ -1,87 +1,122 @@
 import { cn } from '@/lib/utils'
-import { HTMLAttributes, ThHTMLAttributes, TdHTMLAttributes } from 'react'
+import { HTMLAttributes, ThHTMLAttributes, TdHTMLAttributes, forwardRef } from 'react'
 
-const Table = ({ className, ...props }: HTMLAttributes<HTMLTableElement>) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      className={cn('w-full caption-bottom text-sm', className)}
-      {...props}
-    />
-  </div>
+interface TableProps extends HTMLAttributes<HTMLTableElement> {
+  stickyHeader?: boolean
+}
+
+const Table = forwardRef<HTMLTableElement, TableProps>(
+  ({ className, stickyHeader, ...props }, ref) => (
+    <div className="relative w-full overflow-auto">
+      <table
+        ref={ref}
+        className={cn('w-full caption-bottom text-sm', className)}
+        {...props}
+      />
+    </div>
+  )
 )
+Table.displayName = 'Table'
 
-const TableHeader = ({
-  className,
-  ...props
-}: HTMLAttributes<HTMLTableSectionElement>) => (
-  <thead 
+const TableHeader = forwardRef<
+  HTMLTableSectionElement,
+  HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <thead
+    ref={ref}
     className={cn(
-      'bg-navy',
-      '[&_tr]:border-b',
-      '[&_tr]:bg-navy',
-      '[&_tr]:hover:bg-navy',
-      '[&_tr]:even:bg-navy',
-      '[&_tr]:odd:bg-navy',
+      'bg-slate-50 border-b border-slate-200',
+      '[&_tr]:border-b-0',
       className
-    )} 
-    {...props} 
+    )}
+    {...props}
   />
-)
+))
+TableHeader.displayName = 'TableHeader'
 
-const TableBody = ({
-  className,
-  ...props
-}: HTMLAttributes<HTMLTableSectionElement>) => (
+const TableBody = forwardRef<
+  HTMLTableSectionElement,
+  HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
   <tbody
+    ref={ref}
     className={cn(
       '[&_tr:last-child]:border-0',
-      '[&_tr:hover]:bg-blue-50',
-      '[&_tr]:even:bg-gray-50',
-      '[&_tr]:odd:bg-white',
-      '[&_tr[data-state=selected]]:bg-blue-100',
+      '[&_tr]:transition-colors [&_tr]:duration-150',
       className
     )}
     {...props}
   />
-)
+))
+TableBody.displayName = 'TableBody'
 
-const TableRow = ({
-  className,
-  ...props
-}: HTMLAttributes<HTMLTableRowElement>) => (
+const TableRow = forwardRef<
+  HTMLTableRowElement,
+  HTMLAttributes<HTMLTableRowElement>
+>(({ className, ...props }, ref) => (
   <tr
+    ref={ref}
     className={cn(
-      'border-b transition-colors',
+      'border-b border-slate-100 bg-white hover:bg-slate-50/80 transition-colors',
+      'data-[state=selected]:bg-violet-50',
       className
     )}
     {...props}
   />
-)
+))
+TableRow.displayName = 'TableRow'
 
-const TableHead = ({
-  className,
-  ...props
-}: ThHTMLAttributes<HTMLTableCellElement>) => (
+const TableHead = forwardRef<
+  HTMLTableCellElement,
+  ThHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
   <th
+    ref={ref}
     className={cn(
-      'h-12 px-4 text-left align-middle font-semibold text-white',
-      'bg-transparent',
+      'h-11 px-4 text-left align-middle font-semibold text-slate-600 text-xs uppercase tracking-wider',
       '[&:has([role=checkbox])]:pr-0',
       className
     )}
     {...props}
   />
-)
+))
+TableHead.displayName = 'TableHead'
 
-const TableCell = ({
-  className,
-  ...props
-}: TdHTMLAttributes<HTMLTableCellElement>) => (
+const TableCell = forwardRef<
+  HTMLTableCellElement,
+  TdHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
   <td
-    className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+    ref={ref}
+    className={cn(
+      'px-4 py-3 align-middle text-slate-700',
+      '[&:has([role=checkbox])]:pr-0',
+      className
+    )}
     {...props}
   />
-)
+))
+TableCell.displayName = 'TableCell'
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell }
+const TableCaption = forwardRef<
+  HTMLTableCaptionElement,
+  HTMLAttributes<HTMLTableCaptionElement>
+>(({ className, ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn('mt-4 text-sm text-slate-500', className)}
+    {...props}
+  />
+))
+TableCaption.displayName = 'TableCaption'
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableCaption
+}
 
