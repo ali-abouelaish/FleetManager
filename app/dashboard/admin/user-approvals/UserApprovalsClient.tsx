@@ -322,7 +322,10 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
                       {user.approval_status === 'pending' && (
                         <>
                           <Button
-                            onClick={() => setSelectedUser(user)}
+                            onClick={() => {
+                              setSelectedUser(user)
+                              setAdminNotes('')
+                            }}
                             variant="secondary"
                             size="sm"
                           >

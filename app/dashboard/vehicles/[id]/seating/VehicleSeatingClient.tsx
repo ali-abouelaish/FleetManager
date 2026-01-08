@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { VehicleSeatingPlan, SubstitutionVehicle } from '@/lib/types'
 import VisualSeatingGrid from './visual-grid'
-import { Card } from '@/components/ui/Card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import Link from 'next/link'
+import { Pencil, X, Save } from 'lucide-react'
 
 interface VehicleSeatingClientProps {
   vehicleId: string
@@ -163,52 +164,53 @@ export default function VehicleSeatingClient({
         <div className="space-y-6">
           {/* Current Seating Plan Card */}
           {seatingPlan && !isEditing ? (
-            <Card className="bg-white border-gray-200">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Current Seating Plan</h2>
-                    <p className="text-sm text-gray-600 mt-1">{seatingPlan.name}</p>
+                    <CardTitle>Current Seating Plan</CardTitle>
+                    <p className="text-sm text-slate-500 mt-1">{seatingPlan.name}</p>
                   </div>
                   <Button
                     onClick={() => setIsEditing(true)}
-                    className="bg-navy hover:bg-blue-800"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
                   >
+                    <Pencil className="mr-2 h-4 w-4" />
                     Edit Plan
                   </Button>
                 </div>
-
+              </CardHeader>
+              <CardContent>
                 {/* Visual Grid */}
                 <VisualSeatingGrid seatingPlan={seatingPlan} />
 
                 {/* Notes */}
                 {seatingPlan.notes && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded border border-gray-200">
-                    <div className="text-sm font-semibold text-gray-700 mb-2">Notes</div>
-                    <div className="text-sm text-gray-600">{seatingPlan.notes}</div>
+                  <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="text-sm font-semibold text-slate-700 mb-2">Notes</div>
+                    <div className="text-sm text-slate-600">{seatingPlan.notes}</div>
                   </div>
                 )}
 
                 {/* Metadata */}
-                <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-500 space-y-1">
+                <div className="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 space-y-1">
                   <div>Created: {new Date(seatingPlan.created_at).toLocaleString()}</div>
                   <div>Last Updated: {new Date(seatingPlan.updated_at).toLocaleString()}</div>
                 </div>
-              </div>
+              </CardContent>
             </Card>
           ) : (
             /* Seating Plan Editor Form */
-            <Card className="bg-white border-gray-200">
-              <div className="p-6">
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {seatingPlan ? 'Edit Seating Plan' : 'Create Seating Plan'}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Configure the seating layout for this vehicle
-                  </p>
-                </div>
-
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {seatingPlan ? 'Edit Seating Plan' : 'Create Seating Plan'}
+                </CardTitle>
+                <p className="text-sm text-slate-500 mt-1">
+                  Configure the seating layout for this vehicle
+                </p>
+              </CardHeader>
+              <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <Label htmlFor="name">Plan Name</Label>
@@ -219,7 +221,6 @@ export default function VehicleSeatingClient({
                     onChange={handleInputChange}
                     placeholder="e.g., Standard Coach (45 passengers)"
                     required
-                    className="bg-white border-gray-300 text-gray-900"
                   />
                 </div>
 
@@ -234,7 +235,6 @@ export default function VehicleSeatingClient({
                     value={formData.total_capacity}
                     onChange={handleInputChange}
                     required
-                    className="bg-white border-gray-300 text-gray-900"
                   />
                   </div>
 
@@ -248,7 +248,6 @@ export default function VehicleSeatingClient({
                     value={formData.wheelchair_spaces}
                     onChange={handleInputChange}
                     required
-                    className="bg-white border-gray-300 text-gray-900"
                   />
                   </div>
                 </div>
@@ -264,7 +263,6 @@ export default function VehicleSeatingClient({
                     value={formData.rows}
                     onChange={handleInputChange}
                     required
-                    className="bg-white border-gray-300 text-gray-900"
                   />
                   </div>
 
@@ -276,9 +274,8 @@ export default function VehicleSeatingClient({
                       type="number"
                       min="1"
                     value={formData.seats_per_row}
-                    onChange={handleInputChange}
-                    required
-                    className="bg-white border-gray-300 text-gray-900"
+                      onChange={handleInputChange}
+                      required
                   />
                   </div>
                 </div>
@@ -292,7 +289,7 @@ export default function VehicleSeatingClient({
                     onChange={handleInputChange}
                     placeholder="e.g., 2 wheelchair lifts, emergency exit row 5"
                     rows={3}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
 
@@ -300,7 +297,7 @@ export default function VehicleSeatingClient({
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="bg-navy hover:bg-blue-800"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2">
@@ -311,7 +308,10 @@ export default function VehicleSeatingClient({
                         Saving...
                       </span>
                     ) : (
-                      `${seatingPlan ? 'Update' : 'Create'} Plan`
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        {seatingPlan ? 'Update' : 'Create'} Plan
+                      </>
                     )}
                   </Button>
 
@@ -319,31 +319,32 @@ export default function VehicleSeatingClient({
                     <Button
                       type="button"
                       onClick={() => setIsEditing(false)}
-                      className="bg-gray-700 hover:bg-gray-600"
+                      variant="secondary"
                     >
+                      <X className="mr-2 h-4 w-4" />
                       Cancel
                     </Button>
                   )}
                 </div>
                 </form>
-              </div>
+              </CardContent>
             </Card>
           )}
         </div>
 
         {/* Right Column: Substitution Vehicles */}
         <div className="space-y-6">
-          <Card className="bg-white border-gray-200">
-            <div className="p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Substitution Vehicles</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Find available vehicles with matching or similar seating plans (exact matches shown first, then similar capacity)
-                </p>
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Substitution Vehicles</CardTitle>
+              <p className="text-sm text-slate-500 mt-1">
+                Find available vehicles with matching or similar seating plans (exact matches shown first, then similar capacity)
+              </p>
+            </CardHeader>
+            <CardContent>
 
               {!seatingPlan ? (
-                <div className="text-center py-10 text-gray-500">
+                <div className="text-center py-10 text-slate-500">
                   <div className="text-4xl mb-3">🪑</div>
                   <p>Create a seating plan first to find substitution vehicles</p>
                 </div>
@@ -352,7 +353,7 @@ export default function VehicleSeatingClient({
                   <Button
                     onClick={handleFindSubstitutes}
                     disabled={isLoadingSubstitutes}
-                    className="w-full bg-navy hover:bg-blue-800 mb-4"
+                    className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 mb-4"
                   >
                   {isLoadingSubstitutes ? (
                     <span className="flex items-center justify-center gap-2">
@@ -372,35 +373,35 @@ export default function VehicleSeatingClient({
                       {substitutionVehicles.map((vehicle) => (
                         <div
                           key={vehicle.vehicle_id}
-                          className="p-5 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                          className="p-5 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
                         >
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <Link
                                 href={`/dashboard/vehicles/${vehicle.vehicle_id}`}
-                                className="font-semibold text-navy hover:text-blue-800 transition-colors"
+                                className="font-semibold text-violet-600 hover:text-violet-700 transition-colors"
                               >
                                 {vehicle.registration_number}
                               </Link>
-                              <div className="text-sm text-gray-600 mt-1">
+                              <div className="text-sm text-slate-600 mt-1">
                                 {vehicle.make} {vehicle.model}
                               </div>
                             </div>
-                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                               Available
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 mb-4">
-                          <div>Capacity: <span className="text-gray-900 font-medium">{vehicle.total_capacity}</span></div>
-                          <div>Wheelchair: <span className="text-gray-900 font-medium">{vehicle.wheelchair_spaces}</span></div>
-                          <div>Rows: <span className="text-gray-900 font-medium">{vehicle.rows}</span></div>
-                          <div>Seats/Row: <span className="text-gray-900 font-medium">{vehicle.seats_per_row}</span></div>
+                          <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 mb-4">
+                          <div>Capacity: <span className="text-slate-900 font-medium">{vehicle.total_capacity}</span></div>
+                          <div>Wheelchair: <span className="text-slate-900 font-medium">{vehicle.wheelchair_spaces}</span></div>
+                          <div>Rows: <span className="text-slate-900 font-medium">{vehicle.rows}</span></div>
+                          <div>Seats/Row: <span className="text-slate-900 font-medium">{vehicle.seats_per_row}</span></div>
                         </div>
 
                           <Link
                             href={`/dashboard/vehicles/${vehicle.vehicle_id}`}
-                            className="text-sm text-navy hover:text-blue-800 transition-colors"
+                            className="text-sm text-violet-600 hover:text-violet-700 transition-colors"
                           >
                             View Vehicle Details →
                           </Link>
@@ -408,12 +409,12 @@ export default function VehicleSeatingClient({
                       ))}
                     </div>
                   ) : substitutionVehicles.length === 0 && !isLoadingSubstitutes && error === null ? (
-                      <div className="text-center py-10 text-gray-500">
+                      <div className="text-center py-10 text-slate-500">
                       <div className="text-4xl mb-3">🔍</div>
                       <p>Click "Find Substitute Vehicles" to search</p>
                     </div>
                   ) : substitutionVehicles.length === 0 && !isLoadingSubstitutes && error === null ? (
-                    <div className="text-center py-10 text-gray-500">
+                    <div className="text-center py-10 text-slate-500">
                       <div className="text-4xl mb-3">🚫</div>
                       <p>No substitute vehicles available</p>
                       <p className="text-xs mt-2">
@@ -423,35 +424,37 @@ export default function VehicleSeatingClient({
                   ) : null}
                 </>
               )}
-            </div>
+            </CardContent>
           </Card>
 
           {/* Quick Stats */}
           {seatingPlan && (
-            <Card className="bg-white border-gray-200">
-              <div className="p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Seating Summary</h3>
+            <Card>
+              <CardHeader>
+                <CardTitle>Seating Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between py-3 border-b border-gray-200">
-                    <span className="text-gray-600">Plan Name</span>
-                    <span className="text-gray-900 font-semibold">{seatingPlan.name}</span>
+                  <div className="flex justify-between py-3 border-b border-slate-200">
+                    <span className="text-slate-600">Plan Name</span>
+                    <span className="text-slate-900 font-semibold">{seatingPlan.name}</span>
                   </div>
-                  <div className="flex justify-between py-3 border-b border-gray-200">
-                    <span className="text-gray-600">Total Capacity</span>
-                    <span className="text-gray-900 font-semibold">{seatingPlan.total_capacity} passengers</span>
+                  <div className="flex justify-between py-3 border-b border-slate-200">
+                    <span className="text-slate-600">Total Capacity</span>
+                    <span className="text-slate-900 font-semibold">{seatingPlan.total_capacity} passengers</span>
                   </div>
-                  <div className="flex justify-between py-3 border-b border-gray-200">
-                    <span className="text-gray-600">Configuration</span>
-                    <span className="text-gray-900 font-semibold">
+                  <div className="flex justify-between py-3 border-b border-slate-200">
+                    <span className="text-slate-600">Configuration</span>
+                    <span className="text-slate-900 font-semibold">
                       {seatingPlan.rows} rows × {seatingPlan.seats_per_row} seats
                     </span>
                   </div>
                   <div className="flex justify-between py-3">
-                    <span className="text-gray-600">Wheelchair Spaces</span>
+                    <span className="text-slate-600">Wheelchair Spaces</span>
                     <span className="text-yellow-600 font-semibold">{seatingPlan.wheelchair_spaces}</span>
                   </div>
                 </div>
-              </div>
+              </CardContent>
             </Card>
           )}
         </div>

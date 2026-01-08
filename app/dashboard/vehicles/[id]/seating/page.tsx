@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
+import { ArrowLeft, Car } from 'lucide-react'
 import VehicleSeatingClient from './VehicleSeatingClient'
 import { getVehicleSeatingPlan } from '@/lib/supabase/vehicleSeating'
 
@@ -46,38 +48,34 @@ export default async function VehicleSeatingPage({ params }: VehicleSeatingPageP
 
   return (
     <div className="space-y-6">
-      <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <Link href="/dashboard/vehicles" className="hover:text-gray-900 transition-colors">
-            Vehicles
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href={`/dashboard/vehicles/${params.id}`}>
+            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
           </Link>
-          <span>/</span>
-          <Link 
-            href={`/dashboard/vehicles/${params.id}`} 
-            className="hover:text-gray-900 transition-colors"
-          >
-            {vehicle.registration || vehicle.vehicle_identifier || 'Vehicle'}
-          </Link>
-          <span>/</span>
-          <span className="text-gray-900 font-medium">Seating Plan</span>
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+            <Car className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              Seating Plan
+            </h1>
+            <p className="text-sm text-slate-500">
+              {vehicle.make} {vehicle.model} • {vehicle.registration || vehicle.vehicle_identifier}
+            </p>
+          </div>
         </div>
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Vehicle Seating Plan</h1>
-          <p className="text-gray-600 mt-1">
-            {vehicle.make} {vehicle.model} • {vehicle.registration}
-          </p>
-        </div>
-
-        {/* Client component for interactive features */}
-        <VehicleSeatingClient 
-          vehicleId={params.id}
-          vehicle={vehicle}
-          initialSeatingPlan={seatingPlan}
-        />
       </div>
+
+      {/* Client component for interactive features */}
+      <VehicleSeatingClient 
+        vehicleId={params.id}
+        vehicle={vehicle}
+        initialSeatingPlan={seatingPlan}
+      />
     </div>
   )
 }

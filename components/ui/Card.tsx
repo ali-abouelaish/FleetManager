@@ -26,10 +26,13 @@ const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
     <div
       ref={ref}
       className={cn(
-        'flex flex-col space-y-1.5 p-6',
+        'flex flex-col space-y-1.5 p-6 relative',
         {
           'bg-gradient-to-r from-navy to-blue-700 text-white rounded-t-xl -m-px mb-0':
             variant === 'gradient',
+          // Default accent: left border with gradient
+          'border-l-4 border-l-violet-500 bg-gradient-to-r from-violet-50/50 to-transparent':
+            variant === 'default',
         },
         className
       )}
@@ -46,7 +49,7 @@ const CardTitle = forwardRef<
   <h3
     ref={ref}
     className={cn(
-      'text-xl font-semibold leading-none tracking-tight',
+      'text-xl font-semibold leading-none tracking-tight text-black',
       className
     )}
     {...props}
