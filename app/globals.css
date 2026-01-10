@@ -187,4 +187,20 @@
       transform: scale(1);
     }
   }
+
+  /* Global file input button styling - matches primary button gradient */
+  input[type="file"]::file-selector-button {
+    @apply bg-gradient-to-r from-violet-600 to-blue-700 text-white;
+    @apply shadow-md shadow-violet-500/25;
+    @apply hover:shadow-lg hover:shadow-violet-500/30 hover:from-violet-700 hover:to-blue-800;
+    @apply transition-all duration-200 ease-out;
+    @apply rounded-md border-0;
+    @apply font-semibold;
+    @apply cursor-pointer;
+    @apply active:scale-[0.98];
+  }
+
+  input[type="file"]::file-selector-button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 }

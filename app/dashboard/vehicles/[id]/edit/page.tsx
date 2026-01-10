@@ -451,6 +451,22 @@ function EditVehiclePageClient({ id }: { id: string }) {
                 <Label htmlFor="tail_lift">Tail Lift</Label>
               </div>
 
+              {formData.tail_lift && (
+                <div className="space-y-2">
+                  <Label htmlFor="loler_expiry_date">
+                    LOLER Certificate - Expiry Date
+                  </Label>
+                  <Input
+                    id="loler_expiry_date"
+                    type="date"
+                    value={formData.loler_expiry_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, loler_expiry_date: e.target.value })
+                    }
+                  />
+                </div>
+              )}
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"

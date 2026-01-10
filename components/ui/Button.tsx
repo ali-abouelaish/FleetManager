@@ -33,20 +33,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'active:scale-[0.98]',
           // Variant styles
           {
-            // Primary - Gradient navy with glow
-            'bg-gradient-to-r from-navy to-blue-700 text-white shadow-md shadow-navy/25 hover:shadow-lg hover:shadow-navy/30 hover:from-blue-800 hover:to-blue-600 focus-visible:ring-navy':
+            // Primary - Gradient violet/blue with glow (matches theme)
+            'bg-gradient-to-r from-violet-600 to-blue-700 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 hover:from-violet-700 hover:to-blue-800 focus-visible:ring-violet-500':
               variant === 'primary',
-            // Secondary - Subtle gray
-            'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 hover:border-gray-300 focus-visible:ring-gray-400':
+            // Secondary - Slate background with dark text (matches theme)
+            'bg-slate-100 text-slate-800 border border-slate-300 hover:bg-slate-200 hover:border-slate-400 focus-visible:ring-slate-400':
               variant === 'secondary',
             // Danger - Red gradient
             'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/30 hover:from-red-700 hover:to-red-600 focus-visible:ring-red-500':
               variant === 'danger',
             // Ghost - Transparent with hover
-            'text-gray-600 hover:bg-gray-100 hover:text-navy focus-visible:ring-navy':
+            'text-slate-600 hover:bg-slate-100 hover:text-violet-700 focus-visible:ring-violet-500':
               variant === 'ghost',
             // Outline - Bordered
-            'border-2 border-navy text-navy bg-transparent hover:bg-navy hover:text-white focus-visible:ring-navy':
+            'border-2 border-violet-600 text-violet-700 bg-transparent hover:bg-violet-600 hover:text-white focus-visible:ring-violet-500':
               variant === 'outline',
           },
           // Size styles

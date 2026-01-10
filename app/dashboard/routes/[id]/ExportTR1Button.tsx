@@ -167,17 +167,17 @@ export default function ExportTR1Button({ routeId }: ExportTR1ButtonProps) {
 
   return (
     <div className="relative">
-      {!showDatePicker ? (
-        <Button
-          onClick={handleExportClick}
-          disabled={isExporting}
-          variant="secondary"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export TR1
-        </Button>
-      ) : (
-        <Card className="absolute top-0 left-0 z-50 w-96 shadow-xl border-2">
+      <Button
+        onClick={handleExportClick}
+        disabled={isExporting}
+        variant="secondary"
+      >
+        <Download className="mr-2 h-4 w-4" />
+        Export TR1
+      </Button>
+
+      {showDatePicker && (
+        <Card className="absolute top-full left-0 mt-2 -ml-[150px] z-50 w-96 shadow-xl border-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Export TR1 Form</CardTitle>

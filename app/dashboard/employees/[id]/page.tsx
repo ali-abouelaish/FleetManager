@@ -13,6 +13,12 @@ const PassengerAssistantQRCodeWrapper = dynamic(
   { ssr: false }
 )
 
+// Dynamically import the employee detail client component (for field audit)
+const EmployeeDetailClient = dynamic(
+  () => import('./EmployeeDetailClient'),
+  { ssr: false }
+)
+
 async function getEmployee(id: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -274,131 +280,8 @@ export default async function ViewEmployeePage({
         )
       })()}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Employee ID</dt>
-              <dd className="mt-1 text-sm text-gray-900">{employee.id}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{employee.full_name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Role</dt>
-              <dd className="mt-1 text-sm text-gray-900">{employee.role || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
-              <dd className="mt-1">
-                <span
-                  className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                    employee.employment_status === 'Active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {employee.employment_status || 'N/A'}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
-              <dd className="mt-1">
-                <span
-                  className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
-                    employee.can_work === false
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}
-                >
-                  {employee.can_work === false ? (
-                    <>
-                      <XCircle className="mr-1 h-3 w-3" />
-                      Cannot Work (Expired Certificates)
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-1 h-3 w-3" />
-                      Authorized to Work
-                    </>
-                  )}
-                </span>
-              </dd>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {employee.phone_number || 'N/A'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Personal Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {employee.personal_email || 'N/A'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Address</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {employee.address || 'N/A'}
-              </dd>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Employment Dates</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Start Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDate(employee.start_date)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">End Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDate(employee.end_date)}
-              </dd>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>System Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Created At</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDate(employee.created_at)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Updated At</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDate(employee.updated_at)}
-              </dd>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Employee Details with Field Audit */}
+      <EmployeeDetailClient employee={employee} employeeId={employee.id.toString()} />
 
       {/* Driver Certificates - Comprehensive View */}
       {employee.drivers && Array.isArray(employee.drivers) && employee.drivers.length > 0 && (

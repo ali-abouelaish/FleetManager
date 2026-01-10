@@ -158,7 +158,7 @@ export default function UploadIncidentDocument({
                 type="file"
                 accept="image/*,application/pdf"
                 onChange={handleFileChange}
-                className="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                className="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                 disabled={uploading}
               />
               {selectedFile && (

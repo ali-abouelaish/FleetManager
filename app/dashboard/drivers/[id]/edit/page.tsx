@@ -494,7 +494,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       id="tas_badge_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('tas_badge_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>
@@ -544,7 +544,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       id="dbs_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('dbs_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>
@@ -584,7 +584,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       id="passport_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('passport_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>
@@ -609,7 +609,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       id="driving_license_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('driving_license_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>
@@ -634,7 +634,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       id="cpc_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('cpc_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>
@@ -660,7 +660,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                       id="utility_bill_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('utility_bill_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>
@@ -786,7 +786,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                     id="badge_photo_file"
                     accept=".jpg,.jpeg,.png"
                     onChange={(e) => handleFileChange('badge_photo_file', e.target.files?.[0] || null)}
-                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                   />
                   <p className="text-xs text-gray-500 mt-1">Upload a photo for the driver's ID badge (JPG, PNG)</p>
                 </div>

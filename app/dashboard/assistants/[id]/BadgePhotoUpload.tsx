@@ -89,7 +89,7 @@ export default function BadgePhotoUpload({ employeeId, onUpload }: BadgePhotoUpl
           accept=".jpg,.jpeg,.png"
           onChange={handleFileChange}
           disabled={uploading}
-          className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800 disabled:opacity-50"
+          className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm disabled:opacity-50"
         />
         <p className="text-xs text-gray-500 mt-1">Upload a photo for the passenger assistant's ID badge (JPG, PNG)</p>
       </div>

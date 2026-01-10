@@ -168,7 +168,7 @@ export default function IncidentDocumentUpload({
           type="file"
           accept="image/*,application/pdf"
           onChange={handleFileChange}
-          className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-navy file:text-white hover:file:bg-blue-800"
+          className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs"
           disabled={uploading}
         />
         {selectedFile && (
