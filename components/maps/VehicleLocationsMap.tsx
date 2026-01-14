@@ -114,12 +114,24 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
     position: google.maps.LatLng | google.maps.LatLngLiteral,
     location: VehicleLocation
   ) => {
-    // Create custom icon for spare vehicles (green pin)
+    // Determine color based on vehicle status
+    let fillColor = '#10b981' // green-500 (Active)
+    let strokeColor = '#059669' // green-600
+    
+    if (location.vehicles?.off_the_road) {
+      fillColor = '#ef4444' // red-500 (VOR)
+      strokeColor = '#dc2626' // red-600
+    } else if (location.vehicles?.spare_vehicle) {
+      fillColor = '#f59e0b' // amber-500 (Spare)
+      strokeColor = '#d97706' // amber-600
+    }
+
+    // Create custom icon based on vehicle status
     const icon = {
       path: window.google.maps.SymbolPath.CIRCLE,
-      fillColor: '#10b981', // green-500
+      fillColor,
       fillOpacity: 1,
-      strokeColor: '#059669', // green-600
+      strokeColor,
       strokeWeight: 2,
       scale: 10,
     }
@@ -135,6 +147,16 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
     // Format last updated date
     const lastUpdated = new Date(location.last_updated).toLocaleString()
 
+    // Determine status badge
+    let statusBadge = ''
+    if (location.vehicles?.off_the_road) {
+      statusBadge = '<span style="display: inline-block; padding: 2px 8px; background-color: #fee2e2; color: #991b1b; border-radius: 9999px; font-size: 11px; font-weight: 600;">VOR</span>'
+    } else if (location.vehicles?.spare_vehicle) {
+      statusBadge = '<span style="display: inline-block; padding: 2px 8px; background-color: #fef3c7; color: #92400e; border-radius: 9999px; font-size: 11px; font-weight: 600;">Spare</span>'
+    } else {
+      statusBadge = '<span style="display: inline-block; padding: 2px 8px; background-color: #d1fae5; color: #065f46; border-radius: 9999px; font-size: 11px; font-weight: 600;">Active</span>'
+    }
+
     // Create info window
     const infoWindow = new window.google.maps.InfoWindow({
       content: `
@@ -143,9 +165,7 @@ export function VehicleLocationsMap({ locations, apiKey }: VehicleLocationsMapPr
             🚗 ${location.vehicles?.vehicle_identifier || 'Unknown Vehicle'}
           </h3>
           <div style="margin-bottom: 8px;">
-            <span style="display: inline-block; padding: 2px 8px; background-color: #d1fae5; color: #065f46; border-radius: 9999px; font-size: 11px; font-weight: 600;">
-              Spare Available
-            </span>
+            ${statusBadge}
           </div>
           ${location.vehicles?.make && location.vehicles?.model ? `
             <p style="margin: 4px 0; font-size: 13px; color: #6b7280;">

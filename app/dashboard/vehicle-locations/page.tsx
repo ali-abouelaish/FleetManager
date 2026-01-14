@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { Plus, Eye, Pencil, MapPin, Map } from 'lucide-react'
+import { Plus, Eye, Pencil, MapPin, Map, AlertTriangle, ParkingCircle, CheckCircle } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { VehicleLocationsMap } from '@/components/maps/VehicleLocationsMap'
 
 async function getVehicleLocations() {
   const supabase = await createClient()
 
-  // Only fetch locations for spare vehicles that are not off the road
+  // Fetch all vehicle locations
   const { data, error } = await supabase
     .from('vehicle_locations')
     .select(`
@@ -27,12 +27,10 @@ async function getVehicleLocations() {
         off_the_road
       )
     `)
-    .eq('vehicles.spare_vehicle', true)
-    .or('vehicles.off_the_road.is.null,vehicles.off_the_road.eq.false')
     .order('last_updated', { ascending: false })
 
   if (error) {
-    console.error('Error fetching spare vehicle locations:', error)
+    console.error('Error fetching vehicle locations:', error)
     return []
   }
 
@@ -61,8 +59,8 @@ async function VehicleLocationsTable() {
             <TableRow>
               <TableCell colSpan={7} className="text-center py-12">
                 <MapPin className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">No spare vehicle locations found</p>
-                <p className="text-sm text-slate-400">Add your first spare vehicle location to get started</p>
+                <p className="text-slate-500 font-medium">No vehicle locations found</p>
+                <p className="text-sm text-slate-400">Add your first vehicle location to get started</p>
               </TableCell>
             </TableRow>
           ) : (
@@ -82,16 +80,22 @@ async function VehicleLocationsTable() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                      Spare Available
+                  {location.vehicles?.off_the_road ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-rose-100 text-rose-700">
+                      <AlertTriangle className="h-3 w-3" />
+                      VOR
                     </span>
-                    {location.vehicles?.off_the_road && (
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
-                        (Filtered - VOR)
-                      </span>
-                    )}
-                  </div>
+                  ) : location.vehicles?.spare_vehicle ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700">
+                      <ParkingCircle className="h-3 w-3" />
+                      Spare
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">
+                      <CheckCircle className="h-3 w-3" />
+                      Active
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center">
@@ -158,14 +162,14 @@ export default async function VehicleLocationsPage() {
             <MapPin className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Spare Vehicle Locations</h1>
-            <p className="text-sm text-slate-500">Track and manage locations for spare vehicles in your fleet</p>
+            <h1 className="text-2xl font-bold text-slate-900">Vehicle Locations</h1>
+            <p className="text-sm text-slate-500">Track and manage locations for all vehicles in your fleet</p>
           </div>
         </div>
         <Link href="/dashboard/vehicle-locations/create" prefetch={true}>
           <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
             <Plus className="mr-2 h-4 w-4" />
-            Add Spare Vehicle Location
+            Add Vehicle Location
           </Button>
         </Link>
       </div>
@@ -176,7 +180,7 @@ export default async function VehicleLocationsPage() {
           <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
             <CardTitle className="flex items-center">
               <Map className="mr-2 h-5 w-5" />
-              Spare Vehicles Map View
+              Vehicle Locations Map View
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -205,22 +209,15 @@ export default async function VehicleLocationsPage() {
       )}
 
       {/* Table View */}
-      <Card className="overflow-hidden border-slate-200">
-        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-          <CardTitle>Spare Vehicle Locations List</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <Suspense fallback={
-            <TableSkeleton
-              rows={8}
-              columns={7}
-              headers={['Vehicle', 'Status', 'Location Name', 'Address', 'Coordinates', 'Last Updated', 'Actions']}
-            />
-          }>
-            <VehicleLocationsTable />
-          </Suspense>
-        </CardContent>
-      </Card>
+      <Suspense fallback={
+        <TableSkeleton
+          rows={8}
+          columns={7}
+          headers={['Vehicle', 'Status', 'Location Name', 'Address', 'Coordinates', 'Last Updated', 'Actions']}
+        />
+      }>
+        <VehicleLocationsTable />
+      </Suspense>
     </div>
   )
 }
