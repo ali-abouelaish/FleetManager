@@ -34,16 +34,64 @@ export default function CreateEmployeePage() {
     setLoading(true)
 
     try {
+      // Validate dates
+      let startDate: string | null = formData.start_date.trim() || null
+      let endDate: string | null = formData.end_date.trim() || null
+
+      // Validate date formats if provided
+      if (startDate) {
+        const startDateObj = new Date(startDate)
+        if (isNaN(startDateObj.getTime())) {
+          throw new Error('Start Date: Please enter a valid date (YYYY-MM-DD format)')
+        }
+      }
+
+      if (endDate) {
+        const endDateObj = new Date(endDate)
+        if (isNaN(endDateObj.getTime())) {
+          throw new Error('End Date: Please enter a valid date (YYYY-MM-DD format)')
+        }
+
+        // Validate that end date is after start date if both are provided
+        if (startDate) {
+          const startDateObj = new Date(startDate)
+          const endDateObj = new Date(endDate)
+          if (endDateObj < startDateObj) {
+            throw new Error('End Date must be after or equal to Start Date')
+          }
+        }
+      }
+
+      // Prepare data for insertion
+      const insertData: any = {
+        full_name: formData.full_name,
+        role: formData.role || null,
+        employment_status: formData.employment_status,
+        phone_number: formData.phone_number || null,
+        personal_email: formData.personal_email || null,
+        address: formData.address || null,
+        start_date: startDate,
+        end_date: endDate, // Can be null
+      }
+
       const { data, error } = await supabase
         .from('employees')
-        .insert([{
-          ...formData,
-          end_date: formData.end_date || null, // Set to null if empty
-          wheelchair_access: null, // Explicitly set to null since field is removed from form
-        }])
+        .insert([insertData])
         .select()
 
-      if (error) throw error
+      if (error) {
+        // Provide clearer error messages
+        if (error.message.includes('date') || error.message.includes('invalid input')) {
+          if (error.message.includes('start_date')) {
+            throw new Error('Start Date: Invalid date format. Please use YYYY-MM-DD format or leave blank.')
+          } else if (error.message.includes('end_date')) {
+            throw new Error('End Date: Invalid date format. Please use YYYY-MM-DD format or leave blank.')
+          } else {
+            throw new Error('Date Error: Please check your date fields. Use YYYY-MM-DD format or leave blank.')
+          }
+        }
+        throw error
+      }
 
       if (data && data[0]) {
         // Log audit
@@ -61,7 +109,7 @@ export default function CreateEmployeePage() {
       router.push('/dashboard/employees')
       router.refresh()
     } catch (error: any) {
-      setError(error.message || 'An error occurred')
+      setError(error.message || 'An error occurred while creating the employee')
     } finally {
       setLoading(false)
     }
@@ -188,6 +236,7 @@ export default function CreateEmployeePage() {
                     setFormData({ ...formData, start_date: e.target.value })
                   }
                 />
+                <p className="text-xs text-gray-500">Optional - Leave blank if not applicable</p>
               </div>
 
               <div className="space-y-2">
@@ -200,6 +249,7 @@ export default function CreateEmployeePage() {
                     setFormData({ ...formData, end_date: e.target.value })
                   }
                 />
+                <p className="text-xs text-gray-500">Optional - Leave blank if employee is still active</p>
               </div>
             </div>
 

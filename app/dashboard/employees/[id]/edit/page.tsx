@@ -17,6 +17,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [badgePhotoFile, setBadgePhotoFile] = useState<File | null>(null)
+  const [existingBadgePhotoUrl, setExistingBadgePhotoUrl] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -27,7 +28,6 @@ function EditEmployeePageClient({ id }: { id: string }) {
     address: '',
     start_date: '',
     end_date: '',
-    wheelchair_access: false,
   })
 
   useEffect(() => {
@@ -44,6 +44,18 @@ function EditEmployeePageClient({ id }: { id: string }) {
       }
 
       if (data) {
+        // Format dates for date input (YYYY-MM-DD format)
+        const formatDateForInput = (dateString: string | null): string => {
+          if (!dateString) return ''
+          try {
+            const date = new Date(dateString)
+            if (isNaN(date.getTime())) return ''
+            return date.toISOString().split('T')[0]
+          } catch {
+            return ''
+          }
+        }
+
         setFormData({
           full_name: data.full_name || '',
           role: data.role || '',
@@ -51,10 +63,31 @@ function EditEmployeePageClient({ id }: { id: string }) {
           phone_number: data.phone_number || '',
           personal_email: data.personal_email || '',
           address: data.address || '',
-          start_date: data.start_date || '',
-          end_date: data.end_date || '',
-          wheelchair_access: data.wheelchair_access || false,
+          start_date: formatDateForInput(data.start_date),
+          end_date: formatDateForInput(data.end_date),
         })
+
+        // Load existing badge photo from documents table
+        const { data: badgePhotoDocs, error: docError } = await supabase
+          .from('documents')
+          .select('file_url, file_path')
+          .eq('employee_id', parseInt(id))
+          .eq('doc_type', 'ID Badge Photo')
+          .order('uploaded_at', { ascending: false })
+          .limit(1)
+
+        if (!docError && badgePhotoDocs && badgePhotoDocs.length > 0) {
+          const badgePhotoDoc = badgePhotoDocs[0]
+          // Use file_url if available, otherwise get public URL from file_path
+          if (badgePhotoDoc.file_url) {
+            setExistingBadgePhotoUrl(badgePhotoDoc.file_url)
+          } else if (badgePhotoDoc.file_path) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('EMPLOYEE_DOCUMENTS')
+              .getPublicUrl(badgePhotoDoc.file_path)
+            setExistingBadgePhotoUrl(publicUrl)
+          }
+        }
       }
     }
 
@@ -67,15 +100,64 @@ function EditEmployeePageClient({ id }: { id: string }) {
     setLoading(true)
 
     try {
+      // Validate dates
+      let startDate: string | null = formData.start_date.trim() || null
+      let endDate: string | null = formData.end_date.trim() || null
+
+      // Validate date formats if provided
+      if (startDate) {
+        const startDateObj = new Date(startDate)
+        if (isNaN(startDateObj.getTime())) {
+          throw new Error('Start Date: Please enter a valid date (YYYY-MM-DD format)')
+        }
+      }
+
+      if (endDate) {
+        const endDateObj = new Date(endDate)
+        if (isNaN(endDateObj.getTime())) {
+          throw new Error('End Date: Please enter a valid date (YYYY-MM-DD format)')
+        }
+
+        // Validate that end date is after start date if both are provided
+        if (startDate) {
+          const startDateObj = new Date(startDate)
+          const endDateObj = new Date(endDate)
+          if (endDateObj < startDateObj) {
+            throw new Error('End Date must be after or equal to Start Date')
+          }
+        }
+      }
+
+      // Prepare data for update
+      const updateData: any = {
+        full_name: formData.full_name,
+        role: formData.role || null,
+        employment_status: formData.employment_status,
+        phone_number: formData.phone_number || null,
+        personal_email: formData.personal_email || null,
+        address: formData.address || null,
+        start_date: startDate,
+        end_date: endDate, // Can be null
+      }
+
       const { error } = await supabase
         .from('employees')
-        .update({
-          ...formData,
-          end_date: formData.end_date || null, // Set to null if empty
-        })
+        .update(updateData)
         .eq('id', id)
 
-      if (error) throw error
+      if (error) {
+        // Provide clearer error messages
+        if (error.message.includes('date') || error.message.includes('invalid input')) {
+          if (error.message.includes('start_date')) {
+            throw new Error('Start Date: Invalid date format. Please use YYYY-MM-DD format or leave blank.')
+          } else if (error.message.includes('end_date')) {
+            throw new Error('End Date: Invalid date format. Please use YYYY-MM-DD format or leave blank.')
+          } else {
+            throw new Error('Date Error: Please check your date fields. Use YYYY-MM-DD format or leave blank.')
+          }
+        }
+        throw error
+      }
 
       // Upload badge photo if provided
       if (badgePhotoFile) {
@@ -289,6 +371,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                     setFormData({ ...formData, start_date: e.target.value })
                   }
                 />
+                <p className="text-xs text-gray-500">Optional - Leave blank if not applicable</p>
               </div>
 
               <div className="space-y-2">
@@ -301,23 +384,38 @@ function EditEmployeePageClient({ id }: { id: string }) {
                     setFormData({ ...formData, end_date: e.target.value })
                   }
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="wheelchair_access"
-                  checked={formData.wheelchair_access}
-                  onChange={(e) =>
-                    setFormData({ ...formData, wheelchair_access: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="wheelchair_access">Wheelchair Access</Label>
+                <p className="text-xs text-gray-500">Optional - Leave blank if employee is still active</p>
               </div>
 
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="badge_photo">Badge Photo</Label>
+                {existingBadgePhotoUrl && !badgePhotoFile && (
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-600 mb-2">Current badge photo:</p>
+                    <div className="relative inline-block">
+                      <img
+                        src={existingBadgePhotoUrl}
+                        alt="Current badge photo"
+                        className="h-32 w-32 rounded-lg object-cover border-2 border-gray-300"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {badgePhotoFile && (
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-600 mb-2">New badge photo (will replace current):</p>
+                    <div className="relative inline-block">
+                      <img
+                        src={URL.createObjectURL(badgePhotoFile)}
+                        alt="New badge photo preview"
+                        className="h-32 w-32 rounded-lg object-cover border-2 border-violet-500"
+                      />
+                    </div>
+                  </div>
+                )}
                 <input
                   type="file"
                   id="badge_photo"
@@ -325,7 +423,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                   onChange={(e) => setBadgePhotoFile(e.target.files?.[0] || null)}
                   className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                 />
-                <p className="text-xs text-gray-500">Upload a photo for the employee's ID badge (JPG, PNG)</p>
+                <p className="text-xs text-gray-500">Upload a photo for the employee's ID badge (JPG, PNG). {existingBadgePhotoUrl && !badgePhotoFile && 'Select a new file to replace the current photo.'}</p>
               </div>
             </div>
 

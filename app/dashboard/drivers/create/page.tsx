@@ -23,6 +23,7 @@ export default function CreateDriverPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({})
   const [employees, setEmployees] = useState<Employee[]>([])
   const [activeTab, setActiveTab] = useState<'basic' | 'certificates' | 'documents' | 'training'>('basic')
 
@@ -102,6 +103,18 @@ export default function CreateDriverPage() {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+    // Clear general error when user makes changes
+    if (error) {
+      setError(null)
+    }
   }
 
   const handleFileChange = (fieldName: string, file: File | null) => {
@@ -111,12 +124,53 @@ export default function CreateDriverPage() {
     }))
   }
 
+  // Validation function for each tab
+  const validateTab = (tab: typeof activeTab): { isValid: boolean; errors: {[key: string]: string} } => {
+    const errors: {[key: string]: string} = {}
+    
+    if (tab === 'basic') {
+      if (!formData.employee_id || formData.employee_id.trim() === '') {
+        errors.employee_id = 'Please select an employee'
+      }
+    }
+    
+    if (tab === 'certificates') {
+      if (!formData.tas_badge_expiry_date || formData.tas_badge_expiry_date.trim() === '') {
+        errors.tas_badge_expiry_date = 'TAS Badge expiry date is required'
+      }
+    }
+    
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    }
+  }
+
   const handleNext = () => {
+    // Validate current tab before allowing navigation
+    const validation = validateTab(activeTab)
+    
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors)
+      setError('Please fill in all required fields before proceeding')
+      return
+    }
+    
+    // Clear errors if validation passes
+    setFieldErrors({})
+    setError(null)
+    
     const tabs: typeof activeTab[] = ['basic', 'certificates', 'documents', 'training']
     const currentIndex = tabs.indexOf(activeTab)
     if (currentIndex < tabs.length - 1) {
       setActiveTab(tabs[currentIndex + 1])
     }
+  }
+  
+  // Check if current tab is valid (for enabling/disabling Next button)
+  const isCurrentTabValid = () => {
+    const validation = validateTab(activeTab)
+    return validation.isValid
   }
 
   const handlePrevious = () => {
@@ -130,8 +184,24 @@ export default function CreateDriverPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.employee_id) {
-      setError('Please select an employee')
+    // Validate all required fields before submission
+    const allTabs: typeof activeTab[] = ['basic', 'certificates']
+    const allErrors: {[key: string]: string} = {}
+    
+    for (const tab of allTabs) {
+      const validation = validateTab(tab)
+      Object.assign(allErrors, validation.errors)
+    }
+    
+    if (Object.keys(allErrors).length > 0) {
+      setFieldErrors(allErrors)
+      setError('Please fill in all required fields before submitting')
+      // Switch to the first tab with errors
+      if (allErrors.employee_id) {
+        setActiveTab('basic')
+      } else if (allErrors.tas_badge_expiry_date) {
+        setActiveTab('certificates')
+      }
       return
     }
 
@@ -181,7 +251,7 @@ export default function CreateDriverPage() {
             console.error(`Error uploading file ${file.name}:`, error)
             // Provide helpful error message for bucket not found
             if (error.message.includes('Bucket not found') || error.message.includes('not found')) {
-              throw new Error('Storage bucket "ROUTE_DOCUMENTS" not found. Please create a public bucket named "ROUTE_DOCUMENTS" in your Supabase Storage settings.')
+              throw new Error('Storage bucket "DRIVER_DOCUMENTS" not found. Please create a public bucket named "DRIVER_DOCUMENTS" in your Supabase Storage settings.')
             }
             throw error
           }
@@ -329,7 +399,16 @@ export default function CreateDriverPage() {
           <CardContent className="py-4">
             <div className="flex items-center">
               <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
-              <p className="text-sm text-red-700">{error}</p>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-800 mb-1">{error}</p>
+                {Object.keys(fieldErrors).length > 0 && (
+                  <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
+                    {Object.values(fieldErrors).map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -378,6 +457,7 @@ export default function CreateDriverPage() {
                   value={formData.employee_id}
                   onChange={handleInputChange}
                   required
+                  error={!!fieldErrors.employee_id}
                 >
                   <option value="">-- Select Employee --</option>
                   {employees.map((emp) => (
@@ -386,6 +466,12 @@ export default function CreateDriverPage() {
                     </option>
                   ))}
                 </Select>
+                {fieldErrors.employee_id && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {fieldErrors.employee_id}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   Only active employees who are not already drivers are shown
                 </p>
@@ -436,7 +522,12 @@ export default function CreateDriverPage() {
                     Cancel
                   </Button>
                 </Link>
-                <Button type="button" onClick={handleNext}>
+                <Button 
+                  type="button" 
+                  onClick={handleNext}
+                  disabled={!isCurrentTabValid()}
+                  className={!isCurrentTabValid() ? 'opacity-50 cursor-not-allowed' : ''}
+                >
                   Next
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -506,7 +597,14 @@ export default function CreateDriverPage() {
                       value={formData.tas_badge_expiry_date}
                       onChange={handleInputChange}
                       required
+                      className={fieldErrors.tas_badge_expiry_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
                     />
+                    {fieldErrors.tas_badge_expiry_date && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        {fieldErrors.tas_badge_expiry_date}
+                      </p>
+                    )}
                     <p className="text-xs text-red-600 mt-1">⚠️ Required for driver to work</p>
                   </div>
                   <div>
@@ -691,7 +789,12 @@ export default function CreateDriverPage() {
                       Cancel
                     </Button>
                   </Link>
-                  <Button type="button" onClick={handleNext}>
+                  <Button 
+                    type="button" 
+                    onClick={handleNext}
+                    disabled={!isCurrentTabValid()}
+                    className={!isCurrentTabValid() ? 'opacity-50 cursor-not-allowed' : ''}
+                  >
                     Next
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -912,7 +1015,12 @@ export default function CreateDriverPage() {
                       Cancel
                     </Button>
                   </Link>
-                  <Button type="button" onClick={handleNext}>
+                  <Button 
+                    type="button" 
+                    onClick={handleNext}
+                    disabled={!isCurrentTabValid()}
+                    className={!isCurrentTabValid() ? 'opacity-50 cursor-not-allowed' : ''}
+                  >
                     Next
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>

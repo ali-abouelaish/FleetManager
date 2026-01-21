@@ -390,12 +390,104 @@ function EditRoutePageClient({ id }: { id: string }) {
     }
   }, [formData.passenger_assistant_id, formData.am_start_time, formData.pm_start_time, passengerAssistants, paAddresses])
 
+  // Helper function to check if a driver/PA is authorized to work
+  const checkAuthorization = async (employeeId: string, type: 'driver' | 'pa'): Promise<{ authorized: boolean; reason?: string }> => {
+    if (!employeeId) return { authorized: true }
+
+    const { data: employee, error } = await supabase
+      .from('employees')
+      .select(`
+        id,
+        full_name,
+        can_work,
+        employment_status,
+        ${type === 'driver' 
+          ? 'drivers(tas_badge_expiry_date, taxi_badge_expiry_date, dbs_expiry_date, driving_license_expiry_date, cpc_expiry_date)'
+          : 'passenger_assistants(tas_badge_expiry_date, dbs_expiry_date, first_aid_certificate_expiry_date, passport_expiry_date)'
+        }
+      `)
+      .eq('id', parseInt(employeeId))
+      .single()
+
+    if (error || !employee) {
+      return { authorized: false, reason: `Failed to fetch ${type} information` }
+    }
+
+    // Check employment status
+    if (employee.employment_status !== 'Active') {
+      return { authorized: false, reason: `${employee.full_name} is not an active employee` }
+    }
+
+    // Check can_work flag
+    if (employee.can_work === false) {
+      const expiredCerts: string[] = []
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const checkDate = (date: string | null, certName: string) => {
+        if (!date) return
+        const expiry = new Date(date)
+        expiry.setHours(0, 0, 0, 0)
+        if (expiry < today) {
+          expiredCerts.push(certName)
+        }
+      }
+
+      if (type === 'driver') {
+        const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
+        if (driver) {
+          checkDate(driver.tas_badge_expiry_date, 'TAS Badge')
+          checkDate(driver.taxi_badge_expiry_date, 'Taxi Badge')
+          checkDate(driver.dbs_expiry_date, 'DBS')
+          checkDate(driver.driving_license_expiry_date, 'Driving License')
+          checkDate(driver.cpc_expiry_date, 'CPC')
+        }
+      } else {
+        const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
+        if (pa) {
+          checkDate(pa.tas_badge_expiry_date, 'TAS Badge')
+          checkDate(pa.dbs_expiry_date, 'DBS')
+          checkDate(pa.first_aid_certificate_expiry_date, 'First Aid Certificate')
+          checkDate(pa.passport_expiry_date, 'Passport')
+        }
+      }
+
+      const reason = expiredCerts.length > 0
+        ? `${employee.full_name} cannot be assigned because they have expired certificates: ${expiredCerts.join(', ')}`
+        : `${employee.full_name} is not authorized to work. Please check their profile for compliance issues.`
+
+      return { authorized: false, reason }
+    }
+
+    return { authorized: true }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
     try {
+      // Validate driver authorization
+      if (formData.driver_id) {
+        const driverAuth = await checkAuthorization(formData.driver_id, 'driver')
+        if (!driverAuth.authorized) {
+          setError(driverAuth.reason || 'Driver is not authorized to work')
+          setLoading(false)
+          return
+        }
+      }
+
+      // Validate PA authorization
+      if (formData.passenger_assistant_id) {
+        const paAuth = await checkAuthorization(formData.passenger_assistant_id, 'pa')
+        if (!paAuth.authorized) {
+          setError(paAuth.reason || 'Passenger Assistant is not authorized to work')
+          setLoading(false)
+          return
+        }
+      }
+
       // Step 1: Update the route
       const routeDataToUpdate = {
         route_number: formData.route_number,
@@ -542,8 +634,14 @@ function EditRoutePageClient({ id }: { id: string }) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="text-sm text-red-800">{error}</div>
+              <div className="rounded-md bg-red-50 border border-red-200 p-4">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-red-800 mb-1">Assignment Blocked</div>
+                    <div className="text-sm text-red-700">{error}</div>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, UserCog, UserCheck } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -16,6 +16,12 @@ const PassengerAssistantQRCodeWrapper = dynamic(
 // Dynamically import the employee detail client component (for field audit)
 const EmployeeDetailClient = dynamic(
   () => import('./EmployeeDetailClient'),
+  { ssr: false }
+)
+
+// Dynamically import the employee badge photo component
+const EmployeeBadgePhoto = dynamic(
+  () => import('./EmployeeBadgePhoto'),
   { ssr: false }
 )
 
@@ -119,17 +125,47 @@ export default async function ViewEmployeePage({
               Back
             </Button>
           </Link>
+          <EmployeeBadgePhoto 
+            employeeId={employee.id} 
+            employeeName={employee.full_name}
+            badgeNumber={
+              // Get TAS badge number from driver or PA record
+              (employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers[0]?.tas_badge_number : employee.drivers.tas_badge_number)) ||
+              (employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0]?.tas_badge_number : employee.passenger_assistants.tas_badge_number)) ||
+              null
+            }
+          />
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{employee.full_name}</h1>
+            <h1 className="text-3xl font-bold text-slate-900">{employee.full_name}</h1>
             <p className="mt-2 text-sm text-gray-600">Employee Details</p>
           </div>
         </div>
-        <Link href={`/dashboard/employees/${employee.id}/edit`}>
-          <Button>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Driver Profile Link */}
+          {employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers.length > 0 : employee.drivers) && (
+            <Link href={`/dashboard/drivers/${employee.id}`}>
+              <Button variant="secondary" className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg shadow-indigo-500/25">
+                <UserCog className="mr-2 h-4 w-4" />
+                View Driver Profile
+              </Button>
+            </Link>
+          )}
+          {/* Passenger Assistant Profile Link */}
+          {employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants.length > 0 : employee.passenger_assistants) && (
+            <Link href={`/dashboard/assistants/${Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0].id : employee.passenger_assistants.id}`}>
+              <Button variant="secondary" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25">
+                <UserCheck className="mr-2 h-4 w-4" />
+                View PA Profile
+              </Button>
+            </Link>
+          )}
+          <Link href={`/dashboard/employees/${employee.id}/edit`}>
+            <Button>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Certificate Status Warning Banner */}

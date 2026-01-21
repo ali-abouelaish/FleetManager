@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import SchoolRouteSessionsClient from './SchoolRouteSessionsClient'
 import DeleteSchoolButton from './DeleteSchoolButton'
+import ExportTAS5Button from './ExportTAS5Button'
 
 async function getSchoolDetails(id: string) {
   const supabase = await createClient()
@@ -28,20 +29,13 @@ async function getSchoolDetails(id: string) {
     return null
   }
 
-  // Get routes for this school
+  // Get routes for this school with crew information
   const { data: routes, error: routesError } = await supabase
     .from('routes')
-    .select('*')
-    .eq('school_id', id)
-
-  // Get crew for this school's routes
-  const { data: crew, error: crewError } = await supabase
-    .from('crew')
     .select(`
       *,
       driver:driver_id(employees(full_name)),
-      pa:pa_id(employees(full_name)),
-      route:route_id(route_number)
+      pa:passenger_assistant_id(employees(full_name))
     `)
     .eq('school_id', id)
 
@@ -51,10 +45,46 @@ async function getSchoolDetails(id: string) {
     .select('*, routes(route_number)')
     .eq('school_id', id)
 
+  // Calculate crew count from routes (unique drivers and PAs)
+  const uniqueCrewMembers = new Set<number>()
+  const crewAssignments: Array<{
+    route_id: number
+    route_number: string | null
+    driver_id: number | null
+    driver_name: string | null
+    pa_id: number | null
+    pa_name: string | null
+  }> = []
+
+  routes?.forEach((route: any) => {
+    if (route.driver_id) {
+      uniqueCrewMembers.add(route.driver_id)
+    }
+    if (route.passenger_assistant_id) {
+      uniqueCrewMembers.add(route.passenger_assistant_id)
+    }
+    
+    // Build crew assignments array for display
+    const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
+    const driverEmp = Array.isArray(driver?.employees) ? driver?.employees[0] : driver?.employees
+    const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
+    const paEmp = Array.isArray(pa?.employees) ? pa?.employees[0] : pa?.employees
+    
+    crewAssignments.push({
+      route_id: route.id,
+      route_number: route.route_number,
+      driver_id: route.driver_id,
+      driver_name: driverEmp?.full_name || null,
+      pa_id: route.passenger_assistant_id,
+      pa_name: paEmp?.full_name || null,
+    })
+  })
+
   return {
     school,
     routes: routes || [],
-    crew: crew || [],
+    crewCount: uniqueCrewMembers.size,
+    crewAssignments,
     passengers: passengers || [],
   }
 }
@@ -70,7 +100,7 @@ export default async function ViewSchoolPage({
     notFound()
   }
 
-  const { school, routes, crew, passengers } = data
+  const { school, routes, crewCount, crewAssignments, passengers } = data
 
   return (
     <div className="space-y-6">
@@ -88,6 +118,7 @@ export default async function ViewSchoolPage({
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <ExportTAS5Button schoolId={school.id} schoolName={school.name} />
           <Link href={`/dashboard/schools/${school.id}/edit`}>
             <Button>
               <Pencil className="mr-2 h-4 w-4" />
@@ -143,7 +174,7 @@ export default async function ViewSchoolPage({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Total Crew</span>
-              <span className="text-2xl font-bold text-gray-900">{crew.length}</span>
+              <span className="text-2xl font-bold text-gray-900">{crewCount}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Total Passengers</span>
@@ -200,7 +231,7 @@ export default async function ViewSchoolPage({
           <CardTitle>Crew Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          {crew.length === 0 ? (
+          {crewAssignments.length === 0 || crewAssignments.every(c => !c.driver_id && !c.pa_id) ? (
             <p className="text-center text-gray-500 py-4">No crew assignments found for this school.</p>
           ) : (
             <Table>
@@ -212,11 +243,27 @@ export default async function ViewSchoolPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {crew.map((member: any) => (
-                  <TableRow key={member.id}>
-                    <TableCell>{member.route?.route_number || 'N/A'}</TableCell>
-                    <TableCell>{member.driver?.employees?.full_name || 'N/A'}</TableCell>
-                    <TableCell>{member.pa?.employees?.full_name || 'N/A'}</TableCell>
+                {crewAssignments.map((assignment) => (
+                  <TableRow key={assignment.route_id}>
+                    <TableCell>{assignment.route_number || `Route ${assignment.route_id}`}</TableCell>
+                    <TableCell>
+                      {assignment.driver_id ? (
+                        <Link href={`/dashboard/employees/${assignment.driver_id}`} className="text-blue-600 hover:underline">
+                          {assignment.driver_name || 'Unknown'}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">Not assigned</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {assignment.pa_id ? (
+                        <Link href={`/dashboard/employees/${assignment.pa_id}`} className="text-blue-600 hover:underline">
+                          {assignment.pa_name || 'Unknown'}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">Not assigned</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
