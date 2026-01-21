@@ -394,18 +394,13 @@ function EditRoutePageClient({ id }: { id: string }) {
   const checkAuthorization = async (employeeId: string, type: 'driver' | 'pa'): Promise<{ authorized: boolean; reason?: string }> => {
     if (!employeeId) return { authorized: true }
 
+    const selectQuery = type === 'driver' 
+      ? 'id, full_name, can_work, employment_status, drivers(tas_badge_expiry_date, taxi_badge_expiry_date, dbs_expiry_date, driving_license_expiry_date, cpc_expiry_date)'
+      : 'id, full_name, can_work, employment_status, passenger_assistants(tas_badge_expiry_date, dbs_expiry_date, first_aid_certificate_expiry_date, passport_expiry_date)'
+
     const { data: employee, error } = await supabase
       .from('employees')
-      .select(`
-        id,
-        full_name,
-        can_work,
-        employment_status,
-        ${type === 'driver' 
-          ? 'drivers(tas_badge_expiry_date, taxi_badge_expiry_date, dbs_expiry_date, driving_license_expiry_date, cpc_expiry_date)'
-          : 'passenger_assistants(tas_badge_expiry_date, dbs_expiry_date, first_aid_certificate_expiry_date, passport_expiry_date)'
-        }
-      `)
+      .select(selectQuery)
       .eq('id', parseInt(employeeId))
       .single()
 
@@ -434,7 +429,8 @@ function EditRoutePageClient({ id }: { id: string }) {
       }
 
       if (type === 'driver') {
-        const driver = Array.isArray(employee.drivers) ? employee.drivers[0] : employee.drivers
+        const employeeWithDrivers = employee as any
+        const driver = Array.isArray(employeeWithDrivers.drivers) ? employeeWithDrivers.drivers[0] : employeeWithDrivers.drivers
         if (driver) {
           checkDate(driver.tas_badge_expiry_date, 'TAS Badge')
           checkDate(driver.taxi_badge_expiry_date, 'Taxi Badge')
@@ -443,7 +439,8 @@ function EditRoutePageClient({ id }: { id: string }) {
           checkDate(driver.cpc_expiry_date, 'CPC')
         }
       } else {
-        const pa = Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0] : employee.passenger_assistants
+        const employeeWithPAs = employee as any
+        const pa = Array.isArray(employeeWithPAs.passenger_assistants) ? employeeWithPAs.passenger_assistants[0] : employeeWithPAs.passenger_assistants
         if (pa) {
           checkDate(pa.tas_badge_expiry_date, 'TAS Badge')
           checkDate(pa.dbs_expiry_date, 'DBS')

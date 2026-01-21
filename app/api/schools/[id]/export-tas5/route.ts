@@ -191,15 +191,9 @@ export async function GET(
     
     // Check if worksheet has Excel Table objects (structured tables)
     // If tables exist, we need to be careful about how we write to cells within them
-    const tables = worksheet.tables || []
-    if (tables.length > 0) {
-      console.log(`[TAS5 Export] Found ${tables.length} Excel table(s) in template`)
-      tables.forEach((table, index) => {
-        console.log(`[TAS5 Export] Table ${index + 1}: ${table.name || 'Unnamed'}, Range: ${table.range}`)
-      })
-      // Note: We're writing to individual cells, which should work fine with Excel tables
-      // ExcelJS will automatically update table ranges if we write within them
-    }
+    // Note: ExcelJS tables are accessed through workbook, not worksheet
+    // We're writing to individual cells, which should work fine with Excel tables
+    // ExcelJS will automatically update table ranges if we write within them
 
     // =========================================
     // 📍 CELL LOCATIONS CONFIGURATION
