@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatDate } from '@/lib/utils'
-import { CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle, XCircle, Building2 } from 'lucide-react'
 
 interface FieldAuditInfo {
   field_name: string
@@ -20,6 +21,7 @@ interface EmployeeDetailClientProps {
 
 export default function EmployeeDetailClient({ employee, employeeId }: EmployeeDetailClientProps) {
   const [fieldAudit, setFieldAudit] = useState<Record<string, FieldAuditInfo>>({})
+  const [assignedSchools, setAssignedSchools] = useState<{ id: number; name: string }[]>([])
 
   useEffect(() => {
     async function fetchFieldAudit() {
@@ -36,6 +38,22 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
 
     fetchFieldAudit()
   }, [employeeId])
+
+  useEffect(() => {
+    if (employee?.role !== 'Coordinator' || !employeeId) return
+    async function fetchAssignedSchools() {
+      try {
+        const res = await fetch(`/api/employees/${employeeId}/coordinator-schools`)
+        if (res.ok) {
+          const data = await res.json()
+          setAssignedSchools(data.schools || [])
+        }
+      } catch (e) {
+        console.error('Error fetching coordinator schools:', e)
+      }
+    }
+    fetchAssignedSchools()
+  }, [employee?.role, employeeId])
 
   const getFieldAuditInfo = (fieldName: string) => {
     return fieldAudit[fieldName]
@@ -147,8 +165,39 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
           <FieldWithAudit fieldName="phone_number" label="Phone Number" value={employee.phone_number} />
           <FieldWithAudit fieldName="personal_email" label="Personal Email" value={employee.personal_email} />
           <FieldWithAudit fieldName="address" label="Address" value={employee.address} />
+          <FieldWithAudit fieldName="next_of_kin" label="Next of Kin" value={employee.next_of_kin} />
+          <FieldWithAudit fieldName="date_of_birth" label="Date of Birth" value={employee.date_of_birth} formatValue={(v) => v ? formatDate(v) : 'N/A'} />
         </CardContent>
       </Card>
+
+      {employee.role === 'Coordinator' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-violet-600" />
+              Assigned Schools
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assignedSchools.length === 0 ? (
+              <p className="text-sm text-gray-500">No schools assigned.</p>
+            ) : (
+              <ul className="space-y-2">
+                {assignedSchools.map((school) => (
+                  <li key={school.id}>
+                    <Link
+                      href={`/dashboard/schools/${school.id}`}
+                      className="text-sm font-medium text-violet-600 hover:underline"
+                    >
+                      {school.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

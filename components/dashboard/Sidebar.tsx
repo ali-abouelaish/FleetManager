@@ -35,6 +35,7 @@ import {
   FileCheck,
   BadgeCheck,
   FileText,
+  Wrench,
 } from 'lucide-react'
 import { useNotificationCount } from '@/hooks/useNotificationCount'
 import { useComplianceNotificationCount } from '@/hooks/useComplianceNotificationCount'
@@ -58,6 +59,7 @@ const topLevelItems: NavItem[] = [
   { name: 'Compliance', href: '/dashboard/compliance', icon: ClipboardCheck },
   { name: 'Route Activity', href: '/dashboard/route-activity', icon: Activity },
   { name: 'School Overview', href: '/dashboard/school-overview', icon: GraduationCap },
+  { name: 'Spares', href: '/dashboard/spares', icon: Wrench },
 ]
 
 const navigationGroups: NavGroup[] = [

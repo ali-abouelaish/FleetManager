@@ -36,7 +36,7 @@ BEGIN
       v.vehicle_identifier,
       v.registration,
       'registration_expiry_date' AS cert_type,
-      'Registration Expiry' AS cert_name,
+      'Plate Expiry' AS cert_name,
       v.registration_expiry_date AS expiry_date,
       (v.registration_expiry_date - CURRENT_DATE)::INTEGER AS days_until
     FROM vehicles v

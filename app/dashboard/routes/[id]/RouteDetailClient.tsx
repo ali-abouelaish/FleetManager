@@ -13,12 +13,19 @@ interface FieldAuditInfo {
   changed_by_name: string
 }
 
+interface RoutePasItem {
+  employee_id: number
+  sort_order?: number
+  employees?: { full_name?: string } | { full_name?: string }[]
+}
+
 interface RouteDetailClientProps {
   route: any
   routeId: number
+  routePasList?: RoutePasItem[]
 }
 
-export default function RouteDetailClient({ route, routeId }: RouteDetailClientProps) {
+export default function RouteDetailClient({ route, routeId, routePasList }: RouteDetailClientProps) {
   const [fieldAudit, setFieldAudit] = useState<Record<string, FieldAuditInfo>>({})
 
   useEffect(() => {
@@ -141,12 +148,19 @@ export default function RouteDetailClient({ route, routeId }: RouteDetailClientP
           />
           <FieldWithAudit 
             fieldName="passenger_assistant_id" 
-            label="Passenger Assistant" 
+            label="Passenger Assistant(s)" 
             value={(() => {
-              if (!route.passenger_assistant_id) return 'Not assigned'
-              const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
-              const paEmp = Array.isArray(pa?.employees) ? pa.employees[0] : pa?.employees
-              return paEmp?.full_name || 'Unknown'
+              const pasToShow = routePasList?.length
+                ? routePasList
+                : route.passenger_assistant_id
+                  ? [{ employee_id: route.passenger_assistant_id, employees: route.pa }]
+                  : []
+              if (pasToShow.length === 0) return 'Not assigned'
+              const names = pasToShow.map((r: RoutePasItem) => {
+                const paEmp = Array.isArray(r.employees) ? r.employees[0] : r.employees
+                return paEmp?.full_name || 'Unknown'
+              })
+              return names.join(', ')
             })()}
           />
           <FieldWithAudit 

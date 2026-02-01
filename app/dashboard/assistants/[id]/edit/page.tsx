@@ -51,6 +51,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
   const [assistant, setAssistant] = useState<PassengerAssistant | null>(null)
 
   const [formData, setFormData] = useState({
+    spare_pa: false,
     tas_badge_number: '',
     tas_badge_expiry_date: '',
     dbs_number: '',
@@ -116,6 +117,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
 
     setAssistant(data as PassengerAssistant)
     setFormData({
+      spare_pa: (data as any).spare_pa || false,
       tas_badge_number: data.tas_badge_number || '',
       tas_badge_expiry_date: data.tas_badge_expiry_date ? data.tas_badge_expiry_date.split('T')[0] : '',
       dbs_number: data.dbs_number || '',
@@ -229,6 +231,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
       const { error: updateError } = await supabase
         .from('passenger_assistants')
         .update({
+          spare_pa: formData.spare_pa,
           tas_badge_number: formData.tas_badge_number || null,
           tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
           dbs_number: formData.dbs_number || null,
@@ -406,6 +409,23 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
                   </Link>
                 </p>
               </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="spare_pa"
+                  name="spare_pa"
+                  checked={formData.spare_pa}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <Label htmlFor="spare_pa" className="cursor-pointer font-medium">
+                  Mark as spare
+                </Label>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">
+                Spare PAs appear under Spares → Spare PAs and can be used for sessions when not assigned to a route.
+              </p>
             </CardContent>
           </Card>
         )}

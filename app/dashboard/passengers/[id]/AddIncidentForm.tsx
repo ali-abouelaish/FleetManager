@@ -57,7 +57,7 @@ export default function AddIncidentForm({
     loadData()
   }, [supabase])
 
-  // Auto-populate route, vehicle, and employees from passenger's route
+  // Auto-populate route, vehicle, and employees from passenger's route (driver + all PAs)
   useEffect(() => {
     async function loadRouteDetails() {
       if (!passengerRouteId) return
@@ -87,15 +87,25 @@ export default function AddIncidentForm({
         }))
       }
 
-      // Auto-select driver and PA
+      // Auto-select driver and all PAs (from route_passenger_assistants or primary PA)
       const employeesToSelect: number[] = []
       if (routeData.driver_id) {
         employeesToSelect.push(routeData.driver_id)
       }
-      if (routeData.passenger_assistant_id) {
+      const { data: routePas } = await supabase
+        .from('route_passenger_assistants')
+        .select('employee_id')
+        .eq('route_id', passengerRouteId)
+        .order('sort_order')
+      if (routePas?.length) {
+        routePas.forEach((r: { employee_id: number }) => {
+          if (!employeesToSelect.includes(r.employee_id)) {
+            employeesToSelect.push(r.employee_id)
+          }
+        })
+      } else if (routeData.passenger_assistant_id && !employeesToSelect.includes(routeData.passenger_assistant_id)) {
         employeesToSelect.push(routeData.passenger_assistant_id)
       }
-      
       if (employeesToSelect.length > 0) {
         setSelectedEmployees(employeesToSelect)
       }
@@ -236,7 +246,6 @@ export default function AddIncidentForm({
               >
                 <option value="">Select type</option>
                 <option value="Accident">Accident</option>
-                <option value="Breakdown">Breakdown</option>
                 <option value="Complaint">Complaint</option>
                 <option value="Safety Issue">Safety Issue</option>
                 <option value="Other">Other</option>

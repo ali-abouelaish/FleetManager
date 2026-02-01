@@ -56,6 +56,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
   const [driver, setDriver] = useState<Driver | null>(null)
 
   const [formData, setFormData] = useState({
+    spare_driver: false,
     tas_badge_number: '',
     tas_badge_expiry_date: '',
     taxi_badge_number: '',
@@ -128,6 +129,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
 
     setDriver(data as Driver)
     setFormData({
+      spare_driver: (data as any).spare_driver || false,
       tas_badge_number: data.tas_badge_number || '',
       tas_badge_expiry_date: data.tas_badge_expiry_date ? data.tas_badge_expiry_date.split('T')[0] : '',
       taxi_badge_number: data.taxi_badge_number || '',
@@ -248,6 +250,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
       const { error: updateError } = await supabase
         .from('drivers')
         .update({
+          spare_driver: formData.spare_driver,
           tas_badge_number: formData.tas_badge_number || null,
           tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
           taxi_badge_number: formData.taxi_badge_number || null,
@@ -430,6 +433,23 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                   </Link>
                 </p>
               </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="spare_driver"
+                  name="spare_driver"
+                  checked={formData.spare_driver}
+                  onChange={handleInputChange}
+                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <Label htmlFor="spare_driver" className="cursor-pointer font-medium">
+                  Mark as spare
+                </Label>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">
+                Spare drivers appear under Spares → Spare Drivers and can be used for sessions when not assigned to a route.
+              </p>
 
               <div>
                 <Label htmlFor="psv_license">PSV License</Label>

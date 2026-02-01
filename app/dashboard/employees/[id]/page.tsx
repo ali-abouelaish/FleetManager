@@ -150,8 +150,8 @@ export default async function ViewEmployeePage({
               </Button>
             </Link>
           )}
-          {/* Passenger Assistant Profile Link */}
-          {employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants.length > 0 : employee.passenger_assistants) && (
+          {/* Passenger Assistant Profile Link - not shown for coordinators */}
+          {employee.role !== 'Coordinator' && employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants.length > 0 : employee.passenger_assistants) && (
             <Link href={`/dashboard/assistants/${Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0].id : employee.passenger_assistants.id}`}>
               <Button variant="secondary" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25">
                 <UserCheck className="mr-2 h-4 w-4" />

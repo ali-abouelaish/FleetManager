@@ -205,7 +205,7 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Follow-up Required</dt>
-            <dd className="mt-1 text-sm text-gray-900">{callLog.follow_up_required ? `Yes - ${callLog.follow_up_date || 'No date set'}` : 'No'}</dd>
+            <dd className="mt-1 text-sm text-gray-900">{callLog.follow_up_required ? `Yes - ${callLog.follow_up_date ? formatDateTime(callLog.follow_up_date) : 'No date set'}` : 'No'}</dd>
           </div>
         </CardContent>
       </Card>

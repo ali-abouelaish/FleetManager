@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,6 +14,7 @@ import Link from 'next/link'
 
 export default function CreateIncidentPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,7 +71,16 @@ export default function CreateIncidentPage() {
     loadData()
   }, [supabase])
 
-  // Load route sessions when route_session_id changes
+  // Pre-fill route_session_id from URL when present and load sessions list
+  useEffect(() => {
+    const sessionId = searchParams.get('route_session_id')
+    if (sessionId) {
+      setFormData(prev => ({ ...prev, route_session_id: sessionId }))
+      loadRouteSessions()
+    }
+  }, [searchParams])
+
+  // Load route session details when route_session_id changes (auto-fill route, vehicle, crew)
   useEffect(() => {
     if (formData.route_session_id) {
       loadRouteSessionDetails(parseInt(formData.route_session_id))
@@ -267,6 +277,11 @@ export default function CreateIncidentPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && <div className="rounded-md bg-red-50 p-4"><div className="text-sm text-red-800">{error}</div></div>}
+            {formData.route_session_id && (
+              <div className="rounded-lg bg-violet-50 border border-violet-200 p-3 text-sm text-violet-800">
+                <strong>Route session pre-selected.</strong> Route, vehicle and crew will be auto-filled. After creating the incident, open it to complete TR5, TR6 or TR7 forms.
+              </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">

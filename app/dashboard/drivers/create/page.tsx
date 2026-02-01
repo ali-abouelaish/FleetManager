@@ -29,6 +29,7 @@ export default function CreateDriverPage() {
 
   const [formData, setFormData] = useState({
     employee_id: '',
+    spare_driver: false,
     tas_badge_number: '',
     tas_badge_expiry_date: '',
     dbs_number: '',
@@ -298,6 +299,7 @@ export default function CreateDriverPage() {
         psa_training_completed: formData.psa_training_completed,
         psa_training_date: formData.psa_training_date || null,
         additional_notes: formData.additional_notes || null,
+        spare_driver: formData.spare_driver,
       }
 
       // Verify employee exists before insert
@@ -476,6 +478,23 @@ export default function CreateDriverPage() {
                   Only active employees who are not already drivers are shown
                 </p>
               </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="spare_driver"
+                  name="spare_driver"
+                  checked={formData.spare_driver}
+                  onChange={(e) => setFormData({ ...formData, spare_driver: e.target.checked })}
+                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <Label htmlFor="spare_driver" className="cursor-pointer font-medium">
+                  Mark as spare
+                </Label>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">
+                Spare drivers are not assigned to a route and can be used when needed (e.g. for sessions). View them under Spares → Spare Drivers.
+              </p>
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div>

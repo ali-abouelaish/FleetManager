@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       
       // Map certificate types to document names
       const certDocMap: Record<string, string> = {
-        'registration_expiry_date': 'Vehicle Registration Certificate',
+        'registration_expiry_date': 'Vehicle Plate Certificate',
         'plate_expiry_date': 'Vehicle Registration/Plate Certificate',
         'insurance_expiry_date': 'Vehicle Insurance Certificate',
         'mot_date': 'MOT Certificate',

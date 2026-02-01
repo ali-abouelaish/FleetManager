@@ -1,22 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Label } from '@/components/ui/Label'
-import { 
-  RouteServiceHistory, 
-  RouteSession, 
-  Passenger, 
+import {
+  RouteServiceHistory,
+  Passenger,
   AttendanceStatus,
-  SessionType 
 } from '@/lib/types'
 import { formatDate, formatDateTime } from '@/lib/utils'
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, UserCheck, Plus, Play, Square, MapPin, FileText, Eye } from 'lucide-react'
+import {
+  Calendar,
+  Users,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  UserCheck,
+  Play,
+  Square,
+  MapPin,
+  FileText,
+  Eye,
+  Upload,
+  Search,
+  X,
+} from 'lucide-react'
 import Link from 'next/link'
 
 interface RouteSessionsClientProps {
@@ -27,42 +39,19 @@ interface RouteSessionsClientProps {
 export default function RouteSessionsClient({ routeId, passengers }: RouteSessionsClientProps) {
   const [sessions, setSessions] = useState<RouteServiceHistory[]>([])
   const [loading, setLoading] = useState(true)
-  const [showCreateSession, setShowCreateSession] = useState(false)
   const [selectedSession, setSelectedSession] = useState<number | null>(null)
   const [attendanceData, setAttendanceData] = useState<Record<number, AttendanceStatus>>({})
   const [sessionDocuments, setSessionDocuments] = useState<Record<number, any[]>>({})
   const [sessionIncidents, setSessionIncidents] = useState<Record<number, any[]>>({})
-  
-  // Assigned crew for this route
-  const [assignedCrew, setAssignedCrew] = useState<{
-    driver_id: number | null
-    driver_name: string | null
-    pa_id: number | null
-    pa_name: string | null
-  } | null>(null)
-
-  // Create session form state
-  const [newSession, setNewSession] = useState({
-    session_date: new Date().toISOString().split('T')[0],
-    session_type: 'AM' as SessionType,
-    driver_id: '',
-    passenger_assistant_id: '',
-    notes: '',
-    useSpareDriver: false,
-    useSparePA: false,
-  })
-
-  // Drivers and PAs for dropdowns (for spare selection)
-  const [drivers, setDrivers] = useState<any[]>([])
-  const [passengerAssistants, setPassengerAssistants] = useState<any[]>([])
+  const [uploadingDocForSession, setUploadingDocForSession] = useState<number | null>(null)
+  const [docUploadError, setDocUploadError] = useState<string | null>(null)
+  const [sessionSearch, setSessionSearch] = useState('')
 
   const supabase = createClient()
 
   useEffect(() => {
     loadSessions()
-    loadAssignedCrew()
-    loadDrivers()
-    loadPassengerAssistants()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeId])
 
   useEffect(() => {
@@ -71,6 +60,7 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
       loadDocumentsForSession(selectedSession)
       loadIncidentsForSession(selectedSession)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSession])
 
   const loadSessions = async () => {
@@ -85,78 +75,13 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
 
     if (!error && data) {
       setSessions(data as RouteServiceHistory[])
-      // Load documents and incidents for all sessions
       const sessionIds = data.map((s: any) => s.session_id)
-      // Load all documents and incidents in parallel
       await Promise.all([
         ...sessionIds.map((id: number) => loadDocumentsForSession(id)),
-        ...sessionIds.map((id: number) => loadIncidentsForSession(id))
+        ...sessionIds.map((id: number) => loadIncidentsForSession(id)),
       ])
     }
     setLoading(false)
-  }
-
-  const loadDrivers = async () => {
-    const { data } = await supabase
-      .from('drivers')
-      .select('employee_id, employees(full_name)')
-    
-    if (data) {
-      setDrivers(data.map((d: any) => ({
-        id: d.employee_id,
-        name: d.employees?.full_name || 'Unknown'
-      })))
-    }
-  }
-
-  const loadAssignedCrew = async () => {
-    const { data } = await supabase
-      .from('routes')
-      .select(`
-        driver_id,
-        passenger_assistant_id,
-        driver:driver_id(employees(full_name)),
-        pa:passenger_assistant_id(employees(full_name))
-      `)
-      .eq('id', routeId)
-      .maybeSingle()
-
-    if (data) {
-      // Supabase returns nested relations as arrays
-      const driver = Array.isArray(data.driver) ? data.driver[0] : data.driver
-      const pa = Array.isArray(data.pa) ? data.pa[0] : data.pa
-      const driverEmployees = Array.isArray(driver?.employees) ? driver.employees[0] : driver?.employees
-      const paEmployees = Array.isArray(pa?.employees) ? pa.employees[0] : pa?.employees
-      
-      const crew = {
-        driver_id: data.driver_id,
-        driver_name: driverEmployees?.full_name || null,
-        pa_id: data.passenger_assistant_id,
-        pa_name: paEmployees?.full_name || null,
-      }
-      setAssignedCrew(crew)
-      // Pre-populate form with assigned crew
-      setNewSession(prev => ({
-        ...prev,
-        driver_id: crew.driver_id ? crew.driver_id.toString() : '',
-        passenger_assistant_id: crew.pa_id ? crew.pa_id.toString() : '',
-      }))
-    } else {
-      setAssignedCrew(null)
-    }
-  }
-
-  const loadPassengerAssistants = async () => {
-    const { data } = await supabase
-      .from('passenger_assistants')
-      .select('employee_id, employees(full_name)')
-    
-    if (data) {
-      setPassengerAssistants(data.map((pa: any) => ({
-        id: pa.employee_id,
-        name: pa.employees?.full_name || 'Unknown'
-      })))
-    }
   }
 
   const loadAttendanceForSession = async (sessionId: number) => {
@@ -181,18 +106,10 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
       .eq('route_session_id', sessionId)
       .order('uploaded_at', { ascending: false })
 
-    if (data) {
-      setSessionDocuments(prev => ({
-        ...prev,
-        [sessionId]: data
-      }))
-    } else {
-      // Ensure empty array is set if no documents
-      setSessionDocuments(prev => ({
-        ...prev,
-        [sessionId]: []
-      }))
-    }
+    setSessionDocuments((prev) => ({
+      ...prev,
+      [sessionId]: data || [],
+    }))
   }
 
   const loadIncidentsForSession = async (sessionId: number) => {
@@ -204,77 +121,55 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
 
     if (error) {
       console.error('Error loading incidents for session:', sessionId, error)
-      // Ensure empty array is set on error
-      setSessionIncidents(prev => ({
-        ...prev,
-        [sessionId]: []
-      }))
+      setSessionIncidents((prev) => ({ ...prev, [sessionId]: [] }))
       return
     }
 
-    // Always set the incidents (even if empty array)
-    setSessionIncidents(prev => ({
-      ...prev,
-      [sessionId]: data || []
-    }))
+    setSessionIncidents((prev) => ({ ...prev, [sessionId]: data || [] }))
   }
 
-  const handleCreateSession = async () => {
-    // Determine driver and PA to use
-    let driverId: number | null = null
-    let paId: number | null = null
-
-    if (newSession.useSpareDriver) {
-      // Use selected spare driver
-      driverId = newSession.driver_id ? parseInt(newSession.driver_id) : null
-    } else {
-      // Use assigned driver
-      driverId = assignedCrew?.driver_id || null
-    }
-
-    if (newSession.useSparePA) {
-      // Use selected spare PA
-      paId = newSession.passenger_assistant_id ? parseInt(newSession.passenger_assistant_id) : null
-    } else {
-      // Use assigned PA
-      paId = assignedCrew?.pa_id || null
-    }
-
-    const { data, error } = await supabase
-      .from('route_sessions')
-      .insert({
-        route_id: routeId,
-        session_date: newSession.session_date,
-        session_type: newSession.session_type,
-        driver_id: driverId,
-        passenger_assistant_id: paId,
-        notes: newSession.notes || null,
+  const handleAddDocumentToSession = async (sessionId: number, file: File, docType: string) => {
+    setUploadingDocForSession(sessionId)
+    setDocUploadError(null)
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        throw new Error('You must be logged in to upload documents')
+      }
+      const fileExt = file.name.split('.').pop() || 'bin'
+      const storagePath = `route_sessions/${sessionId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      const bucketName = 'DOCUMENTS'
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(storagePath, file, { cacheControl: '3600', upsert: false })
+      if (uploadError) {
+        if (uploadError.message.includes('Bucket not found') || uploadError.message.includes('not found')) {
+          throw new Error(`Storage bucket "${bucketName}" not found. Create a public bucket named "${bucketName}" in Supabase Storage.`)
+        }
+        throw uploadError
+      }
+      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(storagePath)
+      const { data: userData } = await supabase.from('users').select('id').eq('email', authUser.email).maybeSingle()
+      const { error: docError } = await supabase.from('documents').insert({
+        route_session_id: sessionId,
+        file_url: publicUrl,
+        file_name: file.name,
+        file_type: file.type || 'application/octet-stream',
+        file_path: storagePath,
+        doc_type: docType || 'Session Document',
+        uploaded_by: userData?.id ?? null,
       })
-      .select()
-      .single()
-
-    if (!error && data) {
-      setShowCreateSession(false)
-      // Reset form but keep assigned crew
-      setNewSession({
-        session_date: new Date().toISOString().split('T')[0],
-        session_type: 'AM',
-        driver_id: assignedCrew?.driver_id ? assignedCrew.driver_id.toString() : '',
-        passenger_assistant_id: assignedCrew?.pa_id ? assignedCrew.pa_id.toString() : '',
-        notes: '',
-        useSpareDriver: false,
-        useSparePA: false,
-      })
-      loadSessions()
-    } else {
-      alert('Error creating session: ' + (error?.message || 'Unknown error'))
+      if (docError) throw docError
+      await loadDocumentsForSession(sessionId)
+    } catch (err: any) {
+      setDocUploadError(err.message || 'Upload failed')
+    } finally {
+      setUploadingDocForSession(null)
     }
   }
 
   const handleEndSession = async (sessionId: number) => {
-    if (!confirm('Are you sure you want to end this session?')) {
-      return
-    }
+    if (!confirm('Are you sure you want to end this session?')) return
 
     const { error } = await supabase
       .from('route_sessions')
@@ -282,12 +177,7 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
       .eq('id', sessionId)
 
     if (!error) {
-      // First, explicitly reload documents and incidents for this session
-      await Promise.all([
-        loadDocumentsForSession(sessionId),
-        loadIncidentsForSession(sessionId)
-      ])
-      // Then reload all sessions to update the UI
+      await Promise.all([loadDocumentsForSession(sessionId), loadIncidentsForSession(sessionId)])
       await loadSessions()
     } else {
       alert('Error ending session: ' + error.message)
@@ -295,20 +185,18 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
   }
 
   const handleMarkAttendance = async (sessionId: number, passengerId: number, status: AttendanceStatus) => {
-    // Get current user's employee ID
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const { data: auth } = await supabase.auth.getUser()
+    const authUser = auth?.user
     let markedBy: number | null = null
-    
+
     if (authUser?.email) {
       const { data: userData } = await supabase
         .from('users')
         .select('employee_id')
         .eq('email', authUser.email)
         .single()
-      
-      if (userData?.employee_id) {
-        markedBy = userData.employee_id
-      }
+
+      if (userData?.employee_id) markedBy = userData.employee_id
     }
 
     const { error } = await supabase.rpc('mark_passenger_attendance', {
@@ -320,35 +208,35 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
     })
 
     if (!error) {
-      setAttendanceData(prev => ({
-        ...prev,
-        [passengerId]: status
-      }))
+      setAttendanceData((prev) => ({ ...prev, [passengerId]: status }))
       loadSessions()
     } else {
       alert('Error marking attendance: ' + error.message)
     }
   }
 
-  // Separate active (en route) and completed sessions
-  // Active: started_at is set but ended_at is null (en route)
-  // Completed/History: ended_at is set (session ended) OR not started yet
-  const activeSessions = sessions.filter(s => s.started_at && !s.ended_at)
-  const completedSessions = sessions.filter(s => s.ended_at !== null || (!s.started_at && !s.ended_at))
+  const activeSessions = sessions.filter((s) => s.started_at && !s.ended_at)
+  const completedSessions = sessions.filter((s) => s.ended_at !== null || (!s.started_at && !s.ended_at))
+
+  const filteredCompletedSessions = useMemo(() => {
+    if (!sessionSearch.trim()) return completedSessions
+    const term = sessionSearch.trim().toLowerCase()
+    return completedSessions.filter((session) => {
+      const dateStr = formatDate(session.session_date).toLowerCase()
+      const type = (session.session_type || '').toLowerCase()
+      const status = session.ended_at ? 'completed' : !session.started_at && !session.ended_at ? 'not started' : ''
+      return dateStr.includes(term) || type.includes(term) || status.includes(term)
+    })
+  }, [completedSessions, sessionSearch])
 
   const getStatusIcon = (status: AttendanceStatus) => {
-    switch (status) {
-      case 'present':
-        return <CheckCircle className="h-4 w-4 text-green-600" />
-      case 'absent':
-        return <XCircle className="h-4 w-4 text-red-600" />
-      case 'late':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />
-      case 'excused':
-        return <UserCheck className="h-4 w-4 text-blue-600" />
-      default:
-        return null
+    const icons: Record<AttendanceStatus, ReactNode> = {
+      present: <CheckCircle className="h-4 w-4 text-green-600" />,
+      absent: <XCircle className="h-4 w-4 text-red-600" />,
+      late: <AlertCircle className="h-4 w-4 text-yellow-600" />,
+      excused: <UserCheck className="h-4 w-4 text-blue-600" />,
     }
+    return icons[status] ?? null
   }
 
   const getStatusColor = (status: AttendanceStatus) => {
@@ -368,196 +256,26 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
 
   return (
     <div className="space-y-6">
-      {/* Create Session Section */}
-      <Card>
-        <CardHeader className="bg-blue-900 text-white">
+      {/* Current session — always show: running session or "No session currently running" */}
+      <Card className={activeSessions.length > 0 ? 'border-l-4 border-l-green-500' : 'border-slate-200'}>
+        <CardHeader className={activeSessions.length > 0 ? 'bg-green-600 text-white' : 'bg-slate-100 border-b border-slate-200'}>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white">Route Sessions & Attendance</CardTitle>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                if (showCreateSession) {
-                  // Reset form when closing
-                  setNewSession({
-                    session_date: new Date().toISOString().split('T')[0],
-                    session_type: 'AM',
-                    driver_id: assignedCrew?.driver_id ? assignedCrew.driver_id.toString() : '',
-                    passenger_assistant_id: assignedCrew?.pa_id ? assignedCrew.pa_id.toString() : '',
-                    notes: '',
-                    useSpareDriver: false,
-                    useSparePA: false,
-                  })
-                }
-                setShowCreateSession(!showCreateSession)
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {showCreateSession ? 'Cancel' : 'New Session'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {showCreateSession && (
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="session_date">Session Date</Label>
-                  <Input
-                    id="session_date"
-                    type="date"
-                    value={newSession.session_date}
-                    onChange={(e) => setNewSession({ ...newSession, session_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="session_type">Session Type</Label>
-                  <Select
-                    id="session_type"
-                    value={newSession.session_type}
-                    onChange={(e) => setNewSession({ ...newSession, session_type: e.target.value as SessionType })}
-                  >
-                    <option value="AM">AM (Morning)</option>
-                    <option value="PM">PM (Afternoon)</option>
-                  </Select>
-                </div>
-              </div>
-              {/* Assigned Crew Display */}
-              {assignedCrew ? (
-                <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                  <div className="text-sm font-medium text-blue-900 mb-2">Assigned Crew (will be used unless spare is selected)</div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Driver: </span>
-                      <span className="font-medium text-gray-900">
-                        {assignedCrew.driver_name || 'Not assigned'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Passenger Assistant: </span>
-                      <span className="font-medium text-gray-900">
-                        {assignedCrew.pa_name || 'Not assigned'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
-                  <div className="text-sm font-medium text-yellow-900 mb-2">No crew assigned to this route</div>
-                  <div className="text-sm text-yellow-700">
-                    You can manually select a driver and PA below, or assign crew to this route first.
-                  </div>
-                </div>
-              )}
-
-              {/* Spare Options */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newSession.useSpareDriver}
-                      onChange={(e) => setNewSession({ 
-                        ...newSession, 
-                        useSpareDriver: e.target.checked,
-                        driver_id: e.target.checked ? '' : (assignedCrew?.driver_id?.toString() || '')
-                      })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Use Spare Driver</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newSession.useSparePA}
-                      onChange={(e) => setNewSession({ 
-                        ...newSession, 
-                        useSparePA: e.target.checked,
-                        passenger_assistant_id: e.target.checked ? '' : (assignedCrew?.pa_id?.toString() || '')
-                      })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Use Spare PA</span>
-                  </label>
-                </div>
-
-                {/* Manual selection when no crew assigned or using spares */}
-                {(!assignedCrew || newSession.useSpareDriver || newSession.useSparePA) && (
-                  <div className="grid grid-cols-2 gap-4">
-                    {(!assignedCrew || newSession.useSpareDriver) && (
-                      <div>
-                        <Label htmlFor="spare_driver_id">
-                          {newSession.useSpareDriver ? 'Select Spare Driver' : 'Select Driver'}
-                        </Label>
-                        <Select
-                          id="spare_driver_id"
-                          value={newSession.driver_id}
-                          onChange={(e) => setNewSession({ ...newSession, driver_id: e.target.value })}
-                          required={!assignedCrew || newSession.useSpareDriver}
-                        >
-                          <option value="">Select Driver</option>
-                          {drivers.map((driver) => (
-                            <option key={driver.id} value={driver.id}>
-                              {driver.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    )}
-                    {(!assignedCrew || newSession.useSparePA) && (
-                      <div>
-                        <Label htmlFor="spare_pa_id">
-                          {newSession.useSparePA ? 'Select Spare PA' : 'Select Passenger Assistant'}
-                        </Label>
-                        <Select
-                          id="spare_pa_id"
-                          value={newSession.passenger_assistant_id}
-                          onChange={(e) => setNewSession({ ...newSession, passenger_assistant_id: e.target.value })}
-                          required={!assignedCrew || newSession.useSparePA}
-                        >
-                          <option value="">Select PA</option>
-                          {passengerAssistants.map((pa) => (
-                            <option key={pa.id} value={pa.id}>
-                              {pa.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Input
-                  id="notes"
-                  value={newSession.notes}
-                  onChange={(e) => setNewSession({ ...newSession, notes: e.target.value })}
-                  placeholder="Add any notes about this session..."
-                />
-              </div>
-              <Button onClick={handleCreateSession}>Create Session</Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Active Sessions (En Route) */}
-      {activeSessions.length > 0 && (
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="bg-green-600 text-white">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white flex items-center">
-                <MapPin className="mr-2 h-5 w-5" />
-                Active Sessions (En Route)
-              </CardTitle>
+            <CardTitle className={activeSessions.length > 0 ? 'text-white flex items-center' : 'text-slate-800 flex items-center'}>
+              <MapPin className={`mr-2 h-5 w-5 ${activeSessions.length > 0 ? 'text-white' : 'text-slate-500'}`} />
+              {activeSessions.length > 0 ? 'Session currently running' : 'Current session'}
+            </CardTitle>
+            {activeSessions.length > 0 && (
               <span className="px-3 py-1 bg-green-700 rounded-full text-sm font-medium">
                 {activeSessions.length} Active
               </span>
-            </div>
-          </CardHeader>
-          <CardContent>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className={activeSessions.length > 0 ? '' : 'py-10'}>
+          {activeSessions.length === 0 ? (
+            <p className="text-center text-slate-500 text-base">No session currently running.</p>
+          ) : (
             <div className="space-y-4">
               {activeSessions.map((session) => (
                 <Card key={session.session_id} className="border-l-4 border-l-green-500 bg-green-50">
@@ -569,18 +287,16 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
                         </div>
                         <div>
                           <CardTitle className="text-lg flex items-center space-x-2">
-                            <span>{formatDate(session.session_date)} - {session.session_type}</span>
+                            <span>
+                              {formatDate(session.session_date)} - {session.session_type}
+                            </span>
                             <span className="px-2 py-1 bg-green-600 text-white text-xs font-medium rounded-full">
                               En Route
                             </span>
                           </CardTitle>
                           <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
-                            {session.driver_name && (
-                              <span>Driver: {session.driver_name}</span>
-                            )}
-                            {session.passenger_assistant_name && (
-                              <span>PA: {session.passenger_assistant_name}</span>
-                            )}
+                            {session.driver_name && <span>Driver: {session.driver_name}</span>}
+                            {session.passenger_assistant_name && <span>PA: {session.passenger_assistant_name}</span>}
                             {session.started_at && (
                               <span className="text-green-700 font-medium">
                                 Started: {formatDateTime(session.started_at)}
@@ -589,15 +305,26 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleEndSession(session.session_id)}
-                        >
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/dashboard/incidents/create?route_session_id=${session.session_id}`}>
+                          <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 border border-rose-200">
+                            <AlertCircle className="mr-1 h-3.5 w-3.5" />
+                            Add Incident
+                          </Button>
+                        </Link>
+
+                        <Link href={`/dashboard/incidents?route_session_id=${session.session_id}`} title="View incidents for this session">
+                          <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 border border-slate-200">
+                            View incidents
+                          </Button>
+                        </Link>
+
+                        <Button variant="danger" size="sm" onClick={() => handleEndSession(session.session_id)}>
                           <Square className="mr-2 h-4 w-4" />
                           End Session
                         </Button>
+
                         <Button
                           variant="ghost"
                           size="sm"
@@ -608,141 +335,80 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="text-center p-3 bg-white rounded border border-green-200">
-                        <div className="text-2xl font-bold text-gray-900">{session.total_passengers}</div>
-                        <div className="text-sm text-gray-600">Total Passengers</div>
-                      </div>
-                      <div className="text-center p-3 bg-green-100 rounded border border-green-200">
-                        <div className="text-2xl font-bold text-green-700">{session.present_count}</div>
-                        <div className="text-sm text-gray-600">Present</div>
-                      </div>
-                      <div className="text-center p-3 bg-red-100 rounded border border-red-200">
-                        <div className="text-2xl font-bold text-red-700">{session.absent_count}</div>
-                        <div className="text-sm text-gray-600">Absent</div>
-                      </div>
-                      <div className="text-center p-3 bg-yellow-100 rounded border border-yellow-200">
-                        <div className="text-2xl font-bold text-yellow-700">{session.late_count + session.excused_count}</div>
-                        <div className="text-sm text-gray-600">Late/Excused</div>
-                      </div>
+
+                  <CardContent className="space-y-4">
+                    {/* Upload TR5 / TR6 / TR7 and documents for this running session */}
+                    <div className="p-3 bg-white rounded-lg border border-green-200">
+                      <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                        <FileText className="h-4 w-4 text-slate-500" />
+                        Upload document (TR5, TR6, TR7 or other)
+                      </h4>
+                      {docUploadError && (
+                        <p className="text-xs text-red-600 mb-2">{docUploadError}</p>
+                      )}
+                      <form
+                        className="flex flex-wrap items-end gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          const form = e.currentTarget
+                          const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]')
+                          const typeSelect = form.querySelector<HTMLSelectElement>('select[name="doc_type"]')
+                          const file = fileInput?.files?.[0]
+                          if (!file) {
+                            setDocUploadError('Please select a file.')
+                            return
+                          }
+                          const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf']
+                          if (!allowed.includes(file.type)) {
+                            setDocUploadError('Only images (JPEG, PNG, GIF) and PDF are allowed.')
+                            return
+                          }
+                          if (file.size > 10 * 1024 * 1024) {
+                            setDocUploadError('File must be under 10 MB.')
+                            return
+                          }
+                          handleAddDocumentToSession(session.session_id, file, typeSelect?.value || 'Session Document')
+                          fileInput.value = ''
+                        }}
+                      >
+                        <div className="flex-1 min-w-[140px]">
+                          <Label htmlFor={`active-doc-file-${session.session_id}`} className="text-xs">File</Label>
+                          <Input
+                            id={`active-doc-file-${session.session_id}`}
+                            type="file"
+                            accept=".pdf,image/jpeg,image/jpg,image/png,image/gif"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div className="w-36">
+                          <Label htmlFor={`active-doc-type-${session.session_id}`} className="text-xs">Type</Label>
+                          <Select id={`active-doc-type-${session.session_id}`} name="doc_type" className="h-9 text-sm">
+                            <option value="Session Document">Session Document</option>
+                            <option value="TR5">TR5</option>
+                            <option value="TR6">TR6</option>
+                            <option value="TR7">TR7</option>
+                            <option value="Other">Other</option>
+                          </Select>
+                        </div>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={uploadingDocForSession === session.session_id}
+                          className="shrink-0"
+                        >
+                          {uploadingDocForSession === session.session_id ? 'Uploading…' : (<><Upload className="h-3.5 w-3.5 mr-1" /> Upload</>)}
+                        </Button>
+                      </form>
                     </div>
-                    
-                    {session.notes && (
-                      <div className="mb-4 p-3 bg-white rounded border border-green-200 text-sm">
-                        <strong>Notes:</strong> {session.notes}
-                      </div>
-                    )}
 
-                    {/* Documents and Incidents for Active Sessions */}
-                    {(sessionDocuments[session.session_id]?.length > 0 || sessionIncidents[session.session_id]?.length > 0) && (
-                      <div className="mt-4 border-t border-green-300 pt-4 space-y-4">
-                        {/* Documents */}
-                        {sessionDocuments[session.session_id]?.length > 0 && (
-                          <div>
-                            <h4 className="font-semibold mb-2 flex items-center text-sm">
-                              <FileText className="mr-2 h-4 w-4" />
-                              Documents ({sessionDocuments[session.session_id].length})
-                            </h4>
-                            <div className="space-y-2">
-                              {sessionDocuments[session.session_id].map((doc: any) => {
-                                let fileUrls: string[] = []
-                                try {
-                                  const parsed = JSON.parse(doc.file_url)
-                                  fileUrls = Array.isArray(parsed) ? parsed : [doc.file_url]
-                                } catch {
-                                  fileUrls = [doc.file_url]
-                                }
-                                return (
-                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-white rounded text-sm border border-green-200">
-                                    <div className="flex items-center space-x-2">
-                                      <FileText className="h-4 w-4 text-gray-500" />
-                                      <span className="font-medium">{doc.doc_type}</span>
-                                      <span className="text-gray-500">- {doc.file_name}</span>
-                                      {fileUrls.length > 1 && (
-                                        <span className="text-xs text-gray-400">({fileUrls.length} files)</span>
-                                      )}
-                                    </div>
-                                    <div className="flex space-x-1">
-                                      {fileUrls.map((url, idx) => (
-                                        <a
-                                          key={idx}
-                                          href={url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="p-1 text-blue-600 hover:text-blue-800"
-                                          title="View file"
-                                        >
-                                          <Eye className="h-4 w-4" />
-                                        </a>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Incidents */}
-                        {sessionIncidents[session.session_id]?.length > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-semibold flex items-center text-sm">
-                                <AlertCircle className="mr-2 h-4 w-4" />
-                                Incidents ({sessionIncidents[session.session_id].length})
-                              </h4>
-                              <Link href={`/dashboard/incidents?route_session_id=${session.session_id}`}>
-                                <Button variant="ghost" size="sm" className="text-xs">
-                                  View All
-                                </Button>
-                              </Link>
-                            </div>
-                            <div className="space-y-2">
-                              {sessionIncidents[session.session_id].map((incident: any) => (
-                                <div key={incident.id} className="flex items-start justify-between p-2 bg-red-50 rounded text-sm border border-red-200 hover:bg-red-100 transition-colors">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2 flex-wrap">
-                                      <span className="font-medium">{incident.incident_type || 'Incident'}</span>
-                                      {incident.reference_number && (
-                                        <span className="px-2 py-0.5 bg-red-200 text-red-800 text-xs rounded font-medium">
-                                          {incident.reference_number}
-                                        </span>
-                                      )}
-                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                        incident.resolved 
-                                          ? 'bg-green-100 text-green-800' 
-                                          : 'bg-red-100 text-red-800'
-                                      }`}>
-                                        {incident.resolved ? 'Resolved' : 'Open'}
-                                      </span>
-                                    </div>
-                                    {incident.description && (
-                                      <p className="text-gray-600 mt-1 text-xs line-clamp-2">{incident.description}</p>
-                                    )}
-                                    <p className="text-gray-500 mt-1 text-xs">
-                                      Reported: {formatDateTime(incident.reported_at)}
-                                    </p>
-                                  </div>
-                                  <Link href={`/dashboard/incidents/${incident.id}`}>
-                                    <Button variant="ghost" size="sm" className="ml-2">
-                                      View Details
-                                    </Button>
-                                  </Link>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
+                    {/* Attendance list */}
                     {selectedSession === session.session_id && (
                       <div className="mt-4 border-t border-green-300 pt-4">
                         <h4 className="font-semibold mb-3 flex items-center">
                           <Users className="mr-2 h-4 w-4" />
                           Mark Attendance ({passengers.length} passengers)
                         </h4>
+
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {passengers.length === 0 ? (
                             <p className="text-center text-gray-500 py-4">No passengers on this route.</p>
@@ -764,6 +430,7 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
                                       <span className="capitalize">{currentStatus}</span>
                                     </span>
                                   </div>
+
                                   <div className="flex space-x-1 ml-4">
                                     {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map((status) => (
                                       <Button
@@ -790,265 +457,245 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
                 </Card>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Completed Sessions History */}
-      <Card>
-        <CardHeader className="bg-blue-900 text-white">
-          <CardTitle className="text-white">Session History</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Session History */}
+      <Card className="border-slate-200 overflow-hidden rounded-2xl">
+        <div className="bg-white border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-slate-600" />
+              Session History
+            </h2>
+
+            {!loading && completedSessions.length > 0 && (
+              <span className="px-3 py-1 bg-slate-50 text-slate-700 rounded-full text-sm font-semibold border border-slate-100">
+                {filteredCompletedSessions.length} of {completedSessions.length} Session{completedSessions.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {!loading && completedSessions.length > 0 && (
+            <div className="mt-3 relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="Search by date, AM/PM or completed..."
+                value={sessionSearch}
+                onChange={(e) => setSessionSearch(e.target.value)}
+                className="pl-9 pr-9 h-9 text-sm"
+              />
+              {sessionSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSessionSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <CardContent className="p-0">
           {loading ? (
-            <p className="text-center text-gray-500 py-4">Loading sessions...</p>
+            <p className="text-center text-slate-500 py-8">Loading sessions...</p>
           ) : completedSessions.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No completed sessions recorded yet.</p>
+            <p className="text-center text-slate-500 py-8">No completed sessions recorded yet.</p>
+          ) : filteredCompletedSessions.length === 0 ? (
+            <p className="text-center text-slate-500 py-8">No sessions match your search.</p>
           ) : (
-            <div className="space-y-4">
-              {completedSessions.map((session) => {
+            <div className="divide-y divide-slate-100">
+              {filteredCompletedSessions.map((session) => {
                 const isCompleted = session.ended_at !== null
+
                 return (
-                  <Card key={session.session_id} className={`border-l-4 ${isCompleted ? 'border-l-gray-400' : 'border-l-blue-600'}`}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <Calendar className="h-5 w-5 text-blue-600" />
-                          <div>
-                            <CardTitle className="text-lg flex items-center space-x-2 flex-wrap">
-                              <span>{formatDate(session.session_date)} - {session.session_type}</span>
-                              {isCompleted && (
-                                <span className="px-2 py-1 bg-gray-600 text-white text-xs font-medium rounded-full">
-                                  Completed
-                                </span>
-                              )}
-                              {!session.started_at && !session.ended_at && (
-                                <span className="px-2 py-1 bg-yellow-600 text-white text-xs font-medium rounded-full">
-                                  Not Started
-                                </span>
-                              )}
-                              {sessionIncidents[session.session_id]?.length > 0 && (
-                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full flex items-center">
-                                  <AlertCircle className="mr-1 h-3 w-3" />
-                                  {sessionIncidents[session.session_id].length} Incident{sessionIncidents[session.session_id].length !== 1 ? 's' : ''}
-                                </span>
-                              )}
-                              {sessionDocuments[session.session_id]?.length > 0 && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full flex items-center">
-                                  <FileText className="mr-1 h-3 w-3" />
-                                  {sessionDocuments[session.session_id].length} Document{sessionDocuments[session.session_id].length !== 1 ? 's' : ''}
-                                </span>
-                              )}
-                            </CardTitle>
-                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
-                              {session.driver_name && (
-                                <span>Driver: {session.driver_name}</span>
-                              )}
-                              {session.passenger_assistant_name && (
-                                <span>PA: {session.passenger_assistant_name}</span>
-                              )}
-                              {session.started_at && (
-                                <span>Started: {formatDateTime(session.started_at)}</span>
-                              )}
-                              {session.ended_at && (
-                                <span className="text-gray-700 font-medium">
-                                  Ended: {formatDateTime(session.ended_at)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                  <div key={session.session_id} className="p-6 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className="flex-shrink-0 p-2 rounded-lg bg-slate-100 text-slate-600">
+                          <Calendar className="h-5 w-5" />
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedSession(selectedSession === session.session_id ? null : session.session_id)}
-                        >
-                          {selectedSession === session.session_id ? 'Hide' : 'View Details'}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div className="text-center p-3 bg-gray-50 rounded">
-                          <div className="text-2xl font-bold text-gray-900">{session.total_passengers}</div>
-                          <div className="text-sm text-gray-600">Total Passengers</div>
-                        </div>
-                        <div className="text-center p-3 bg-green-50 rounded">
-                          <div className="text-2xl font-bold text-green-700">{session.present_count}</div>
-                          <div className="text-sm text-gray-600">Present</div>
-                        </div>
-                        <div className="text-center p-3 bg-red-50 rounded">
-                          <div className="text-2xl font-bold text-red-700">{session.absent_count}</div>
-                          <div className="text-sm text-gray-600">Absent</div>
-                        </div>
-                        <div className="text-center p-3 bg-yellow-50 rounded">
-                          <div className="text-2xl font-bold text-yellow-700">{session.late_count + session.excused_count}</div>
-                          <div className="text-sm text-gray-600">Late/Excused</div>
-                        </div>
-                      </div>
-                      
-                      {session.notes && (
-                        <div className="mb-4 p-3 bg-blue-50 rounded text-sm">
-                          <strong>Notes:</strong> {session.notes}
-                        </div>
-                      )}
 
-                      {/* Documents and Incidents for Completed Sessions */}
-                      <div className="mt-4 border-t pt-4 space-y-4">
-                        {/* Documents */}
-                        {sessionDocuments[session.session_id]?.length > 0 && (
-                          <div>
-                            <h4 className="font-semibold mb-2 flex items-center text-sm">
-                              <FileText className="mr-2 h-4 w-4" />
-                              Documents ({sessionDocuments[session.session_id].length})
-                            </h4>
-                            <div className="space-y-2">
-                              {sessionDocuments[session.session_id].map((doc: any) => {
-                                let fileUrls: string[] = []
-                                try {
-                                  const parsed = JSON.parse(doc.file_url)
-                                  fileUrls = Array.isArray(parsed) ? parsed : [doc.file_url]
-                                } catch {
-                                  fileUrls = [doc.file_url]
-                                }
-                                return (
-                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm border border-gray-200">
-                                    <div className="flex items-center space-x-2">
-                                      <FileText className="h-4 w-4 text-gray-500" />
-                                      <span className="font-medium">{doc.doc_type}</span>
-                                      <span className="text-gray-500">- {doc.file_name}</span>
-                                      {fileUrls.length > 1 && (
-                                        <span className="text-xs text-gray-400">({fileUrls.length} files)</span>
-                                      )}
-                                    </div>
-                                    <div className="flex space-x-1">
-                                      {fileUrls.map((url, idx) => (
-                                        <a
-                                          key={idx}
-                                          href={url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="p-1 text-blue-600 hover:text-blue-800"
-                                          title="View file"
-                                        >
-                                          <Eye className="h-4 w-4" />
-                                        </a>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-semibold text-slate-800">
+                              {formatDate(session.session_date)} — {session.session_type}
+                            </span>
 
-                        {/* Incidents - Always show section for completed sessions */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold flex items-center text-sm">
-                              <AlertCircle className="mr-2 h-4 w-4" />
-                              Incidents ({sessionIncidents[session.session_id]?.length || 0})
-                            </h4>
-                            {sessionIncidents[session.session_id]?.length > 0 && (
-                              <Link href={`/dashboard/incidents?route_session_id=${session.session_id}`}>
-                                <Button variant="ghost" size="sm" className="text-xs">
-                                  View All
-                                </Button>
-                              </Link>
+                            {isCompleted && (
+                              <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                Completed
+                              </span>
+                            )}
+
+                            {!session.started_at && !session.ended_at && (
+                              <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                                Not Started
+                              </span>
                             )}
                           </div>
-                          {sessionIncidents[session.session_id]?.length > 0 ? (
-                            <div className="space-y-2">
-                              {sessionIncidents[session.session_id].map((incident: any) => (
-                                <div key={incident.id} className="flex items-start justify-between p-2 bg-red-50 rounded text-sm border border-red-200 hover:bg-red-100 transition-colors">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2 flex-wrap">
-                                      <span className="font-medium">{incident.incident_type || 'Incident'}</span>
-                                      {incident.reference_number && (
-                                        <span className="px-2 py-0.5 bg-red-200 text-red-800 text-xs rounded font-medium">
-                                          {incident.reference_number}
-                                        </span>
-                                      )}
-                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                        incident.resolved 
-                                          ? 'bg-green-100 text-green-800' 
-                                          : 'bg-red-100 text-red-800'
-                                      }`}>
-                                        {incident.resolved ? 'Resolved' : 'Open'}
-                                      </span>
-                                    </div>
-                                    {incident.description && (
-                                      <p className="text-gray-600 mt-1 text-xs line-clamp-2">{incident.description}</p>
-                                    )}
-                                    <p className="text-gray-500 mt-1 text-xs">
-                                      Reported: {formatDateTime(incident.reported_at)}
-                                    </p>
-                                  </div>
-                                  <Link href={`/dashboard/incidents/${incident.id}`}>
-                                    <Button variant="ghost" size="sm" className="ml-2">
-                                      View Details
-                                    </Button>
-                                  </Link>
-                                </div>
-                              ))}
-                            </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedSession(selectedSession === session.session_id ? null : session.session_id)}
+                        className="text-violet-600 hover:bg-violet-50 hover:text-violet-700 border border-violet-200"
+                      >
+                        {selectedSession === session.session_id ? 'Hide details' : 'View details'}
+                      </Button>
+                    </div>
+
+                    {selectedSession === session.session_id && (
+                      <div className="mt-4 border-t border-slate-200 pt-4 space-y-4">
+                        {/* Documents */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-slate-500" />
+                            Documents
+                          </h4>
+                          {(sessionDocuments[session.session_id]?.length ?? 0) === 0 ? (
+                            <p className="text-sm text-slate-500">No documents for this session.</p>
                           ) : (
-                            <p className="text-sm text-gray-500 italic py-2">No incidents reported for this session.</p>
+                            <ul className="space-y-1.5">
+                              {sessionDocuments[session.session_id]?.map((doc: any) => (
+                                <li key={doc.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-3 py-2 border border-slate-100">
+                                  <span className="font-medium text-slate-800 truncate">{doc.file_name || doc.doc_type || 'Document'}</span>
+                                  {doc.file_url ? (
+                                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline flex items-center gap-1">
+                                      <Eye className="h-3.5 w-3.5" /> View
+                                    </a>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-2">Add document to this session</p>
+                            {docUploadError && selectedSession === session.session_id && (
+                              <p className="text-xs text-red-600 mb-2">{docUploadError}</p>
+                            )}
+                            <form
+                              className="flex flex-wrap items-end gap-2"
+                              onSubmit={(e) => {
+                                e.preventDefault()
+                                const form = e.currentTarget
+                                const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]')
+                                const typeSelect = form.querySelector<HTMLSelectElement>('select[name="doc_type"]')
+                                const file = fileInput?.files?.[0]
+                                if (!file) {
+                                  setDocUploadError('Please select a file.')
+                                  return
+                                }
+                                const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf']
+                                if (!allowed.includes(file.type)) {
+                                  setDocUploadError('Only images (JPEG, PNG, GIF) and PDF are allowed.')
+                                  return
+                                }
+                                if (file.size > 10 * 1024 * 1024) {
+                                  setDocUploadError('File must be under 10 MB.')
+                                  return
+                                }
+                                handleAddDocumentToSession(session.session_id, file, typeSelect?.value || 'Session Document')
+                                fileInput.value = ''
+                              }}
+                            >
+                              <div className="flex-1 min-w-[140px]">
+                                <Label htmlFor={`doc-file-${session.session_id}`} className="text-xs">File</Label>
+                                <Input
+                                  id={`doc-file-${session.session_id}`}
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/jpg,image/png,image/gif"
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                              <div className="w-36">
+                                <Label htmlFor={`doc-type-${session.session_id}`} className="text-xs">Type</Label>
+                                <Select id={`doc-type-${session.session_id}`} name="doc_type" className="h-9 text-sm">
+                                  <option value="Session Document">Session Document</option>
+                                  <option value="TR5">TR5</option>
+                                  <option value="TR6">TR6</option>
+                                  <option value="TR7">TR7</option>
+                                  <option value="Other">Other</option>
+                                </Select>
+                              </div>
+                              <Button
+                                type="submit"
+                                size="sm"
+                                disabled={uploadingDocForSession === session.session_id}
+                                className="shrink-0"
+                              >
+                                {uploadingDocForSession === session.session_id ? (
+                                  'Uploading…'
+                                ) : (
+                                  <>
+                                    <Upload className="h-3.5 w-3.5 mr-1" /> Upload
+                                  </>
+                                )}
+                              </Button>
+                            </form>
+                          </div>
+                        </div>
+
+                        {/* Incidents (TR5, TR6, TR7 completed on incident page) */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                            <AlertCircle className="h-4 w-4 text-slate-500" />
+                            Incidents
+                          </h4>
+                          {(sessionIncidents[session.session_id]?.length ?? 0) === 0 ? (
+                            <p className="text-sm text-slate-500">No incidents for this session.</p>
+                          ) : (
+                            <ul className="space-y-1.5">
+                              {sessionIncidents[session.session_id]?.map((incident: any) => (
+                                <li key={incident.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-3 py-2 border border-slate-100">
+                                  <span className="text-slate-800">
+                                    {incident.reference_number ? `${incident.reference_number} — ` : ''}
+                                    {incident.incident_type || 'Incident'}
+                                    {incident.description ? `: ${incident.description.slice(0, 60)}${incident.description.length > 60 ? '…' : ''}` : ''}
+                                  </span>
+                                  <Link href={`/dashboard/incidents/${incident.id}`} className="text-violet-600 hover:underline flex items-center gap-1">
+                                    <Eye className="h-3.5 w-3.5" /> View (TR5/TR6/TR7)
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        {/* Passenger attendance */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                            <UserCheck className="h-4 w-4 text-slate-500" />
+                            Passenger attendance
+                          </h4>
+                          {passengers.length === 0 ? (
+                            <p className="text-sm text-slate-500">No passengers on this route.</p>
+                          ) : (
+                            <ul className="space-y-1.5">
+                              {passengers.map((passenger) => {
+                                const status = attendanceData[passenger.id] ?? 'absent'
+                                return (
+                                  <li key={passenger.id} className="flex items-center justify-between text-sm bg-slate-50 rounded px-3 py-2 border border-slate-100">
+                                    <span className="font-medium text-slate-800 truncate">{passenger.full_name}</span>
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${status === 'present' ? 'bg-emerald-100 text-emerald-700' : status === 'absent' ? 'bg-red-100 text-red-700' : status === 'late' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
+                                      {status}
+                                    </span>
+                                  </li>
+                                )
+                              })}
+                            </ul>
                           )}
                         </div>
                       </div>
-
-                      {selectedSession === session.session_id && (
-                        <div className="mt-4 border-t pt-4">
-                          <h4 className="font-semibold mb-3 flex items-center">
-                            <Users className="mr-2 h-4 w-4" />
-                            Mark Attendance ({passengers.length} passengers)
-                          </h4>
-                          <div className="space-y-2 max-h-96 overflow-y-auto">
-                            {passengers.length === 0 ? (
-                              <p className="text-center text-gray-500 py-4">No passengers on this route.</p>
-                            ) : (
-                              passengers.map((passenger) => {
-                                const currentStatus = attendanceData[passenger.id] || 'absent'
-                                return (
-                                  <div
-                                    key={passenger.id}
-                                    className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                                  >
-                                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                      <span className="font-medium truncate">{passenger.full_name}</span>
-                                      {passenger.seat_number && (
-                                        <span className="text-sm text-gray-500 whitespace-nowrap">Seat: {passenger.seat_number}</span>
-                                      )}
-                                      <span className={`px-2 py-1 rounded text-xs font-medium flex items-center space-x-1 whitespace-nowrap ${getStatusColor(currentStatus)}`}>
-                                        {getStatusIcon(currentStatus)}
-                                        <span className="capitalize">{currentStatus}</span>
-                                      </span>
-                                    </div>
-                                    <div className="flex space-x-1 ml-4">
-                                      {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map((status) => (
-                                        <Button
-                                          key={status}
-                                          variant={currentStatus === status ? 'primary' : 'ghost'}
-                                          size="sm"
-                                          onClick={() => handleMarkAttendance(session.session_id, passenger.id, status)}
-                                          className="text-xs px-2"
-                                          title={`Mark as ${status}`}
-                                        >
-                                          {getStatusIcon(status)}
-                                          <span className="ml-1 capitalize hidden md:inline">{status}</span>
-                                        </Button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              })
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                    )}
+                  </div>
                 )
               })}
             </div>
@@ -1058,4 +705,3 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
     </div>
   )
 }
-

@@ -76,6 +76,20 @@ async function SchoolOverviewCard({ school }: { school: any }) {
               {school.ref_number && <span className="font-medium">Ref: {school.ref_number} • </span>}
               {school.address || 'No address'}
             </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-slate-600">
+              {school.phone_number && (
+                <span>Phone: {school.phone_number}</span>
+              )}
+              {school.contact_email && (
+                <span>Email: <a href={`mailto:${school.contact_email}`} className="text-violet-600 hover:underline">{school.contact_email}</a></span>
+              )}
+              {school.contact_name && (
+                <span>Contact: {school.contact_name}</span>
+              )}
+              {!school.phone_number && !school.contact_email && !school.contact_name && (
+                <span className="text-slate-400">No contact details</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right">

@@ -6,16 +6,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Plus, Eye, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
+import { IncidentSearchFilters } from './IncidentSearchFilters'
 
-async function getIncidents(routeSessionId?: string) {
+async function getIncidents(filters?: { routeSessionId?: string; search?: string; status?: string }) {
   const supabase = await createClient()
   let query = supabase
     .from('incidents')
     .select('*, employees(full_name), vehicles(vehicle_identifier), routes(route_number), route_sessions(id, session_date, session_type, routes(route_number))')
     .order('reported_at', { ascending: false })
 
-  if (routeSessionId) {
-    query = query.eq('route_session_id', parseInt(routeSessionId))
+  if (filters?.routeSessionId) {
+    query = query.eq('route_session_id', parseInt(filters.routeSessionId))
   }
 
   const { data, error } = await query
@@ -25,11 +26,40 @@ async function getIncidents(routeSessionId?: string) {
     return []
   }
 
-  return data || []
+  let result = data || []
+
+  if (filters?.search && filters.search.trim()) {
+    const term = filters.search.trim().toLowerCase()
+    result = result.filter((incident: any) => {
+      const type = incident.incident_type?.toLowerCase() || ''
+      const desc = incident.description?.toLowerCase() || ''
+      const ref = incident.reference_number?.toLowerCase() || ''
+      const emp = incident.employees?.full_name?.toLowerCase() || ''
+      const route = incident.routes?.route_number?.toLowerCase() || ''
+      const sessionRoute = (incident.route_sessions as any)?.routes?.route_number?.toLowerCase() || ''
+      return type.includes(term) || desc.includes(term) || ref.includes(term) || emp.includes(term) || route.includes(term) || sessionRoute.includes(term)
+    })
+  }
+
+  if (filters?.status === 'open') {
+    result = result.filter((i: any) => !i.resolved)
+  } else if (filters?.status === 'resolved') {
+    result = result.filter((i: any) => i.resolved)
+  }
+
+  return result
 }
 
-async function IncidentsTable({ routeSessionId }: { routeSessionId?: string }) {
-  const incidents = await getIncidents(routeSessionId)
+async function IncidentsTable({
+  routeSessionId,
+  search,
+  status,
+}: {
+  routeSessionId?: string
+  search?: string
+  status?: string
+}) {
+  const incidents = await getIncidents({ routeSessionId, search, status })
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -118,10 +148,12 @@ async function IncidentsTable({ routeSessionId }: { routeSessionId?: string }) {
 export default async function IncidentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ route_session_id?: string }>
+  searchParams: Promise<{ route_session_id?: string; search?: string; status?: string }>
 }) {
   const params = await searchParams
   const routeSessionId = params.route_session_id
+  const search = params.search
+  const status = params.status
 
   return (
     <div className="space-y-6">
@@ -145,8 +177,10 @@ export default async function IncidentsPage({
         </Link>
       </div>
 
-      <Suspense fallback={<TableSkeleton rows={5} columns={8} />}>
-        <IncidentsTable routeSessionId={routeSessionId} />
+      <IncidentSearchFilters />
+
+      <Suspense key={JSON.stringify({ routeSessionId, search, status })} fallback={<TableSkeleton rows={5} columns={8} />}>
+        <IncidentsTable routeSessionId={routeSessionId} search={search} status={status} />
       </Suspense>
     </div>
   )

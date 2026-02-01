@@ -176,7 +176,7 @@ export default function CreateVehiclePage() {
         
         // Map file keys to document types
         const fileKeyToDocType: {[key: string]: string} = {
-          registration_file: 'Registration Certificate',
+          registration_file: 'Plate Certificate',
           mot_file: 'MOT Certificate',
           insurance_file: 'Vehicle Insurance',
           taxi_badge_file: 'Taxi Badge',
@@ -448,8 +448,10 @@ export default function CreateVehiclePage() {
                     }
                   >
                     <option value="">Select type</option>
-                    <option value="In-House">In-House</option>
-                    <option value="Subcontractors">Subcontractors</option>
+                    <option value="County Cars">County Cars</option>
+                    <option value="NBT">NBT</option>
+                    <option value="Privately Owned">Privately Owned</option>
+                    <option value="Leased">Leased</option>
                   </Select>
                 </div>
 
@@ -496,11 +498,11 @@ export default function CreateVehiclePage() {
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
-                {/* Registration */}
+                {/* Plate */}
                 <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Registration</h3>
+                  <h3 className="font-semibold text-navy">Plate</h3>
                   <div>
-                    <Label htmlFor="registration_expiry_date">Expiry Date</Label>
+                    <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
                     <Input
                       id="registration_expiry_date"
                       type="date"
@@ -511,7 +513,7 @@ export default function CreateVehiclePage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="registration_file">Upload Certificate</Label>
+                    <Label htmlFor="registration_file">Upload Plate Certificate</Label>
                     <input
                       type="file"
                       id="registration_file"

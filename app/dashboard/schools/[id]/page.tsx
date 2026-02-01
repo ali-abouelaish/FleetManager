@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { ArrowLeft, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, UserCog } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import SchoolRouteSessionsClient from './SchoolRouteSessionsClient'
@@ -39,11 +39,46 @@ async function getSchoolDetails(id: string) {
     `)
     .eq('school_id', id)
 
+  const routeIds = (routes || []).map((r: any) => r.id)
+  const { data: routePasData } = routeIds.length > 0
+    ? await supabase
+        .from('route_passenger_assistants')
+        .select('route_id, employee_id, sort_order, employees(full_name)')
+        .in('route_id', routeIds)
+        .order('sort_order')
+    : { data: [] }
+
+  // Map route_id -> array of { id, name } for PAs
+  const routePasMap: Record<number, Array<{ id: number; name: string }>> = {}
+  ;(routePasData || []).forEach((r: any) => {
+    if (!routePasMap[r.route_id]) routePasMap[r.route_id] = []
+    const emp = Array.isArray(r.employees) ? r.employees[0] : r.employees
+    routePasMap[r.route_id].push({
+      id: r.employee_id,
+      name: emp?.full_name || 'Unknown',
+    })
+  })
+
   // Get passengers for this school
   const { data: passengers, error: passengersError } = await supabase
     .from('passengers')
     .select('*, routes(route_number)')
     .eq('school_id', id)
+
+  // Get coordinators assigned to this school
+  const { data: coordinatorAssignments } = await supabase
+    .from('coordinator_school_assignments')
+    .select('employee_id, employees(id, full_name, role)')
+    .eq('school_id', id)
+
+  const coordinators: Array<{ id: number; full_name: string }> = []
+  coordinatorAssignments?.forEach((row: any) => {
+    const emp = row.employees
+    const employee = Array.isArray(emp) ? emp[0] : emp
+    if (employee && employee.id) {
+      coordinators.push({ id: employee.id, full_name: employee.full_name || 'Unknown' })
+    }
+  })
 
   // Calculate crew count from routes (unique drivers and PAs)
   const uniqueCrewMembers = new Set<number>()
@@ -52,31 +87,31 @@ async function getSchoolDetails(id: string) {
     route_number: string | null
     driver_id: number | null
     driver_name: string | null
-    pa_id: number | null
-    pa_name: string | null
+    pas: Array<{ id: number; name: string }>
   }> = []
 
   routes?.forEach((route: any) => {
     if (route.driver_id) {
       uniqueCrewMembers.add(route.driver_id)
     }
-    if (route.passenger_assistant_id) {
-      uniqueCrewMembers.add(route.passenger_assistant_id)
-    }
-    
-    // Build crew assignments array for display
+    const pasForRoute: Array<{ id: number; name: string }> = routePasMap[route.id]
+      ? [...routePasMap[route.id]]
+      : route.passenger_assistant_id
+        ? (() => {
+            const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
+            const paEmp = Array.isArray(pa?.employees) ? pa?.employees[0] : pa?.employees
+            return [{ id: route.passenger_assistant_id, name: paEmp?.full_name || 'Unknown' }]
+          })()
+        : []
+    pasForRoute.forEach((p) => uniqueCrewMembers.add(p.id))
     const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
     const driverEmp = Array.isArray(driver?.employees) ? driver?.employees[0] : driver?.employees
-    const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
-    const paEmp = Array.isArray(pa?.employees) ? pa?.employees[0] : pa?.employees
-    
     crewAssignments.push({
       route_id: route.id,
       route_number: route.route_number,
       driver_id: route.driver_id,
       driver_name: driverEmp?.full_name || null,
-      pa_id: route.passenger_assistant_id,
-      pa_name: paEmp?.full_name || null,
+      pas: pasForRoute,
     })
   })
 
@@ -86,6 +121,7 @@ async function getSchoolDetails(id: string) {
     crewCount: uniqueCrewMembers.size,
     crewAssignments,
     passengers: passengers || [],
+    coordinators,
   }
 }
 
@@ -100,7 +136,7 @@ export default async function ViewSchoolPage({
     notFound()
   }
 
-  const { school, routes, crewCount, crewAssignments, passengers } = data
+  const { school, routes, crewCount, crewAssignments, passengers, coordinators } = data
 
   return (
     <div className="space-y-6">
@@ -182,6 +218,33 @@ export default async function ViewSchoolPage({
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5 text-violet-600" />
+              Coordinators
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {coordinators.length === 0 ? (
+              <p className="text-sm text-gray-500">No coordinators assigned. Assign from the employee edit page when role is Coordinator.</p>
+            ) : (
+              <ul className="space-y-2">
+                {coordinators.map((coord) => (
+                  <li key={coord.id}>
+                    <Link
+                      href={`/dashboard/employees/${coord.id}`}
+                      className="text-sm font-medium text-violet-600 hover:underline"
+                    >
+                      {coord.full_name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Routes Section */}
@@ -231,7 +294,7 @@ export default async function ViewSchoolPage({
           <CardTitle>Crew Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          {crewAssignments.length === 0 || crewAssignments.every(c => !c.driver_id && !c.pa_id) ? (
+          {crewAssignments.length === 0 || crewAssignments.every(c => !c.driver_id && c.pas.length === 0) ? (
             <p className="text-center text-gray-500 py-4">No crew assignments found for this school.</p>
           ) : (
             <Table>
@@ -239,7 +302,7 @@ export default async function ViewSchoolPage({
                 <TableRow>
                   <TableHead>Route</TableHead>
                   <TableHead>Driver</TableHead>
-                  <TableHead>Passenger Assistant</TableHead>
+                  <TableHead>Passenger Assistant(s)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -256,10 +319,17 @@ export default async function ViewSchoolPage({
                       )}
                     </TableCell>
                     <TableCell>
-                      {assignment.pa_id ? (
-                        <Link href={`/dashboard/employees/${assignment.pa_id}`} className="text-blue-600 hover:underline">
-                          {assignment.pa_name || 'Unknown'}
-                        </Link>
+                      {assignment.pas.length > 0 ? (
+                        <span className="flex flex-wrap gap-x-1 gap-y-0.5">
+                          {assignment.pas.map((pa, idx) => (
+                            <span key={pa.id}>
+                              {idx > 0 && ', '}
+                              <Link href={`/dashboard/employees/${pa.id}`} className="text-blue-600 hover:underline">
+                                {pa.name || 'Unknown'}
+                              </Link>
+                            </span>
+                          ))}
+                        </span>
                       ) : (
                         <span className="text-gray-400">Not assigned</span>
                       )}

@@ -79,7 +79,18 @@ function EditCallLogPageClient({ id }: { id: string }) {
           action_required: data.action_required || false,
           action_taken: data.action_taken || '',
           follow_up_required: data.follow_up_required || false,
-          follow_up_date: data.follow_up_date || '',
+          follow_up_date: data.follow_up_date
+            ? (() => {
+                const d = new Date(data.follow_up_date)
+                if (isNaN(d.getTime())) return ''
+                const y = d.getFullYear()
+                const m = String(d.getMonth() + 1).padStart(2, '0')
+                const day = String(d.getDate()).padStart(2, '0')
+                const h = String(d.getHours()).padStart(2, '0')
+                const min = String(d.getMinutes()).padStart(2, '0')
+                return `${y}-${m}-${day}T${h}:${min}`
+              })()
+            : '',
           priority: data.priority || 'Medium',
           status: data.status || 'Open',
         })
@@ -126,7 +137,7 @@ function EditCallLogPageClient({ id }: { id: string }) {
         related_employee_id: formData.related_employee_id === '' ? null : (formData.related_employee_id ? parseInt(formData.related_employee_id) : null),
         related_route_id: formData.related_route_id === '' ? null : (formData.related_route_id ? parseInt(formData.related_route_id) : null),
         call_to_type: formData.call_to_type === '' ? null : formData.call_to_type,
-        follow_up_date: formData.follow_up_date === '' ? null : formData.follow_up_date,
+        follow_up_date: formData.follow_up_date === '' ? null : (formData.follow_up_date.includes('T') ? formData.follow_up_date.replace('T', ' ') : formData.follow_up_date),
       }
 
       const { error } = await supabase.from('call_logs').update(cleanedData).eq('id', id)
@@ -302,8 +313,8 @@ function EditCallLogPageClient({ id }: { id: string }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="follow_up_date">Follow-up Date</Label>
-                <Input id="follow_up_date" type="date" value={formData.follow_up_date} onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })} />
+                <Label htmlFor="follow_up_date">Follow-up Date & Time</Label>
+                <Input id="follow_up_date" type="datetime-local" value={formData.follow_up_date} onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })} />
               </div>
             </div>
 

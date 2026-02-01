@@ -19,6 +19,9 @@ interface RoutePoint {
   latitude: string
   longitude: string
   stop_order: number
+  passenger_id: string | number | null
+  pickup_time_am: string
+  pickup_time_pm: string
   isNew?: boolean // flag to track if it's a new point
 }
 
@@ -32,18 +35,20 @@ function EditRoutePageClient({ id }: { id: string }) {
   const [drivers, setDrivers] = useState<any[]>([])
   const [passengerAssistants, setPassengerAssistants] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [passengers, setPassengers] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     route_number: '',
     school_id: '',
     driver_id: '',
-    passenger_assistant_id: '',
+    passenger_assistant_id: '', // primary/first PA (for APA logic and backward compat)
     vehicle_id: '',
     am_start_time: '',
     pm_start_time: '',
     pm_start_time_friday: '',
     days_of_week: [] as string[],
   })
+  const [selectedPaIds, setSelectedPaIds] = useState<number[]>([])
 
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([])
   const [deletedPointIds, setDeletedPointIds] = useState<number[]>([])
@@ -62,6 +67,9 @@ function EditRoutePageClient({ id }: { id: string }) {
         latitude: '',
         longitude: '',
         stop_order: nextOrder,
+        passenger_id: null,
+        pickup_time_am: '',
+        pickup_time_pm: '',
         isNew: true,
       },
     ])
@@ -82,7 +90,7 @@ function EditRoutePageClient({ id }: { id: string }) {
     setRoutePoints(reorderedPoints)
   }
 
-  const updateRoutePoint = (pointId: string | number, field: keyof RoutePoint, value: string | number) => {
+  const updateRoutePoint = (pointId: string | number, field: keyof RoutePoint, value: string | number | null) => {
     setRoutePoints(
       routePoints.map((point) =>
         point.id === pointId ? { ...point, [field]: value } : point
@@ -114,7 +122,7 @@ function EditRoutePageClient({ id }: { id: string }) {
 
   useEffect(() => {
     async function loadData() {
-      const [routeResult, schoolsResult, pointsResult, driversResult, pasResult, vehiclesResult] = await Promise.all([
+      const [routeResult, schoolsResult, pointsResult, driversResult, pasResult, vehiclesResult, routePasResult] = await Promise.all([
         supabase.from('routes').select('*').eq('id', id).single(),
         supabase.from('schools').select('id, name').order('name'),
         supabase.from('route_points').select('*').eq('route_id', id).order('stop_order'),
@@ -131,6 +139,7 @@ function EditRoutePageClient({ id }: { id: string }) {
           .select('id, vehicle_identifier, registration, make, model, plate_number, off_the_road')
           .eq('off_the_road', false)
           .order('vehicle_identifier'),
+        supabase.from('route_passenger_assistants').select('employee_id, sort_order').eq('route_id', id).order('sort_order'),
       ])
 
       if (routeResult.error) {
@@ -150,11 +159,17 @@ function EditRoutePageClient({ id }: { id: string }) {
           return time
         }
 
+        let routePasList = (routePasResult.data || []).map((r: any) => r.employee_id)
+        if (routePasList.length === 0 && routeResult.data.passenger_assistant_id) {
+          routePasList = [routeResult.data.passenger_assistant_id]
+        }
+        setSelectedPaIds(routePasList)
+        const firstPa = routePasList.length > 0 ? routePasList[0] : routeResult.data.passenger_assistant_id
         setFormData({
           route_number: routeResult.data.route_number || '',
           school_id: routeResult.data.school_id || '',
           driver_id: routeResult.data.driver_id || '',
-          passenger_assistant_id: routeResult.data.passenger_assistant_id || '',
+          passenger_assistant_id: firstPa ? String(firstPa) : '',
           vehicle_id: routeResult.data.vehicle_id || '',
           am_start_time: formatTime(routeResult.data.am_start_time),
           pm_start_time: formatTime(routeResult.data.pm_start_time),
@@ -200,6 +215,17 @@ function EditRoutePageClient({ id }: { id: string }) {
       }
 
       if (pointsResult.data) {
+        // Helper to format time for input (HH:MM:SS to HH:MM)
+        const formatTimeForInput = (time: string | null) => {
+          if (!time) return ''
+          // If time is in HH:MM:SS format, extract HH:MM
+          if (time.includes(':')) {
+            const parts = time.split(':')
+            return `${parts[0]}:${parts[1]}`
+          }
+          return time
+        }
+
         const existingPoints = pointsResult.data.map((point) => ({
           id: point.id,
           point_name: point.point_name || '',
@@ -207,6 +233,9 @@ function EditRoutePageClient({ id }: { id: string }) {
           latitude: point.latitude ? String(point.latitude) : '',
           longitude: point.longitude ? String(point.longitude) : '',
           stop_order: point.stop_order,
+          passenger_id: point.passenger_id ? String(point.passenger_id) : null,
+          pickup_time_am: formatTimeForInput(point.pickup_time_am),
+          pickup_time_pm: formatTimeForInput(point.pickup_time_pm),
           isNew: false,
         }))
         setRoutePoints(existingPoints)
@@ -219,6 +248,30 @@ function EditRoutePageClient({ id }: { id: string }) {
 
     loadData()
   }, [id, supabase])
+
+  // Load passengers when school is selected
+  useEffect(() => {
+    async function loadPassengers() {
+      if (!formData.school_id) {
+        setPassengers([])
+        return
+      }
+
+      const { data: passengersData, error } = await supabase
+        .from('passengers')
+        .select('id, full_name, address')
+        .eq('school_id', formData.school_id)
+        .order('full_name')
+
+      if (!error && passengersData) {
+        setPassengers(passengersData)
+      } else {
+        setPassengers([])
+      }
+    }
+
+    loadPassengers()
+  }, [formData.school_id, supabase])
 
   // Auto-add APA address as pickup point when APA is assigned and AM/PM times are set
   useEffect(() => {
@@ -295,13 +348,16 @@ function EditRoutePageClient({ id }: { id: string }) {
         )
 
         // Add APA as first point
-        const apaPoint = {
+        const apaPoint: RoutePoint = {
           id: generateUUID(),
           point_name: `${selectedPA.name} - Home`,
           address: paAddress,
           latitude: '',
           longitude: '',
           stop_order: 1,
+          passenger_id: null,
+          pickup_time_am: '',
+          pickup_time_pm: '',
           isNew: true,
         }
 
@@ -352,13 +408,16 @@ function EditRoutePageClient({ id }: { id: string }) {
         const nextOrder = updatedPoints.length > 0 
           ? Math.max(...updatedPoints.map(p => p.stop_order)) + 1 
           : 1
-        const apaPoint = {
+        const apaPoint: RoutePoint = {
           id: generateUUID(),
           point_name: `${selectedPA.name} - Home`,
           address: paAddress,
           latitude: '',
           longitude: '',
           stop_order: nextOrder,
+          passenger_id: null,
+          pickup_time_am: '',
+          pickup_time_pm: '',
           isNew: true,
         }
 
@@ -389,6 +448,12 @@ function EditRoutePageClient({ id }: { id: string }) {
       setRoutePoints(reordered)
     }
   }, [formData.passenger_assistant_id, formData.am_start_time, formData.pm_start_time, passengerAssistants, paAddresses])
+
+  // Keep primary PA (for APA logic) in sync with first selected PA
+  useEffect(() => {
+    const first = selectedPaIds.length > 0 ? selectedPaIds[0] : null
+    setFormData(prev => ({ ...prev, passenger_assistant_id: first ? String(first) : '' }))
+  }, [selectedPaIds])
 
   // Helper function to check if a driver/PA is authorized to work
   const checkAuthorization = async (employeeId: string, type: 'driver' | 'pa'): Promise<{ authorized: boolean; reason?: string }> => {
@@ -475,22 +540,23 @@ function EditRoutePageClient({ id }: { id: string }) {
         }
       }
 
-      // Validate PA authorization
-      if (formData.passenger_assistant_id) {
-        const paAuth = await checkAuthorization(formData.passenger_assistant_id, 'pa')
+      // Validate PA authorization for all selected PAs
+      for (const paId of selectedPaIds) {
+        const paAuth = await checkAuthorization(String(paId), 'pa')
         if (!paAuth.authorized) {
-          setError(paAuth.reason || 'Passenger Assistant is not authorized to work')
+          setError(paAuth.reason || 'One or more Passenger Assistants are not authorized to work')
           setLoading(false)
           return
         }
       }
 
-      // Step 1: Update the route
+      // Step 1: Update the route (primary PA = first selected for APA/backward compat)
+      const primaryPaId = selectedPaIds.length > 0 ? selectedPaIds[0] : null
       const routeDataToUpdate = {
         route_number: formData.route_number,
         school_id: formData.school_id || null,
         driver_id: formData.driver_id || null,
-        passenger_assistant_id: formData.passenger_assistant_id || null,
+        passenger_assistant_id: primaryPaId,
         vehicle_id: formData.vehicle_id || null,
         am_start_time: formData.am_start_time || null,
         pm_start_time: formData.pm_start_time || null,
@@ -503,6 +569,24 @@ function EditRoutePageClient({ id }: { id: string }) {
         .eq('id', id)
 
       if (routeError) throw routeError
+
+      // Step 1b: Sync route_passenger_assistants (multiple PAs)
+      const { error: deleteRpaError } = await supabase
+        .from('route_passenger_assistants')
+        .delete()
+        .eq('route_id', id)
+      if (deleteRpaError) throw deleteRpaError
+      if (selectedPaIds.length > 0) {
+        const rpaRows = selectedPaIds.map((empId, idx) => ({
+          route_id: parseInt(id),
+          employee_id: empId,
+          sort_order: idx + 1,
+        }))
+        const { error: insertRpaError } = await supabase
+          .from('route_passenger_assistants')
+          .insert(rpaRows)
+        if (insertRpaError) throw insertRpaError
+      }
 
       // Step 2: Delete removed Pick-up Points
       if (deletedPointIds.length > 0) {
@@ -527,6 +611,9 @@ function EditRoutePageClient({ id }: { id: string }) {
           latitude: point.latitude ? parseFloat(point.latitude) : null,
           longitude: point.longitude ? parseFloat(point.longitude) : null,
           stop_order: point.stop_order,
+          passenger_id: point.passenger_id ? parseInt(String(point.passenger_id)) : null, // First point (stop_order 1) is for PA, should be null
+          pickup_time_am: point.pickup_time_am || null,
+          pickup_time_pm: point.pickup_time_pm || null,
         }
 
         if (point.isNew) {
@@ -691,21 +778,33 @@ function EditRoutePageClient({ id }: { id: string }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="passenger_assistant_id">Passenger Assistant</Label>
-                <Select
-                  id="passenger_assistant_id"
-                  value={formData.passenger_assistant_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, passenger_assistant_id: e.target.value })
-                  }
-                >
-                  <option value="">Select a PA (optional)</option>
+                <Label>Passenger Assistant(s)</Label>
+                <p className="text-xs text-gray-500 mb-2">You can assign one or more PAs to this route. The first selected is used for APA pickup logic.</p>
+                <div className="grid gap-2 md:grid-cols-2 max-h-48 overflow-y-auto border rounded-md p-3 bg-gray-50">
                   {passengerAssistants.map((pa) => (
-                    <option key={pa.id} value={pa.id}>
-                      {pa.name}
-                    </option>
+                    <label
+                      key={pa.id}
+                      className="flex items-center gap-2 p-2 rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPaIds.includes(pa.id)}
+                        onChange={() => {
+                          setSelectedPaIds(prev =>
+                            prev.includes(pa.id)
+                              ? prev.filter((id) => id !== pa.id)
+                              : [...prev, pa.id]
+                          )
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                      />
+                      <span className="text-sm font-medium">{pa.name}</span>
+                    </label>
                   ))}
-                </Select>
+                </div>
+                {selectedPaIds.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">{selectedPaIds.length} PA(s) selected</p>
+                )}
               </div>
             </div>
 
@@ -923,6 +1022,89 @@ function EditRoutePageClient({ id }: { id: string }) {
                           }
                           placeholder="Full address..."
                         />
+                      </div>
+
+                      {point.stop_order > 1 && (
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor={`passenger_${point.id}`}>
+                            Passenger <span className="text-gray-500 text-xs">(Required for pickup points)</span>
+                          </Label>
+                          <Select
+                            id={`passenger_${point.id}`}
+                            value={point.passenger_id ? String(point.passenger_id) : ''}
+                            onChange={(e) => {
+                              const selectedPassengerId = e.target.value || null
+                              updateRoutePoint(point.id, 'passenger_id', selectedPassengerId)
+                              
+                              // Auto-fill address if passenger is selected
+                              if (selectedPassengerId) {
+                                const selectedPassenger = passengers.find(
+                                  (p) => p.id.toString() === selectedPassengerId
+                                )
+                                if (selectedPassenger?.address) {
+                                  updateRoutePoint(point.id, 'address', selectedPassenger.address)
+                                }
+                              }
+                            }}
+                          >
+                            <option value="">Select a passenger</option>
+                            {passengers.map((passenger) => (
+                              <option key={passenger.id} value={passenger.id.toString()}>
+                                {passenger.full_name}
+                              </option>
+                            ))}
+                          </Select>
+                          {passengers.length === 0 && formData.school_id && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              No passengers found for this school. Add passengers first.
+                            </p>
+                          )}
+                          {!formData.school_id && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Select a school first to load passengers.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {point.stop_order === 1 && (
+                        <div className="space-y-2 md:col-span-2">
+                          <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
+                            <p className="text-sm text-blue-800">
+                              <strong>Note:</strong> This is the first pickup point for the Passenger Assistant (PA).
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor={`pickup_time_am_${point.id}`}>
+                            AM Pickup Time
+                          </Label>
+                          <Input
+                            id={`pickup_time_am_${point.id}`}
+                            type="time"
+                            value={point.pickup_time_am}
+                            onChange={(e) =>
+                              updateRoutePoint(point.id, 'pickup_time_am', e.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`pickup_time_pm_${point.id}`}>
+                            PM Drop Off Time
+                          </Label>
+                          <Input
+                            id={`pickup_time_pm_${point.id}`}
+                            type="time"
+                            value={point.pickup_time_pm}
+                            onChange={(e) =>
+                              updateRoutePoint(point.id, 'pickup_time_pm', e.target.value)
+                            }
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-2">

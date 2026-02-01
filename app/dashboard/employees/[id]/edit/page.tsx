@@ -26,9 +26,13 @@ function EditEmployeePageClient({ id }: { id: string }) {
     phone_number: '',
     personal_email: '',
     address: '',
+    next_of_kin: '',
+    date_of_birth: '',
     start_date: '',
     end_date: '',
   })
+  const [schools, setSchools] = useState<{ id: number; name: string }[]>([])
+  const [assignedSchoolIds, setAssignedSchoolIds] = useState<number[]>([])
 
   useEffect(() => {
     async function loadEmployee() {
@@ -63,9 +67,22 @@ function EditEmployeePageClient({ id }: { id: string }) {
           phone_number: data.phone_number || '',
           personal_email: data.personal_email || '',
           address: data.address || '',
+          next_of_kin: data.next_of_kin || '',
+          date_of_birth: formatDateForInput(data.date_of_birth),
           start_date: formatDateForInput(data.start_date),
           end_date: formatDateForInput(data.end_date),
         })
+
+        // Load coordinator school assignments if Coordinator
+        if (data.role === 'Coordinator') {
+          const { data: assignments } = await supabase
+            .from('coordinator_school_assignments')
+            .select('school_id')
+            .eq('employee_id', parseInt(id))
+          if (assignments && assignments.length > 0) {
+            setAssignedSchoolIds(assignments.map((a) => a.school_id))
+          }
+        }
 
         // Load existing badge photo from documents table
         const { data: badgePhotoDocs, error: docError } = await supabase
@@ -93,6 +110,15 @@ function EditEmployeePageClient({ id }: { id: string }) {
 
     loadEmployee()
   }, [id, supabase])
+
+  useEffect(() => {
+    async function loadSchools() {
+      const sb = createClient()
+      const { data } = await sb.from('schools').select('id, name').order('name')
+      if (data) setSchools(data)
+    }
+    loadSchools()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,6 +155,14 @@ function EditEmployeePageClient({ id }: { id: string }) {
       }
 
       // Prepare data for update
+      const dateOfBirth = formData.date_of_birth.trim() || null
+      if (dateOfBirth) {
+        const dobObj = new Date(dateOfBirth)
+        if (isNaN(dobObj.getTime())) {
+          throw new Error('Date of Birth: Please enter a valid date (YYYY-MM-DD format)')
+        }
+      }
+
       const updateData: any = {
         full_name: formData.full_name,
         role: formData.role || null,
@@ -136,8 +170,10 @@ function EditEmployeePageClient({ id }: { id: string }) {
         phone_number: formData.phone_number || null,
         personal_email: formData.personal_email || null,
         address: formData.address || null,
+        next_of_kin: formData.next_of_kin.trim() || null,
+        date_of_birth: dateOfBirth,
         start_date: startDate,
-        end_date: endDate, // Can be null
+        end_date: endDate,
       }
 
       const { error } = await supabase
@@ -190,6 +226,19 @@ function EditEmployeePageClient({ id }: { id: string }) {
             console.error('Error saving badge photo document:', docError)
           }
         }
+      }
+
+      // Update coordinator school assignments if Coordinator
+      if (formData.role === 'Coordinator') {
+        await supabase.from('coordinator_school_assignments').delete().eq('employee_id', parseInt(id))
+        if (assignedSchoolIds.length > 0) {
+          await supabase.from('coordinator_school_assignments').insert(
+            assignedSchoolIds.map((schoolId) => ({ employee_id: parseInt(id), school_id: schoolId }))
+          )
+        }
+      } else {
+        // If role changed away from Coordinator, remove all assignments
+        await supabase.from('coordinator_school_assignments').delete().eq('employee_id', parseInt(id))
       }
 
       // Log audit
@@ -361,6 +410,31 @@ function EditEmployeePageClient({ id }: { id: string }) {
                 />
               </div>
 
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="next_of_kin">Next of Kin</Label>
+                <Input
+                  id="next_of_kin"
+                  value={formData.next_of_kin}
+                  onChange={(e) =>
+                    setFormData({ ...formData, next_of_kin: e.target.value })
+                  }
+                  placeholder="Name and/or contact details..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="date_of_birth">Date of Birth</Label>
+                <Input
+                  id="date_of_birth"
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) =>
+                    setFormData({ ...formData, date_of_birth: e.target.value })
+                  }
+                />
+                <p className="text-xs text-gray-500">Optional</p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="start_date">Start Date</Label>
                 <Input
@@ -386,6 +460,36 @@ function EditEmployeePageClient({ id }: { id: string }) {
                 />
                 <p className="text-xs text-gray-500">Optional - Leave blank if employee is still active</p>
               </div>
+
+              {formData.role === 'Coordinator' && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Assigned Schools</Label>
+                  <p className="text-xs text-gray-500 mb-2">Select the school(s) this coordinator is responsible for. A school can have multiple coordinators.</p>
+                  <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2 bg-gray-50">
+                    {schools.length === 0 ? (
+                      <p className="text-sm text-gray-500">No schools found.</p>
+                    ) : (
+                      schools.map((school) => (
+                        <label key={school.id} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={assignedSchoolIds.includes(school.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setAssignedSchoolIds((prev) => [...prev, school.id])
+                              } else {
+                                setAssignedSchoolIds((prev) => prev.filter((sid) => sid !== school.id))
+                              }
+                            }}
+                            className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-gray-900">{school.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="badge_photo">Badge Photo</Label>

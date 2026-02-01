@@ -28,8 +28,8 @@ interface CertificateType {
 }
 
 const CERTIFICATE_TYPES: CertificateType[] = [
-  { key: 'registration_expiry_date', name: 'Vehicle Registration Certificate', expiryField: 'registration_expiry_date' },
-  { key: 'plate_expiry_date', name: 'Vehicle Registration/Plate Certificate', expiryField: 'plate_expiry_date' },
+  { key: 'registration_expiry_date', name: 'Vehicle Plate Certificate', expiryField: 'registration_expiry_date' },
+  { key: 'plate_expiry_date', name: 'Vehicle Plate Certificate (alternate)', expiryField: 'plate_expiry_date' },
   { key: 'insurance_expiry_date', name: 'Vehicle Insurance Certificate', expiryField: 'insurance_expiry_date' },
   { key: 'mot_date', name: 'MOT Certificate', expiryField: 'mot_date' },
   { key: 'tax_date', name: 'Vehicle Tax Certificate', expiryField: 'tax_date' },

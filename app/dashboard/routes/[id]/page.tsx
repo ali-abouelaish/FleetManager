@@ -3,12 +3,13 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { ArrowLeft, Pencil, FileDown } from 'lucide-react'
+import { ArrowLeft, Pencil, FileDown, MapPin, Plus } from 'lucide-react'
 import ExportTR1Button from './ExportTR1Button'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import RouteSessionsClient from './RouteSessionsClient'
 import RouteDetailClient from './RouteDetailClient'
+import RoutePointsManager from './RoutePointsManager'
 
 // Helper function to format time (HH:MM:SS to HH:MM)
 function formatTime(time: string | null): string {
@@ -54,10 +55,16 @@ async function getRouteDetails(id: string) {
     .select('*')
     .eq('route_id', id)
 
-  // Get Pick-up Points
+  // Get Pick-up Points with passenger information
   const { data: routePoints } = await supabase
     .from('route_points')
-    .select('*')
+    .select(`
+      *,
+      passengers (
+        id,
+        full_name
+      )
+    `)
     .eq('route_id', id)
     .order('stop_order')
 
@@ -66,8 +73,26 @@ async function getRouteDetails(id: string) {
     ? (Array.isArray(route.vehicles) ? route.vehicles[0] : route.vehicles)
     : null
 
+  // Get all PAs assigned to this route (multiple PAs per route)
+  const { data: routePas } = await supabase
+    .from('route_passenger_assistants')
+    .select(`
+      employee_id,
+      sort_order,
+      employees(full_name, address, phone_number, personal_email)
+    `)
+    .eq('route_id', id)
+    .order('sort_order')
+
+  const routePasList = (routePas || []).map((r: any) => ({
+    employee_id: r.employee_id,
+    sort_order: r.sort_order,
+    employees: r.employees,
+  }))
+
   return {
     route,
+    routePasList,
     passengers: passengers || [],
     routePoints: routePoints || [],
     vehicle,
@@ -85,7 +110,7 @@ export default async function ViewRoutePage({
     notFound()
   }
 
-  const { route, passengers, routePoints, vehicle } = data
+  const { route, routePasList, passengers, routePoints, vehicle } = data
 
   return (
     <div className="space-y-6">
@@ -115,7 +140,7 @@ export default async function ViewRoutePage({
         </div>
       </div>
 
-      <RouteDetailClient route={route} routeId={route.id} />
+      <RouteDetailClient route={route} routeId={route.id} routePasList={routePasList} />
 
       <Card>
         <CardHeader>
@@ -129,7 +154,7 @@ export default async function ViewRoutePage({
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Crew Members</span>
             <span className="text-2xl font-bold text-gray-900">
-              {((route.driver_id ? 1 : 0) + (route.passenger_assistant_id ? 1 : 0))}
+              {(route.driver_id ? 1 : 0) + (routePasList?.length ?? (route.passenger_assistant_id ? 1 : 0))}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -145,7 +170,7 @@ export default async function ViewRoutePage({
           <CardTitle>Crew Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          {!route.driver_id && !route.passenger_assistant_id ? (
+          {!route.driver_id && (!routePasList?.length && !route.passenger_assistant_id) ? (
             <p className="text-center text-gray-500 py-4">No crew assigned to this route.</p>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
@@ -190,45 +215,57 @@ export default async function ViewRoutePage({
                 )}
               </div>
 
-              {/* Passenger Assistant Details */}
+              {/* Passenger Assistant(s) Details - multiple PAs per route */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Passenger Assistant</h3>
-                {route.passenger_assistant_id ? (() => {
-                  const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
-                  const paEmp = Array.isArray(pa?.employees) ? pa.employees[0] : pa?.employees
-                  const paName = paEmp?.full_name
-                  return paName ? (
-                    <div className="space-y-2">
-                      <div>
-                        <Link href={`/dashboard/employees/${route.passenger_assistant_id}`} className="text-blue-600 hover:underline font-medium">
-                          {paName}
-                        </Link>
-                      </div>
-                      {paEmp?.address && (
-                        <div>
-                          <dt className="text-xs font-medium text-gray-500">Address</dt>
-                          <dd className="mt-1 text-sm text-gray-900">{paEmp.address}</dd>
-                        </div>
-                      )}
-                      {paEmp?.phone_number && (
-                        <div>
-                          <dt className="text-xs font-medium text-gray-500">Phone</dt>
-                          <dd className="mt-1 text-sm text-gray-900">{paEmp.phone_number}</dd>
-                        </div>
-                      )}
-                      {paEmp?.personal_email && (
-                        <div>
-                          <dt className="text-xs font-medium text-gray-500">Email</dt>
-                          <dd className="mt-1 text-sm text-gray-900">{paEmp.personal_email}</dd>
-                        </div>
-                      )}
+                <h3 className="text-lg font-semibold text-gray-900">Passenger Assistant(s)</h3>
+                {(() => {
+                  const pasToShow = routePasList?.length
+                    ? routePasList
+                    : route.passenger_assistant_id
+                      ? [{ employee_id: route.passenger_assistant_id, employees: route.pa }]
+                      : []
+                  if (pasToShow.length === 0) {
+                    return <span className="text-gray-400">Not assigned</span>
+                  }
+                  return (
+                    <div className="space-y-4">
+                      {pasToShow.map((r: any, idx: number) => {
+                        const paEmp = Array.isArray(r.employees) ? r.employees[0] : r.employees
+                        const paName = paEmp?.full_name
+                        const empId = r.employee_id
+                        return paName ? (
+                          <div key={empId ?? idx} className="space-y-2 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                            <div>
+                              <Link href={`/dashboard/employees/${empId}`} className="text-blue-600 hover:underline font-medium">
+                                {paName}
+                              </Link>
+                            </div>
+                            {paEmp?.address && (
+                              <div>
+                                <dt className="text-xs font-medium text-gray-500">Address</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{paEmp.address}</dd>
+                              </div>
+                            )}
+                            {paEmp?.phone_number && (
+                              <div>
+                                <dt className="text-xs font-medium text-gray-500">Phone</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{paEmp.phone_number}</dd>
+                              </div>
+                            )}
+                            {paEmp?.personal_email && (
+                              <div>
+                                <dt className="text-xs font-medium text-gray-500">Email</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{paEmp.personal_email}</dd>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span key={empId ?? idx} className="text-gray-400">Unknown</span>
+                        )
+                      })}
                     </div>
-                  ) : (
-                    <span className="text-gray-400">Unknown</span>
                   )
-                })() : (
-                  <span className="text-gray-400">Not assigned</span>
-                )}
+                })()}
               </div>
             </div>
           )}
@@ -323,11 +360,24 @@ export default async function ViewRoutePage({
       {/* Pick-up Points Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Pick-up Points</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Pick-up Points</CardTitle>
+            <RoutePointsManager routeId={route.id} routePoints={routePoints} />
+          </div>
         </CardHeader>
         <CardContent>
           {routePoints.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No Pick-up Points defined.</p>
+            <div className="text-center py-8">
+              <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-gray-500 font-medium mb-2">No Pick-up Points defined</p>
+              <p className="text-sm text-gray-400 mb-4">Add pickup points to organize your route stops</p>
+              <Link href={`/dashboard/routes/${route.id}/edit`}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Pickup Points
+                </Button>
+              </Link>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -335,22 +385,60 @@ export default async function ViewRoutePage({
                   <TableHead>Order</TableHead>
                   <TableHead>Point Name</TableHead>
                   <TableHead>Address</TableHead>
+                  <TableHead>Passenger</TableHead>
+                  <TableHead>AM Pickup Time</TableHead>
+                  <TableHead>PM Drop Off Time</TableHead>
                   <TableHead>Coordinates</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {routePoints.map((point: any) => (
-                  <TableRow key={point.id}>
-                    <TableCell>{point.stop_order || 'N/A'}</TableCell>
-                    <TableCell className="font-medium">{point.point_name || 'N/A'}</TableCell>
-                    <TableCell>{point.address || 'N/A'}</TableCell>
-                    <TableCell>
-                      {point.latitude && point.longitude
-                        ? `${point.latitude}, ${point.longitude}`
-                        : 'N/A'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {routePoints.map((point: any) => {
+                  const passenger = Array.isArray(point.passengers) 
+                    ? point.passengers[0] 
+                    : point.passengers
+                  const passengerName = passenger?.full_name || null
+                  
+                  return (
+                    <TableRow key={point.id}>
+                      <TableCell>{point.stop_order || 'N/A'}</TableCell>
+                      <TableCell className="font-medium">{point.point_name || 'N/A'}</TableCell>
+                      <TableCell>{point.address || 'N/A'}</TableCell>
+                      <TableCell>
+                        {point.stop_order === 1 ? (
+                          <span className="text-blue-600 font-medium">PA Pickup</span>
+                        ) : passengerName ? (
+                          <Link 
+                            href={`/dashboard/passengers/${point.passenger_id}`}
+                            className="text-blue-600 hover:underline"
+                          >
+                            {passengerName}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">Not assigned</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {formatTime(point.pickup_time_am)}
+                      </TableCell>
+                      <TableCell>
+                        {formatTime(point.pickup_time_pm)}
+                      </TableCell>
+                      <TableCell>
+                        {point.latitude && point.longitude
+                          ? `${point.latitude}, ${point.longitude}`
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/dashboard/routes/${route.id}/edit`}>
+                          <Button variant="ghost" size="sm" className="text-violet-600 hover:text-violet-700 hover:bg-violet-50">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { CheckCircle, XCircle, Clock, Car, AlertTriangle, Eye, Wrench } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Car, AlertTriangle, Eye, Wrench, UserX } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import ReplacementVehicleFinder from '@/components/ReplacementVehicleFinder'
@@ -51,6 +51,8 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
   const [decliningTardiness, setDecliningTardiness] = useState<number | null>(null)
   const [tardinessNotes, setTardinessNotes] = useState<{ [key: number]: string }>({})
   const [showTardinessModal, setShowTardinessModal] = useState<number | null>(null)
+  const [parentCancellations, setParentCancellations] = useState<any[]>([])
+  const [acknowledging, setAcknowledging] = useState<number | null>(null)
   const previousNotificationIds = useRef<Set<number>>(new Set(initialNotifications.map(n => n.id)))
   const audioContextRef = useRef<AudioContext | null>(null)
 
@@ -194,10 +196,232 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
     }
   }
 
+  // Fetch parent cancellations
+  const fetchParentCancellations = async () => {
+    try {
+      const supabase = createClient()
+      
+      // Fetch all parent absence reports (both acknowledged and unacknowledged)
+      // Show unacknowledged first, then acknowledged
+      const { data: reports, error: reportsError } = await supabase
+        .from('parent_absence_reports')
+        .select('*')
+        .order('acknowledged_at', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (reportsError) {
+        console.error('Error fetching parent cancellations:', reportsError)
+        setParentCancellations([])
+        return
+      }
+
+      if (!reports || reports.length === 0) {
+        setParentCancellations([])
+        return
+      }
+
+      // Fetch passenger details for each report
+      // Convert to numbers to ensure type matching
+      const passengerIds = Array.from(new Set(reports.map((r: any) => parseInt(r.passenger_id)).filter((id: any) => !isNaN(id) && id > 0)))
+      const routeIds = Array.from(new Set(reports.map((r: any) => parseInt(r.route_id)).filter((id: any) => !isNaN(id) && id > 0)))
+      const sessionIds = Array.from(new Set(reports.map((r: any) => parseInt(r.route_session_id || r.session_id)).filter((id: any) => !isNaN(id) && id > 0)))
+      
+      // Get reported_by_email emails (could be email strings)
+      // Clean and normalize emails: trim whitespace and convert to lowercase
+      const reportedByEmails = Array.from(new Set(
+        reports
+          .map((r: any) => r.reported_by_email || r.reported_by)
+          .filter((email: any) => email && typeof email === 'string')
+          .map((email: string) => email.trim().toLowerCase())
+      ))
+
+      // Get acknowledged_by user IDs
+      const acknowledgedByUserIds = Array.from(new Set(
+        reports
+          .map((r: any) => parseInt(r.acknowledged_by))
+          .filter((id: any) => !isNaN(id) && id > 0)
+      ))
+
+      console.log('Fetching passengers for IDs:', passengerIds)
+      console.log('Fetching routes for IDs:', routeIds)
+      console.log('Fetching sessions for IDs:', sessionIds)
+      console.log('Fetching parent contacts for emails:', reportedByEmails)
+      console.log('Fetching users for acknowledged_by IDs:', acknowledgedByUserIds)
+
+      // Fetch parent contacts by email (reported_by field)
+      // Query parent_contacts where email matches any reported_by email (case-insensitive)
+      let parentContactsByEmail: any[] = []
+      if (reportedByEmails.length > 0) {
+        // Use ilike for case-insensitive matching, or query all and filter
+        // Since Supabase .in() is case-sensitive, we'll fetch and match manually
+        const { data: allParentContacts, error: parentContactsError } = await supabase
+          .from('parent_contacts')
+          .select('id, full_name, phone_number, email')
+        
+        if (parentContactsError) {
+          console.error('Error fetching parent contacts:', parentContactsError)
+        } else if (allParentContacts) {
+          // Filter parent contacts where email (lowercase) matches any reported_by email
+          parentContactsByEmail = allParentContacts.filter((pc: any) => 
+            pc.email && reportedByEmails.includes(pc.email.trim().toLowerCase())
+          )
+          console.log('Parent contacts matched by email:', parentContactsByEmail.length)
+        }
+      }
+
+      const [passengersResult, routesResult, sessionsResult, usersResult] = await Promise.all([
+        passengerIds.length > 0
+          ? supabase
+              .from('passengers')
+              .select('id, full_name, address, route_id')
+              .in('id', passengerIds)
+          : Promise.resolve({ data: [], error: null }),
+        routeIds.length > 0
+          ? supabase
+              .from('routes')
+              .select('id, route_number, school_id')
+              .in('id', routeIds)
+          : Promise.resolve({ data: [], error: null }),
+        sessionIds.length > 0
+          ? supabase
+              .from('route_sessions')
+              .select('id, session_date, session_type, route_id')
+              .in('id', sessionIds)
+          : Promise.resolve({ data: [], error: null }),
+        acknowledgedByUserIds.length > 0
+          ? supabase
+              .from('users')
+              .select('id, full_name, email')
+              .in('id', acknowledgedByUserIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+
+      if (passengersResult.error) {
+        console.error('Error fetching passengers:', passengersResult.error)
+      }
+      if (routesResult.error) {
+        console.error('Error fetching routes:', routesResult.error)
+      }
+      if (sessionsResult.error) {
+        console.error('Error fetching sessions:', sessionsResult.error)
+      }
+      if (usersResult.error) {
+        console.error('Error fetching users:', usersResult.error)
+      }
+
+      // Create lookup maps (ensure IDs are numbers for matching)
+      const passengersMap = new Map(
+        (passengersResult.data || []).map((p: any) => [parseInt(p.id), p])
+      )
+      const routesMap = new Map(
+        (routesResult.data || []).map((r: any) => [parseInt(r.id), r])
+      )
+      const sessionsMap = new Map(
+        (sessionsResult.data || []).map((s: any) => [parseInt(s.id), s])
+      )
+      // Create users map for acknowledged_by
+      const usersMap = new Map(
+        (usersResult.data || []).map((u: any) => [parseInt(u.id), u])
+      )
+      // Create parent contacts map by email (case-insensitive)
+      const parentContactsByEmailMap = new Map(
+        parentContactsByEmail
+          .filter((pc: any) => pc.email) // Only include contacts with email
+          .map((pc: any) => [pc.email.toLowerCase().trim(), pc])
+      )
+      
+      console.log('Parent contacts found by email:', parentContactsByEmail.length)
+      console.log('Parent contacts map entries:', Array.from(parentContactsByEmailMap.keys()))
+
+      // Get additional route IDs from passengers and sessions (in case route_id is null in absence report)
+      const passengerRouteIds = Array.from(new Set(
+        (passengersResult.data || [])
+          .map((p: any) => parseInt(p.route_id))
+          .filter((id: any) => !isNaN(id) && id > 0 && !routeIds.includes(id))
+      ))
+      
+      // Get route IDs from sessions
+      const sessionRouteIds = Array.from(new Set(
+        (sessionsResult.data || [])
+          .map((s: any) => parseInt(s.route_id))
+          .filter((id: any) => !isNaN(id) && id > 0 && !routeIds.includes(id) && !passengerRouteIds.includes(id))
+      ))
+
+      // Fetch additional routes from passenger route_ids and session route_ids
+      const allAdditionalRouteIds = Array.from(new Set([...passengerRouteIds, ...sessionRouteIds]))
+      if (allAdditionalRouteIds.length > 0) {
+        console.log('Fetching additional routes from passengers and sessions:', allAdditionalRouteIds)
+        const additionalRoutesResult = await supabase
+          .from('routes')
+          .select('id, route_number, school_id')
+          .in('id', allAdditionalRouteIds)
+        
+        if (additionalRoutesResult.data) {
+          additionalRoutesResult.data.forEach((r: any) => {
+            routesMap.set(parseInt(r.id), r)
+          })
+        }
+      }
+
+      // Enrich reports with passenger, route, session, parent contact, and acknowledged_by user details
+      const enrichedReports = reports.map((report: any) => {
+        const passengerId = parseInt(report.passenger_id)
+        const routeId = parseInt(report.route_id)
+        const sessionId = parseInt(report.route_session_id || report.session_id)
+        const acknowledgedById = parseInt(report.acknowledged_by)
+        
+        const passenger = (!isNaN(passengerId) && passengerId > 0) ? (passengersMap.get(passengerId) || null) : null
+        const session = (!isNaN(sessionId) && sessionId > 0) ? (sessionsMap.get(sessionId) || null) : null
+        const acknowledgedByUser = (!isNaN(acknowledgedById) && acknowledgedById > 0) ? (usersMap.get(acknowledgedById) || null) : null
+        
+        // Get parent contact by matching reported_by_email
+        const reportedByEmail = report.reported_by_email || report.reported_by
+        const parentContact = reportedByEmail && typeof reportedByEmail === 'string'
+          ? (parentContactsByEmailMap.get(reportedByEmail.trim().toLowerCase()) || null)
+          : null
+        
+        // Try to get route from report first, then from session, then from passenger's route_id
+        let route = (!isNaN(routeId) && routeId > 0) ? (routesMap.get(routeId) || null) : null
+        if (!route && session && session.route_id) {
+          const sessionRouteId = parseInt(session.route_id)
+          if (!isNaN(sessionRouteId) && sessionRouteId > 0) {
+            route = routesMap.get(sessionRouteId) || null
+          }
+        }
+        if (!route && passenger && passenger.route_id) {
+          const passengerRouteId = parseInt(passenger.route_id)
+          if (!isNaN(passengerRouteId) && passengerRouteId > 0) {
+            route = routesMap.get(passengerRouteId) || null
+          }
+        }
+        
+        return {
+          ...report,
+          passenger,
+          route,
+          route_session: session,
+          parent_contact: parentContact,
+          acknowledged_by_user: acknowledgedByUser,
+        }
+      })
+
+      console.log('Parent cancellations fetched:', enrichedReports.length, 'records')
+      console.log('Sample cancellation data:', enrichedReports[0])
+      console.log('Passengers found:', passengersMap.size, 'out of', passengerIds.length)
+      console.log('Routes found:', routesMap.size, 'out of', routeIds.length)
+      setParentCancellations(enrichedReports)
+    } catch (err) {
+      console.error('Exception fetching parent cancellations:', err)
+      setParentCancellations([])
+    }
+  }
+
   // Auto-refresh every 20 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       fetchNotifications()
+      fetchParentCancellations()
     }, 20000) // 20 seconds
 
     return () => clearInterval(interval)
@@ -209,6 +433,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
 
     // Initial fetch
     fetchNotifications()
+    fetchParentCancellations()
 
     // Subscribe to real-time changes
     const channel = supabase
@@ -224,6 +449,18 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
         (payload) => {
           console.log('Route activity notification change detected:', payload.eventType)
           fetchNotifications()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'parent_absence_reports'
+        },
+        (payload) => {
+          console.log('Parent absence report change detected:', payload.eventType)
+          fetchParentCancellations()
         }
       )
       .subscribe()
@@ -259,6 +496,94 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
       alert('Error resolving notification: ' + error.message)
     } finally {
       setResolving(null)
+    }
+  }
+
+  const handleAcknowledgeCancellation = async (cancellationId: number) => {
+    console.log('Acknowledging cancellation ID:', cancellationId)
+    setAcknowledging(cancellationId)
+    try {
+      const supabase = createClient()
+      
+      // Verify we have a valid cancellation ID
+      if (!cancellationId || isNaN(cancellationId)) {
+        throw new Error('Invalid cancellation ID')
+      }
+
+      // Get current user ID
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        throw new Error('You must be logged in to acknowledge cancellations')
+      }
+
+      // Get user ID from users table
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', authUser.email)
+        .maybeSingle()
+
+      if (!userData || !userData.id) {
+        throw new Error('Unable to identify current user')
+      }
+
+      console.log('Updating parent_absence_reports with ID:', cancellationId, 'acknowledged_by:', userData.id)
+      
+      // Update the parent_absence_reports record to mark as acknowledged
+      // Update acknowledged_at timestamp, status to 'acknowledged', and acknowledged_by user ID
+      const { data, error } = await supabase
+        .from('parent_absence_reports')
+        .update({ 
+          acknowledged_at: new Date().toISOString(),
+          status: 'acknowledged',
+          acknowledged_by: userData.id
+        })
+        .eq('id', cancellationId)
+        .select()
+
+      console.log('Update response - data:', data, 'error:', error)
+
+      if (error) {
+        console.error('Supabase update error:', error)
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        console.warn('Update succeeded but no rows were updated. Cancellation ID:', cancellationId)
+      } else {
+        console.log('Successfully acknowledged cancellation:', data[0])
+      }
+
+      // Update the local state to reflect the acknowledgment
+      setParentCancellations(prev =>
+        prev.map(c => 
+          c.id === cancellationId 
+            ? { 
+                ...c, 
+                acknowledged_at: new Date().toISOString(),
+                status: 'acknowledged',
+                acknowledged_by: userData.id,
+                acknowledged_by_user: { id: userData.id, full_name: authUser.user_metadata?.full_name || authUser.email || 'Unknown', email: authUser.email || '' }
+              }
+            : c
+        )
+      )
+
+      // Refresh the list to get updated data
+      await fetchParentCancellations()
+    } catch (error: any) {
+      console.error('Error acknowledging cancellation:', error)
+      console.error('Error stack:', error.stack)
+      const errorMessage = error?.message || error?.details || 'Unknown error occurred'
+      alert('Error acknowledging cancellation: ' + errorMessage)
+    } finally {
+      setAcknowledging(null)
     }
   }
 
@@ -591,7 +916,180 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
         </Card>
       )}
 
-      {breakdownNotifications.length === 0 && tardinessNotifications.length === 0 ? (
+      {/* Parent Cancellations - Clean Table */}
+      {parentCancellations && parentCancellations.length > 0 && (
+        <Card className="border-slate-200 overflow-hidden rounded-2xl">
+          <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800">Parent Cancellations</h2>
+            <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-semibold border border-blue-100">
+              {parentCancellations.length} Active
+            </span>
+          </div>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Passenger</TableHead>
+                  <TableHead>Parent/Guardian</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Session</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Reported</TableHead>
+                  <TableHead>Acknowledged By</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {parentCancellations.map((cancellation: any) => {
+                  // Get passenger, route, session, and parent contact from enriched data
+                  const passenger = cancellation.passenger
+                  const route = cancellation.route
+                  const session = cancellation.route_session
+                  const parentContact = cancellation.parent_contact
+                  
+                  // Determine route ID for link (use route_id from report, session, or passenger's route_id)
+                  const routeIdForLink = cancellation.route_id 
+                    || (session?.route_id ? parseInt(session.route_id) : null)
+                    || (passenger?.route_id ? parseInt(passenger.route_id) : null)
+                  
+                  return (
+                    <TableRow key={cancellation.id} className="hover:bg-slate-50">
+                      <TableCell>
+                        {passenger && passenger.full_name ? (
+                          <Link 
+                            href={`/dashboard/passengers/${cancellation.passenger_id}`} 
+                            className="font-medium text-slate-900 hover:text-violet-600 hover:underline"
+                          >
+                            {passenger.full_name}
+                          </Link>
+                        ) : cancellation.passenger_id ? (
+                          <span className="text-slate-400">Passenger ID: {cancellation.passenger_id}</span>
+                        ) : (
+                          <span className="text-slate-400">Unknown</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {parentContact && parentContact.full_name ? (
+                          <div>
+                            <Link 
+                              href={`/dashboard/parent-contacts/${parentContact.id}`}
+                              className="text-sm font-medium text-slate-900 hover:text-violet-600 hover:underline"
+                            >
+                              {parentContact.full_name}
+                            </Link>
+                            {parentContact.phone_number && (
+                              <div className="text-xs text-slate-500 mt-1">{parentContact.phone_number}</div>
+                            )}
+                            {parentContact.email && (
+                              <div className="text-xs text-slate-400">{parentContact.email}</div>
+                            )}
+                          </div>
+                        ) : cancellation.reported_by_email || cancellation.reported_by ? (
+                          <span className="text-slate-400">{cancellation.reported_by_email || cancellation.reported_by}</span>
+                        ) : (
+                          <span className="text-slate-400">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {route && route.route_number ? (
+                          <Link 
+                            href={`/dashboard/routes/${routeIdForLink || route.id}`} 
+                            className="text-sm text-slate-600 hover:text-violet-600 hover:underline"
+                          >
+                            Route {route.route_number}
+                          </Link>
+                        ) : routeIdForLink ? (
+                          <Link 
+                            href={`/dashboard/routes/${routeIdForLink}`} 
+                            className="text-sm text-slate-600 hover:text-violet-600 hover:underline"
+                          >
+                            Route {routeIdForLink}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-slate-400">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-slate-700">
+                          {session?.session_type || cancellation.session_type || 'N/A'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-slate-500 text-sm">
+                        {session?.session_date 
+                          ? formatDate(session.session_date) 
+                          : cancellation.absence_date 
+                          ? formatDate(cancellation.absence_date) 
+                          : cancellation.session_date
+                          ? formatDate(cancellation.session_date)
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-slate-700">
+                          {cancellation.reason || cancellation.notes || 'No reason provided'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-slate-500 text-sm">
+                        {formatDateTime(cancellation.created_at || cancellation.reported_at)}
+                      </TableCell>
+                      <TableCell>
+                        {cancellation.acknowledged_by_user ? (
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {cancellation.acknowledged_by_user.full_name || cancellation.acknowledged_by_user.email || 'Unknown'}
+                            </div>
+                            {cancellation.acknowledged_at && (
+                              <div className="text-xs text-slate-500 mt-1">
+                                {formatDateTime(cancellation.acknowledged_at)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {cancellation.acknowledged_at ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled
+                            className="h-8 px-3 text-xs bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
+                            title="Already Acknowledged"
+                          >
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Acknowledged
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleAcknowledgeCancellation(cancellation.id)}
+                            disabled={acknowledging === cancellation.id}
+                            className="h-8 px-3 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200"
+                            title={acknowledging === cancellation.id ? 'Acknowledging...' : 'Mark as Acknowledged'}
+                          >
+                            {acknowledging === cancellation.id ? (
+                              'Acknowledging...'
+                            ) : (
+                              <>
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                                Acknowledge
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {breakdownNotifications.length === 0 && tardinessNotifications.length === 0 && parentCancellations.length === 0 ? (
         <Card className="border-slate-200">
           <CardContent className="py-12 text-center">
             <CheckCircle className="h-12 w-12 text-slate-300 mx-auto mb-3" />

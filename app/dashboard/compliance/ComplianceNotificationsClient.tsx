@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { Mail, CheckCircle, XCircle, AlertTriangle, Clock, ExternalLink, X } from 'lucide-react'
+import { Mail, CheckCircle, XCircle, AlertTriangle, Clock, ExternalLink, X, FolderOpen } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import { Input } from '@/components/ui/Input'
@@ -58,6 +58,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
   const [selectedRecipient, setSelectedRecipient] = useState<string>('')
   const [availableRecipients, setAvailableRecipients] = useState<Array<{ email: string; name: string; type: string }>>([])
   const [loadingRecipients, setLoadingRecipients] = useState(false)
+  const [openingCase, setOpeningCase] = useState<number | null>(null)
   const previousNotificationIds = useRef<Set<number>>(new Set(initialNotifications.map(n => n.id)))
   const audioContextRef = useRef<AudioContext | null>(null)
 
@@ -340,6 +341,24 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
     }
   }
 
+  const handleOpenCase = async (notificationId: number) => {
+    setOpeningCase(notificationId)
+    try {
+      const response = await fetch('/api/compliance/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notificationId }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to open case')
+      window.location.href = `/dashboard/compliance/cases/${data.case_id}`
+    } catch (e: any) {
+      alert(e.message || 'Failed to open case')
+    } finally {
+      setOpeningCase(null)
+    }
+  }
+
   const handleResolve = async (notificationId: number) => {
     setResolving(notificationId)
     try {
@@ -537,6 +556,16 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleOpenCase(notification.id)}
+                          disabled={openingCase === notification.id}
+                          className="text-slate-600 hover:text-violet-600 hover:bg-violet-50 h-8 w-8 p-0"
+                          title="Open case"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
                         {notification.status === 'pending' && notification.recipient_email && (
                           <Button
                             size="sm"

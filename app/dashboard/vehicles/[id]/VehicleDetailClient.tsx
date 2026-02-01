@@ -195,7 +195,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                 </div>
                 <FieldWithAudit fieldName="vehicle_identifier" label="Vehicle Identifier" value={vehicle.vehicle_identifier} />
                 <FieldWithAudit fieldName="registration" label="Registration" value={vehicle.registration} />
-                <FieldWithAudit fieldName="registration_expiry_date" label="Registration Expiry Date" value={vehicle.registration_expiry_date} formatValue={formatDate} />
+                <FieldWithAudit fieldName="registration_expiry_date" label="Plate Expiry Date" value={vehicle.registration_expiry_date} formatValue={formatDate} />
                 <FieldWithAudit fieldName="plate_number" label="Plate Number" value={vehicle.plate_number} />
                 <FieldWithAudit fieldName="make" label="Make" value={vehicle.make} />
                 <FieldWithAudit fieldName="model" label="Model" value={vehicle.model} />

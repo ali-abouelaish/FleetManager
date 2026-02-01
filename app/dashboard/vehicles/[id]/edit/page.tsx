@@ -260,7 +260,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="registration_expiry_date">Registration Expiry Date</Label>
+                <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
                 <Input
                   id="registration_expiry_date"
                   type="date"
@@ -344,8 +344,10 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   }
                 >
                   <option value="">Select type</option>
-                  <option value="In-House">In-House</option>
-                  <option value="Subcontractors">Subcontractors</option>
+                  <option value="County Cars">County Cars</option>
+                  <option value="NBT">NBT</option>
+                  <option value="Privately Owned">Privately Owned</option>
+                  <option value="Leased">Leased</option>
                 </Select>
               </div>
 

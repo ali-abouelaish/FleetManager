@@ -29,6 +29,7 @@ export default function CreatePassengerAssistantPage() {
 
   const [formData, setFormData] = useState({
     employee_id: '',
+    spare_pa: false,
     tas_badge_number: '',
     tas_badge_expiry_date: '',
     dbs_number: '',
@@ -291,6 +292,7 @@ export default function CreatePassengerAssistantPage() {
         psa_training_completed: formData.psa_training_completed,
         psa_training_date: formData.psa_training_date || null,
         additional_notes: formData.additional_notes || null,
+        spare_pa: formData.spare_pa,
       }
 
       // Verify employee exists before insert
@@ -469,6 +471,23 @@ export default function CreatePassengerAssistantPage() {
                   Only active employees who are not already drivers or passenger assistants are shown
                 </p>
               </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="spare_pa"
+                  name="spare_pa"
+                  checked={formData.spare_pa}
+                  onChange={(e) => setFormData({ ...formData, spare_pa: e.target.checked })}
+                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <Label htmlFor="spare_pa" className="cursor-pointer font-medium">
+                  Mark as spare
+                </Label>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">
+                Spare PAs are not assigned to a route and can be used when needed (e.g. for sessions). View them under Spares → Spare PAs.
+              </p>
 
               <div>
                 <Label htmlFor="additional_notes">Additional Notes / HR Comments</Label>
