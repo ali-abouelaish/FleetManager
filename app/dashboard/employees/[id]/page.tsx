@@ -116,17 +116,17 @@ export default async function ViewEmployeePage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           <Link href="/dashboard/employees">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
           </Link>
-          <EmployeeBadgePhoto 
-            employeeId={employee.id} 
+          <EmployeeBadgePhoto
+            employeeId={employee.id}
             employeeName={employee.full_name}
             badgeNumber={
               // Get TAS badge number from driver or PA record
@@ -136,8 +136,8 @@ export default async function ViewEmployeePage({
             }
           />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">{employee.full_name}</h1>
-            <p className="mt-2 text-sm text-gray-600">Employee Details</p>
+            <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
+            <p className="text-sm text-slate-500">Employee Details</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -282,9 +282,8 @@ export default async function ViewEmployeePage({
                     {expiringCerts.map((cert, idx) => {
                       const isCritical = cert.daysRemaining <= 14
                       return (
-                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${
-                          isCritical ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
-                        }`}>
+                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${isCritical ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                          }`}>
                           <div className="flex-1">
                             <p className={`text-sm font-semibold ${isCritical ? 'text-orange-900' : 'text-yellow-900'}`}>
                               {cert.type}
@@ -298,11 +297,10 @@ export default async function ViewEmployeePage({
                               Expires: {formatDate(cert.expiryDate)}
                             </p>
                           </div>
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                            isCritical 
-                              ? 'bg-orange-200 text-orange-900' 
-                              : 'bg-yellow-200 text-yellow-900'
-                          }`}>
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${isCritical
+                            ? 'bg-orange-200 text-orange-900'
+                            : 'bg-yellow-200 text-yellow-900'
+                            }`}>
                             {cert.daysRemaining} days remaining
                           </span>
                         </div>
@@ -374,14 +372,13 @@ export default async function ViewEmployeePage({
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {/* PSV License */}
                   <div className="mt-4 p-4 rounded-lg border bg-gray-50">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">PSV License</span>
-                      <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-                        driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                        }`}>
                         {driver.psv_license ? 'Yes' : 'No'}
                       </span>
                     </div>
@@ -410,9 +407,8 @@ export default async function ViewEmployeePage({
                       <div key={itemIdx} className="flex items-center justify-between rounded-lg border p-4">
                         <span className="text-sm font-medium text-gray-700">{item.label}</span>
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                            item.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                          }`}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${item.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                            }`}
                         >
                           {item.value ? '✓ Yes' : '✗ No'}
                         </span>
@@ -444,11 +440,10 @@ export default async function ViewEmployeePage({
                           )}
                         </div>
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                            driver.safeguarding_training_completed
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${driver.safeguarding_training_completed
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}
                         >
                           {driver.safeguarding_training_completed ? (
                             <>
@@ -478,11 +473,10 @@ export default async function ViewEmployeePage({
                           )}
                         </div>
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                            driver.tas_pats_training_completed
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${driver.tas_pats_training_completed
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}
                         >
                           {driver.tas_pats_training_completed ? (
                             <>
@@ -512,11 +506,10 @@ export default async function ViewEmployeePage({
                           )}
                         </div>
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                            driver.psa_training_completed
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${driver.psa_training_completed
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}
                         >
                           {driver.psa_training_completed ? (
                             <>

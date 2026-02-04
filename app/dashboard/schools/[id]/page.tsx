@@ -12,7 +12,7 @@ import ExportTAS5Button from './ExportTAS5Button'
 
 async function getSchoolDetails(id: string) {
   const supabase = await createClient()
-  
+
   // Get school details - use maybeSingle() to handle cases where school doesn't exist
   const { data: school, error: schoolError } = await supabase
     .from('schools')
@@ -42,22 +42,22 @@ async function getSchoolDetails(id: string) {
   const routeIds = (routes || []).map((r: any) => r.id)
   const { data: routePasData } = routeIds.length > 0
     ? await supabase
-        .from('route_passenger_assistants')
-        .select('route_id, employee_id, sort_order, employees(full_name)')
-        .in('route_id', routeIds)
-        .order('sort_order')
+      .from('route_passenger_assistants')
+      .select('route_id, employee_id, sort_order, employees(full_name)')
+      .in('route_id', routeIds)
+      .order('sort_order')
     : { data: [] }
 
   // Map route_id -> array of { id, name } for PAs
   const routePasMap: Record<number, Array<{ id: number; name: string }>> = {}
-  ;(routePasData || []).forEach((r: any) => {
-    if (!routePasMap[r.route_id]) routePasMap[r.route_id] = []
-    const emp = Array.isArray(r.employees) ? r.employees[0] : r.employees
-    routePasMap[r.route_id].push({
-      id: r.employee_id,
-      name: emp?.full_name || 'Unknown',
+    ; (routePasData || []).forEach((r: any) => {
+      if (!routePasMap[r.route_id]) routePasMap[r.route_id] = []
+      const emp = Array.isArray(r.employees) ? r.employees[0] : r.employees
+      routePasMap[r.route_id].push({
+        id: r.employee_id,
+        name: emp?.full_name || 'Unknown',
+      })
     })
-  })
 
   // Get passengers for this school
   const { data: passengers, error: passengersError } = await supabase
@@ -98,10 +98,10 @@ async function getSchoolDetails(id: string) {
       ? [...routePasMap[route.id]]
       : route.passenger_assistant_id
         ? (() => {
-            const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
-            const paEmp = Array.isArray(pa?.employees) ? pa?.employees[0] : pa?.employees
-            return [{ id: route.passenger_assistant_id, name: paEmp?.full_name || 'Unknown' }]
-          })()
+          const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa
+          const paEmp = Array.isArray(pa?.employees) ? pa?.employees[0] : pa?.employees
+          return [{ id: route.passenger_assistant_id, name: paEmp?.full_name || 'Unknown' }]
+        })()
         : []
     pasForRoute.forEach((p) => uniqueCrewMembers.add(p.id))
     const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
@@ -139,24 +139,25 @@ export default async function ViewSchoolPage({
   const { school, routes, crewCount, crewAssignments, passengers, coordinators } = data
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Header with Back Button */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           <Link href="/dashboard/schools">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{school.name}</h1>
-            <p className="mt-2 text-sm text-gray-600">School Details & Related Information</p>
+            <h1 className="text-xl font-bold text-slate-900">{school.name}</h1>
+            <p className="text-sm text-slate-500">School Details & Information</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <ExportTAS5Button schoolId={school.id} schoolName={school.name} />
           <Link href={`/dashboard/schools/${school.id}/edit`}>
-            <Button>
+            <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
@@ -222,7 +223,7 @@ export default async function ViewSchoolPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserCog className="h-5 w-5 text-violet-600" />
+              <UserCog className="h-5 w-5 textshadow-primary/20" />
               Coordinators
             </CardTitle>
           </CardHeader>
@@ -235,7 +236,7 @@ export default async function ViewSchoolPage({
                   <li key={coord.id}>
                     <Link
                       href={`/dashboard/employees/${coord.id}`}
-                      className="text-sm font-medium text-violet-600 hover:underline"
+                      className="text-sm font-medium text-primary hover:underline"
                     >
                       {coord.full_name}
                     </Link>

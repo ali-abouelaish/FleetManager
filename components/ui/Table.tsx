@@ -7,10 +7,10 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
   ({ className, stickyHeader, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    <div className="relative w-full min-w-0 overflow-x-auto">
       <table
         ref={ref}
-        className={cn('w-full caption-bottom text-sm', className)}
+        className={cn('min-w-full caption-bottom text-sm', className)}
         {...props}
       />
     </div>
@@ -58,7 +58,7 @@ const TableRow = forwardRef<
     ref={ref}
     className={cn(
       'border-b border-slate-100 bg-white hover:bg-slate-50/80 transition-colors',
-      'data-[state=selected]:bg-violet-50',
+      'data-[state=selected]:bg-secondary/20',
       className
     )}
     {...props}
@@ -89,7 +89,7 @@ const TableCell = forwardRef<
   <td
     ref={ref}
     className={cn(
-      'px-4 py-3 align-middle text-slate-700',
+      'px-4 py-2 align-middle text-slate-700',
       '[&:has([role=checkbox])]:pr-0',
       className
     )}

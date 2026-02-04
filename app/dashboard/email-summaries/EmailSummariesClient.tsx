@@ -126,7 +126,7 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
 
       // Refresh the summaries list
       await refreshSummaries()
-      
+
       // Update selected summary if it's the one being acknowledged
       if (selectedSummary && selectedSummary.id === summaryId) {
         setSelectedSummary({
@@ -150,18 +150,18 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
 
   return (
     <Card>
-      <CardHeader className="bg-navy text-white">
+      <CardHeader className="bg-slate-50 border-b border-slate-200">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Mail className="mr-2 h-5 w-5" />
+          <CardTitle className="flex items-center text-slate-900 text-base font-semibold">
+            <Mail className="mr-2 h-5 w-5 text-slate-500" />
             Email Summaries ({filteredSummaries.length})
           </CardTitle>
           <Button
-            variant="secondary"
+            variant="outline"
             size="sm"
             onClick={refreshSummaries}
             disabled={loading}
-            className="bg-white text-navy hover:bg-gray-100"
+            className="text-slate-600 border-slate-300 hover:bg-slate-50"
           >
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
@@ -212,11 +212,11 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <span className="text-sm">
-                          {summary.received_at 
-                            ? formatDateTime(summary.received_at) 
-                            : summary.created_at 
-                            ? formatDateTime(summary.created_at)
-                            : 'N/A'}
+                          {summary.received_at
+                            ? formatDateTime(summary.received_at)
+                            : summary.created_at
+                              ? formatDateTime(summary.created_at)
+                              : 'N/A'}
                         </span>
                       </div>
                     </TableCell>
@@ -238,25 +238,24 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-gray-700">
-                        {summary.summary 
-                          ? (summary.summary.length > 100 
-                              ? summary.summary.substring(0, 100) + '...' 
-                              : summary.summary)
+                        {summary.summary
+                          ? (summary.summary.length > 100
+                            ? summary.summary.substring(0, 100) + '...'
+                            : summary.summary)
                           : 'No summary'}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        summary.status === 'new' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${summary.status === 'new'
                           ? 'bg-blue-100 text-blue-800'
                           : summary.status === 'reviewed'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : summary.status === 'actioned'
-                          ? 'bg-green-100 text-green-800'
-                          : summary.status === 'archived'
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : summary.status === 'actioned'
+                              ? 'bg-green-100 text-green-800'
+                              : summary.status === 'archived'
+                                ? 'bg-gray-100 text-gray-800'
+                                : 'bg-gray-100 text-gray-800'
+                        }`}>
                         {summary.status || 'new'}
                       </span>
                     </TableCell>
@@ -286,7 +285,7 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedSummary(summary)}
-                        className="text-navy hover:text-navy hover:bg-navy/10"
+                        className="text-slate-600 hover:text-primary hover:bg-primary/10"
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View
@@ -304,14 +303,14 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
       {selectedSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-navy text-white p-6 flex items-center justify-between sticky top-0">
-              <h2 className="text-xl font-bold">Email Summary Details</h2>
+            <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center justify-between sticky top-0">
+              <h2 className="text-xl font-bold text-slate-900">Email Summary Details</h2>
               <button
                 onClick={() => {
                   setSelectedSummary(null)
                   setActionNotes('')
                 }}
-                className="text-white hover:text-gray-200"
+                className="text-slate-500 hover:text-slate-700"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -330,11 +329,11 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Received At</Label>
                   <div className="mt-1 text-sm">
-                    {selectedSummary.received_at 
-                      ? formatDateTime(selectedSummary.received_at) 
-                      : selectedSummary.created_at 
-                      ? formatDateTime(selectedSummary.created_at)
-                      : 'N/A'}
+                    {selectedSummary.received_at
+                      ? formatDateTime(selectedSummary.received_at)
+                      : selectedSummary.created_at
+                        ? formatDateTime(selectedSummary.created_at)
+                        : 'N/A'}
                   </div>
                 </div>
               </div>
@@ -349,17 +348,16 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
               <div>
                 <Label className="text-sm font-medium text-gray-500">Status</Label>
                 <div className="mt-1">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedSummary.status === 'new' 
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedSummary.status === 'new'
                       ? 'bg-blue-100 text-blue-800'
                       : selectedSummary.status === 'reviewed'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : selectedSummary.status === 'actioned'
-                      ? 'bg-green-100 text-green-800'
-                      : selectedSummary.status === 'archived'
-                      ? 'bg-gray-100 text-gray-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : selectedSummary.status === 'actioned'
+                          ? 'bg-green-100 text-green-800'
+                          : selectedSummary.status === 'archived'
+                            ? 'bg-gray-100 text-gray-800'
+                            : 'bg-gray-100 text-gray-800'
+                    }`}>
                     {selectedSummary.status || 'new'}
                   </span>
                   {selectedSummary.reviewed_at && (
@@ -471,7 +469,7 @@ export default function EmailSummariesClient({ initialSummaries }: EmailSummarie
                     onChange={(e) => setActionNotes(e.target.value)}
                     placeholder="Add notes about actions taken..."
                     rows={3}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-navy"
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               )}

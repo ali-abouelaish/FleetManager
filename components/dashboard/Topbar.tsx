@@ -42,7 +42,7 @@ export function Topbar() {
       <div className="flex items-center gap-3">
         {/* User menu */}
         <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-navy to-blue-600 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center">
             <User className="h-4 w-4 text-white" />
           </div>
           <div className="hidden sm:block text-right">

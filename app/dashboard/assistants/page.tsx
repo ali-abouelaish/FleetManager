@@ -144,10 +144,10 @@ async function AssistantsTable(filters?: {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Link href={`/dashboard/assistants/${assistant.id}`} prefetch={true}>
-                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50" title="View PA Profile"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10" title="View PA Profile"><Eye className="h-4 w-4" /></Button>
                       </Link>
                       <Link href={`/dashboard/assistants/${assistant.id}/edit`} prefetch={true}>
-                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50" title="Edit Passenger Assistant"><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10" title="Edit Passenger Assistant"><Pencil className="h-4 w-4" /></Button>
                       </Link>
                     </div>
                   </TableCell>
@@ -190,7 +190,7 @@ export default async function AssistantsPage({
           </div>
         </div>
         <Link href="/dashboard/assistants/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Passenger Assistant
           </Button>

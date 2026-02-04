@@ -83,11 +83,11 @@ export function ComplianceCaseDetailClient({
       setCaseRow((prev) =>
         prev
           ? {
-              ...prev,
-              application_status: applicationStatus,
-              date_applied: dateApplied || null,
-              appointment_date: appointmentDate || null,
-            }
+            ...prev,
+            application_status: applicationStatus,
+            date_applied: dateApplied || null,
+            appointment_date: appointmentDate || null,
+          }
           : null
       )
       router.refresh()
@@ -149,120 +149,146 @@ export function ComplianceCaseDetailClient({
         </Link>
       </div>
 
-      <Card className="border-slate-200">
-        <CardHeader className="bg-slate-50 border-b border-slate-100">
-          <CardTitle className="text-lg">Notification details</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <span className="text-sm text-slate-500">Certificate</span>
-              <p className="font-semibold text-slate-800">{notif?.certificate_name || '—'}</p>
-            </div>
-            <div>
-              <span className="text-sm text-slate-500">Entity</span>
-              <p>
-                <Link href={getEntityLink()} className="text-violet-600 hover:underline">
-                  View {notif?.entity_type}
-                </Link>
-                {notif?.recipient && (
-                  <span className="text-slate-600 ml-1">({(notif.recipient as any)?.full_name})</span>
-                )}
-              </p>
-            </div>
-            <div>
-              <span className="text-sm text-slate-500">Expiry date</span>
-              <p className="text-slate-800">{notif?.expiry_date ? formatDate(notif.expiry_date) : '—'}</p>
-            </div>
-            <div>
-              <span className="text-sm text-slate-500">Days until expiry</span>
-              <p className={notif?.days_until_expiry != null && notif.days_until_expiry < 0 ? 'text-red-600 font-medium' : 'text-slate-800'}>
-                {notif?.days_until_expiry != null ? notif.days_until_expiry : '—'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-slate-200">
-        <CardHeader className="bg-slate-50 border-b border-slate-100">
-          <CardTitle className="text-lg">Compliance tracking</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <Label htmlFor="application_status">Application status</Label>
-              <Select
-                id="application_status"
-                value={applicationStatus}
-                onChange={(e) => setApplicationStatus(e.target.value)}
-              >
-                <option value="not_applied">Not applied</option>
-                <option value="applied">Applied</option>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="date_applied">Date applied</Label>
-              <Input
-                id="date_applied"
-                type="date"
-                value={dateApplied}
-                onChange={(e) => setDateApplied(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="appointment_date">Appointment date</Label>
-              <Input
-                id="appointment_date"
-                type="date"
-                value={appointmentDate}
-                onChange={(e) => setAppointmentDate(e.target.value)}
-              />
-            </div>
-          </div>
-          <Button onClick={handleSaveTracking} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Saving...' : 'Save'}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border-slate-200">
-        <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Updates
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          <form onSubmit={handleAddUpdate} className="flex gap-2">
-            <Input
-              placeholder="Add an update or note..."
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={addingNote || !newNote.trim()}>
-              <Plus className="h-4 w-4 mr-1" />
-              {addingNote ? 'Adding...' : 'Add'}
-            </Button>
-          </form>
-          <ul className="space-y-2">
-            {updates.length === 0 ? (
-              <li className="text-sm text-slate-500 py-4">No updates yet.</li>
-            ) : (
-              updates.map((u) => (
-                <li key={u.id} className="flex gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-800 whitespace-pre-wrap">{u.notes || u.update_type}</p>
-                    <p className="text-xs text-slate-500 mt-1">{formatDateTime(u.created_at)}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left Column: Details & Actions */}
+        <div className="lg:col-span-1 space-y-4">
+          {/* Notification Details */}
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
+              <CardTitle className="text-base font-semibold text-slate-800">Case Details</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Certificate</span>
+                  <span className="text-sm font-semibold text-slate-800 text-right">{notif?.certificate_name || '—'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Entity</span>
+                  <div className="text-right">
+                    <Link href={getEntityLink()} className="text-sm text-primary hover:underline font-medium block">
+                      {notif?.entity_type} #{notif?.entity_id}
+                    </Link>
+                    {notif?.recipient && (
+                      <span className="text-xs text-slate-500 block">{(notif.recipient as any)?.full_name}</span>
+                    )}
                   </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </CardContent>
-      </Card>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Expiry</span>
+                  <span className="text-sm text-slate-800">{notif?.expiry_date ? formatDate(notif.expiry_date) : '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Status</span>
+                  <span className={`text-sm font-medium ${notif?.days_until_expiry != null && notif.days_until_expiry < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                    {notif?.days_until_expiry != null ? `${notif.days_until_expiry} days left` : '—'}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Compliance Tracking */}
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
+              <CardTitle className="text-base font-semibold text-slate-800">Tracking Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="application_status" className="text-xs text-slate-500 uppercase tracking-wide">Status</Label>
+                  <Select
+                    id="application_status"
+                    value={applicationStatus}
+                    onChange={(e) => setApplicationStatus(e.target.value)}
+                    className="mt-1.5 h-9"
+                  >
+                    <option value="not_applied">Not applied</option>
+                    <option value="applied">Applied</option>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="date_applied" className="text-xs text-slate-500 uppercase tracking-wide">Applied Date</Label>
+                    <Input
+                      id="date_applied"
+                      type="date"
+                      value={dateApplied}
+                      onChange={(e) => setDateApplied(e.target.value)}
+                      className="mt-1.5 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="appointment_date" className="text-xs text-slate-500 uppercase tracking-wide">Appointment</Label>
+                    <Input
+                      id="appointment_date"
+                      type="date"
+                      value={appointmentDate}
+                      onChange={(e) => setAppointmentDate(e.target.value)}
+                      className="mt-1.5 h-9"
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button onClick={handleSaveTracking} disabled={saving} className="w-full bg-[#023E8A] hover:bg-[#023E8A]/90" size="sm">
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Updates Feed */}
+        <div className="lg:col-span-2 h-full">
+          <Card className="border-slate-200 shadow-sm h-full flex flex-col">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4 flex flex-row items-center justify-between shrink-0">
+              <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-slate-500" />
+                Updates & Activity Log
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 flex flex-col flex-1 gap-4 h-[600px]">
+              {/* Add Note Input */}
+              <form onSubmit={handleAddUpdate} className="flex gap-2 shrink-0">
+                <Input
+                  placeholder="Type a new note or update..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  className="flex-1 h-9"
+                />
+                <Button type="submit" disabled={addingNote || !newNote.trim()} size="sm" className="bg-[#023E8A] hover:bg-[#023E8A]/90">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </form>
+
+              {/* Scrollable List */}
+              <div className="flex-1 overflow-y-auto pr-1">
+                <ul className="space-y-3">
+                  {updates.length === 0 ? (
+                    <li className="text-sm text-slate-500 py-8 text-center italic border-2 border-dashed border-slate-100 rounded-lg">
+                      No updates recorded yet. Start the conversation above.
+                    </li>
+                  ) : (
+                    updates.map((u) => (
+                      <li key={u.id} className="group flex gap-3 p-3 bg-white hover:bg-slate-50 rounded-lg border border-slate-100 transition-colors shadow-sm">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{u.notes || u.update_type}</p>
+                          <p className="text-[10px] text-slate-400 mt-1.5 font-medium flex items-center gap-1">
+                            {formatDateTime(u.created_at)}
+                            <span className="w-1 h-1 rounded-full bg-slate-300 mx-1"></span>
+                            System
+                          </p>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

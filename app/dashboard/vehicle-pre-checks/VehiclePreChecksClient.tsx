@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
   Calendar,
   Car,
   User,
@@ -83,7 +83,7 @@ export default function VehiclePreChecksClient({
   const handleDateChange = async (date: string) => {
     setSelectedDate(date)
     setLoading(true)
-    
+
     const supabase = createClient()
     const { data, error } = await supabase
       .from('vehicle_pre_checks')
@@ -114,13 +114,13 @@ export default function VehiclePreChecksClient({
 
   const filteredPreChecks = preChecks.filter(check => {
     if (!searchTerm) return true
-    
+
     const searchLower = searchTerm.toLowerCase()
     const driverName = check.driver?.employees?.full_name?.toLowerCase() || ''
     const vehicleReg = check.vehicle?.registration?.toLowerCase() || ''
     const vehicleId = check.vehicle?.vehicle_identifier?.toLowerCase() || ''
     const routeNumber = check.route_session?.routes?.route_number?.toLowerCase() || ''
-    
+
     return (
       driverName.includes(searchLower) ||
       vehicleReg.includes(searchLower) ||
@@ -150,11 +150,11 @@ export default function VehiclePreChecksClient({
       check.brake_fluid,
       check.fuel_level_adequate,
     ]
-    
+
     const passed = allChecks.filter(Boolean).length
     const total = allChecks.length
     const hasIssues = check.issues_found && check.issues_found.trim().length > 0
-    
+
     if (passed === total && !hasIssues) {
       return { status: 'complete', label: 'All Checks Passed', color: 'bg-green-100 text-green-800' }
     }
@@ -212,7 +212,7 @@ export default function VehiclePreChecksClient({
             const driver = check.driver?.employees
             const vehicle = check.vehicle
             const route = check.route_session?.routes
-            
+
             return (
               <Card key={check.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
@@ -225,11 +225,10 @@ export default function VehiclePreChecksClient({
                         <span className="text-sm text-gray-500">
                           {formatDateTime(check.completed_at)}
                         </span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          check.session_type === 'AM' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${check.session_type === 'AM'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-primary/10 text-primary'
+                          }`}>
                           {check.session_type}
                         </span>
                       </div>

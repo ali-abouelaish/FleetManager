@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/Card'
+import { ArrowLeft, Trash2, AlertCircle, MapPin, School as SchoolIcon, Bus } from 'lucide-react'
 import Link from 'next/link'
+
 function EditPassengerPageClient({ id }: { id: string }) {
   const router = useRouter()
   const supabase = createClient()
@@ -71,6 +72,10 @@ function EditPassengerPageClient({ id }: { id: string }) {
     loadData()
   }, [id, supabase])
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -119,136 +124,145 @@ function EditPassengerPageClient({ id }: { id: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <div className="max-w-[1600px] mx-auto p-4 space-y-6">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 -mx-6 -mt-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <Link href={`/dashboard/passengers/${id}`}>
-            <Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Edit Passenger</h1>
-            <p className="mt-2 text-sm text-gray-600">Update passenger information</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Edit Passenger</h1>
+            <p className="text-xs text-slate-500">Update details for {formData.full_name}</p>
           </div>
         </div>
-        <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-          <Trash2 className="mr-2 h-4 w-4" />{deleting ? 'Deleting...' : 'Delete'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting} className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200">
+            {deleting ? 'Deleting...' : 'Delete Passenger'}
+          </Button>
+          <div className="h-6 w-px bg-slate-200 mx-2" />
+          <Link href={`/dashboard/passengers/${id}`}>
+            <Button variant="outline" size="sm" className="text-slate-600 border-slate-300 hover:bg-slate-50">Cancel</Button>
+          </Link>
+          <Button onClick={handleSubmit} disabled={loading} className="min-w-[100px]">
+            {loading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Passenger Information</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="rounded-md bg-red-50 p-4"><div className="text-sm text-red-800">{error}</div></div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3 text-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <p className="font-medium">{error}</p>
+        </div>
+      )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input id="full_name" required value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dob">Date of Birth</Label>
-                <Input id="dob" type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
-                <Select id="gender" value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
-                  <option value="">Select gender (optional)</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="school_id">School</Label>
-                <Select id="school_id" value={formData.school_id} onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}>
-                  <option value="">Select a school</option>
-                  {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="route_id">Route</Label>
-                <Select id="route_id" value={formData.route_id} onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}>
-                  <option value="">Select a route</option>
-                  {routes.map((route) => <option key={route.id} value={route.id}>{route.route_number || `Route ${route.id}`}</option>)}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="mobility_type">Mobility Type</Label>
-                <Select id="mobility_type" value={formData.mobility_type} onChange={(e) => setFormData({ ...formData, mobility_type: e.target.value })}>
-                  <option value="">Select mobility type</option>
-                  <option value="Ambulant">Ambulant</option>
-                  <option value="Wheelchair">Wheelchair</option>
-                  <option value="Walker">Walker</option>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="seat_number">Seat Number</Label>
-                <Input id="seat_number" value={formData.seat_number} onChange={(e) => setFormData({ ...formData, seat_number: e.target.value })} />
-              </div>
-            </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <textarea id="address" rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="important_notes">
-                Important Notes <span className="text-orange-600 font-semibold">⚠️</span>
-              </Label>
-              <textarea
-                id="important_notes"
-                rows={4}
-                className="flex w-full rounded-md border-2 border-orange-300 bg-orange-50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-                value={formData.important_notes}
-                onChange={(e) => setFormData({ ...formData, important_notes: e.target.value })}
-                placeholder="Enter any flagged or important information about this passenger that should be prominently displayed..."
-              />
-              <p className="text-xs text-orange-600 mt-1">
-                This information will be prominently displayed on the passenger profile
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sen_requirements">SEN Requirements</Label>
-              <textarea id="sen_requirements" rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.sen_requirements} onChange={(e) => setFormData({ ...formData, sen_requirements: e.target.value })} />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="personal_item">Personal Item</Label>
-                <Input
-                  id="personal_item"
-                  value={formData.personal_item}
-                  onChange={(e) =>
-                    setFormData({ ...formData, personal_item: e.target.value })
-                  }
-                  placeholder="e.g., backpack, medication bag, etc."
-                />
+        {/* Column 1: Identity (Left) - 3 cols */}
+        <div className="lg:col-span-3 space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Identity</h2>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="full_name" className="text-xs text-slate-500">Full Name *</Label>
+                  <Input id="full_name" value={formData.full_name} onChange={handleInputChange} required className="h-8 text-sm font-medium" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="dob" className="text-xs text-slate-500">Date of Birth</Label>
+                    <Input type="date" id="dob" value={formData.dob} onChange={handleInputChange} className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="gender" className="text-xs text-slate-500">Gender</Label>
+                    <Select id="gender" value={formData.gender} onChange={handleInputChange} className="h-8 text-xs">
+                      <option value="">Select...</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1 pt-2">
+                  <Label htmlFor="mobility_type" className="text-xs text-slate-500">Mobility Type</Label>
+                  <Select id="mobility_type" value={formData.mobility_type} onChange={handleInputChange} className="h-8 text-sm">
+                    <option value="">Select Mobility...</option>
+                    <option value="Ambulant">Ambulant</option>
+                    <option value="Wheelchair">Wheelchair</option>
+                    <option value="Walker">Walker</option>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="supervision_type" className="text-xs text-slate-500">Supervision Level</Label>
+                  <Input id="supervision_type" value={formData.supervision_type} onChange={handleInputChange} className="h-8 text-sm" />
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="supervision_type">Supervision Type</Label>
-                <Input
-                  id="supervision_type"
-                  value={formData.supervision_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, supervision_type: e.target.value })
-                  }
-                  placeholder="Type of supervision required"
-                />
+        {/* Column 2: Journey (Center) - 5 cols */}
+        <div className="lg:col-span-5 space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Journey Details</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 md:col-span-1 space-y-1">
+                  <Label htmlFor="school_id" className="text-xs text-slate-500 flex items-center gap-1"><SchoolIcon className="h-3 w-3" /> School</Label>
+                  <Select id="school_id" value={formData.school_id} onChange={handleInputChange} className="h-8 text-sm">
+                    <option value="">Select School...</option>
+                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </Select>
+                </div>
+                <div className="col-span-2 md:col-span-1 space-y-1">
+                  <Label htmlFor="route_id" className="text-xs text-slate-500 flex items-center gap-1"><Bus className="h-3 w-3" /> Route</Label>
+                  <Select id="route_id" value={formData.route_id} onChange={handleInputChange} className="h-8 text-sm">
+                    <option value="">Select Route...</option>
+                    {routes.map(r => <option key={r.id} value={r.id}>{r.route_number || `Route ${r.id}`}</option>)}
+                  </Select>
+                </div>
               </div>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="seat_number" className="text-xs text-slate-500">Seat Number</Label>
+                  <Input id="seat_number" value={formData.seat_number} onChange={handleInputChange} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="personal_item" className="text-xs text-slate-500">Personal Item</Label>
+                  <Input id="personal_item" value={formData.personal_item} onChange={handleInputChange} className="h-8 text-sm" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="flex justify-end space-x-4">
-              <Link href={`/dashboard/passengers/${id}`}><Button type="button" variant="secondary">Cancel</Button></Link>
-              <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save Changes'}</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        {/* Column 3: Critical Info (Right) - 4 cols */}
+        <div className="lg:col-span-4 space-y-4">
+          <Card className="h-full">
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Requirements & Notes</h2>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="address" className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="h-3 w-3" /> Home Address</Label>
+                  <textarea id="address" value={formData.address} onChange={handleInputChange} rows={2} className="w-full text-sm border-slate-300 rounded-md focus:ring-primary focus:border-primary" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sen_requirements" className="text-xs font-bold text-slate-700">SEN Requirements</Label>
+                  <textarea id="sen_requirements" value={formData.sen_requirements} onChange={handleInputChange} rows={3} className="w-full text-sm bg-blue-50/50 border-blue-200 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="important_notes" className="text-xs font-bold text-amber-700 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Important Notes</Label>
+                  <textarea id="important_notes" value={formData.important_notes} onChange={handleInputChange} rows={3} className="w-full text-sm bg-amber-50 border-amber-200 rounded-md focus:ring-amber-500 focus:border-amber-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </form>
     </div>
   )
 }
@@ -261,4 +275,3 @@ export default async function EditPassengerPage({
   const { id } = await params
   return <EditPassengerPageClient id={id} />
 }
-

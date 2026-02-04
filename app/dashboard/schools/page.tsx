@@ -68,12 +68,12 @@ async function SchoolsTable(filters?: { search?: string }) {
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Link href={`/dashboard/schools/${school.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/schools/${school.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -108,8 +108,8 @@ export default async function SchoolsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <School className="h-6 w-6 text-white" />
+          <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
+            <School className="h-6 w-6 text-slate-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Schools</h1>
@@ -117,7 +117,7 @@ export default async function SchoolsPage({
           </div>
         </div>
         <Link href="/dashboard/schools/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white">
             <Plus className="mr-2 h-4 w-4" />
             Add School
           </Button>
@@ -127,9 +127,9 @@ export default async function SchoolsPage({
       {/* Map View */}
       {schools.length > 0 && (
         <Card className="overflow-hidden border-slate-200">
-          <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-            <CardTitle className="flex items-center">
-              <Map className="mr-2 h-5 w-5" />
+          <CardHeader className="bg-slate-50 border-b border-slate-200">
+            <CardTitle className="flex items-center text-slate-900 text-base font-semibold">
+              <Map className="mr-2 h-5 w-5 text-slate-500" />
               Schools Map View
             </CardTitle>
           </CardHeader>
@@ -172,8 +172,8 @@ export default async function SchoolsPage({
 
       {/* Table View */}
       <Card className="overflow-hidden border-slate-200">
-        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-          <CardTitle>Schools List</CardTitle>
+        <CardHeader className="bg-slate-50 border-b border-slate-200">
+          <CardTitle className="text-slate-900 text-base font-semibold">Schools List</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={6} />}>

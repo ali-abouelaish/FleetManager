@@ -45,7 +45,7 @@ export default async function ViewVehiclePage({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/vehicles">
-            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
@@ -68,7 +68,7 @@ export default async function ViewVehiclePage({
             </Button>
           </Link>
           <Link href={`/dashboard/vehicles/${vehicle.id}/edit`}>
-            <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+            <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25">
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>

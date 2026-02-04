@@ -215,7 +215,7 @@ async function EmployeesTable({
             <TableRow>
               <TableCell colSpan={8} className="text-center py-12">
                 <Users className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">No employees found</p>
+                <p className="text-slate-500 hover:text-primary hover:bg-primary/10">No employees found</p>
                 <p className="text-sm text-slate-400">Add your first employee to get started</p>
               </TableCell>
             </TableRow>
@@ -234,8 +234,8 @@ async function EmployeesTable({
                   <TableCell>
                     <span
                       className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${employee.employment_status === 'Active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
                         }`}
                     >
                       {employee.employment_status || 'N/A'}
@@ -243,17 +243,13 @@ async function EmployeesTable({
                   </TableCell>
                   <TableCell>
                     {employee.can_work === false ? (
-                      <div className="space-y-1">
-                        <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-red-100 text-red-800">
-                          <XCircle className="mr-1 h-4 w-4" />
-                          CANNOT WORK
-                        </span>
-                        {expiredCerts.length > 0 && (
-                          <div className="text-xs text-red-700 font-medium">
-                            Expired: {expiredCerts.join(', ')}
-                          </div>
-                        )}
-                      </div>
+                      <span
+                        className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-red-100 text-red-800 whitespace-nowrap cursor-help"
+                        title={expiredCerts.length > 0 ? `Expired: ${expiredCerts.join(', ')}` : 'Employee is not authorized to work'}
+                      >
+                        <XCircle className="mr-1 h-4 w-4" />
+                        CANNOT WORK
+                      </span>
                     ) : (
                       <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-bold leading-5 bg-green-100 text-green-800">
                         <CheckCircle className="mr-1 h-4 w-4" />
@@ -326,7 +322,7 @@ export default async function EmployeesPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <div className="h-12 w-12 rounded-xl bg-[#023E8A] flex items-center justify-center shadow-lg shadow-[#023E8A]/20">
             <Users className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -335,7 +331,7 @@ export default async function EmployeesPage({
           </div>
         </div>
         <Link href="/dashboard/employees/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Employee
           </Button>

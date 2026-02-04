@@ -99,7 +99,7 @@ async function VehicleLocationsTable() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center">
-                    <MapPin className="mr-2 h-4 w-4 text-violet-500" />
+                    <MapPin className="mr-2 h-4 w-4 text-slate-500" />
                     <span className="font-semibold text-slate-800">{location.location_name}</span>
                   </div>
                 </TableCell>
@@ -124,12 +124,12 @@ async function VehicleLocationsTable() {
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Link href={`/dashboard/vehicle-locations/${location.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/vehicle-locations/${location.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -158,8 +158,8 @@ export default async function VehicleLocationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <MapPin className="h-6 w-6 text-white" />
+          <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
+            <MapPin className="h-6 w-6 text-slate-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Vehicle Locations</h1>
@@ -167,7 +167,7 @@ export default async function VehicleLocationsPage() {
           </div>
         </div>
         <Link href="/dashboard/vehicle-locations/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white">
             <Plus className="mr-2 h-4 w-4" />
             Add Vehicle Location
           </Button>
@@ -177,9 +177,9 @@ export default async function VehicleLocationsPage() {
       {/* Map View */}
       {locations.length > 0 && (
         <Card className="overflow-hidden border-slate-200">
-          <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-            <CardTitle className="flex items-center">
-              <Map className="mr-2 h-5 w-5" />
+          <CardHeader className="bg-slate-50 border-b border-slate-200">
+            <CardTitle className="flex items-center text-slate-900 text-base font-semibold">
+              <Map className="mr-2 h-5 w-5 text-slate-500" />
               Vehicle Locations Map View
             </CardTitle>
           </CardHeader>

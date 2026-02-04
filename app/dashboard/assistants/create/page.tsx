@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Save, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/Card'
+import { ArrowLeft, Upload, Save, AlertCircle, FileText, CheckCircle, GraduationCap } from 'lucide-react'
 import Link from 'next/link'
 
 interface Employee {
@@ -23,9 +23,8 @@ export default function CreatePassengerAssistantPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({})
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [activeTab, setActiveTab] = useState<'basic' | 'certificates' | 'documents' | 'training'>('basic')
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -41,19 +40,19 @@ export default function CreatePassengerAssistantPage() {
     photo_taken: false,
     private_hire_badge: false,
     paper_licence: false,
-    taxi_plate_photo: false,
+    taxi_plate_photo: false, // Often N/A for PA but keeping schema consistency
     logbook: false,
     safeguarding_training_completed: false,
     safeguarding_training_date: '',
     tas_pats_training_completed: false,
     tas_pats_training_date: '',
-    psa_training_completed: false,
+    psa_training_completed: false, // Often N/A for PA but keeping schema consistency
     psa_training_date: '',
     additional_notes: '',
   })
 
   // File uploads state
-  const [fileUploads, setFileUploads] = useState<{[key: string]: File | null}>({
+  const [fileUploads, setFileUploads] = useState<{ [key: string]: File | null }>({
     tas_badge_file: null,
     dbs_file: null,
     first_aid_file: null,
@@ -94,7 +93,7 @@ export default function CreatePassengerAssistantPage() {
       }
     }
     loadEmployees()
-  }, [supabase])
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -102,7 +101,6 @@ export default function CreatePassengerAssistantPage() {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
-    // Clear field error when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors(prev => {
         const newErrors = { ...prev }
@@ -110,10 +108,7 @@ export default function CreatePassengerAssistantPage() {
         return newErrors
       })
     }
-    // Clear general error when user makes changes
-    if (error) {
-      setError(null)
-    }
+    if (error) setError(null)
   }
 
   const handleFileChange = (fieldName: string, file: File | null) => {
@@ -123,84 +118,32 @@ export default function CreatePassengerAssistantPage() {
     }))
   }
 
-  // Validation function for each tab
-  const validateTab = (tab: typeof activeTab): { isValid: boolean; errors: {[key: string]: string} } => {
-    const errors: {[key: string]: string} = {}
-    
-    if (tab === 'basic') {
-      if (!formData.employee_id || formData.employee_id.trim() === '') {
-        errors.employee_id = 'Please select an employee'
-      }
+  const validateForm = (): { isValid: boolean; errors: { [key: string]: string } } => {
+    const errors: { [key: string]: string } = {}
+
+    if (!formData.employee_id || formData.employee_id.trim() === '') {
+      errors.employee_id = 'Please select an employee'
     }
-    
-    if (tab === 'certificates') {
-      if (!formData.tas_badge_expiry_date || formData.tas_badge_expiry_date.trim() === '') {
-        errors.tas_badge_expiry_date = 'TAS Badge expiry date is required'
-      }
+
+    if (!formData.tas_badge_expiry_date || formData.tas_badge_expiry_date.trim() === '') {
+      errors.tas_badge_expiry_date = 'TAS Badge expiry date is required'
     }
-    
+
     return {
       isValid: Object.keys(errors).length === 0,
       errors
     }
   }
 
-  const handleNext = () => {
-    // Validate current tab before allowing navigation
-    const validation = validateTab(activeTab)
-    
-    if (!validation.isValid) {
-      setFieldErrors(validation.errors)
-      setError('Please fill in all required fields before proceeding')
-      return
-    }
-    
-    // Clear errors if validation passes
-    setFieldErrors({})
-    setError(null)
-    
-    const tabs: typeof activeTab[] = ['basic', 'certificates', 'documents', 'training']
-    const currentIndex = tabs.indexOf(activeTab)
-    if (currentIndex < tabs.length - 1) {
-      setActiveTab(tabs[currentIndex + 1])
-    }
-  }
-  
-  // Check if current tab is valid (for enabling/disabling Next button)
-  const isCurrentTabValid = () => {
-    const validation = validateTab(activeTab)
-    return validation.isValid
-  }
-
-  const handlePrevious = () => {
-    const tabs: typeof activeTab[] = ['basic', 'certificates', 'documents', 'training']
-    const currentIndex = tabs.indexOf(activeTab)
-    if (currentIndex > 0) {
-      setActiveTab(tabs[currentIndex - 1])
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validate all required fields before submission
-    const allTabs: typeof activeTab[] = ['basic', 'certificates']
-    const allErrors: {[key: string]: string} = {}
-    
-    for (const tab of allTabs) {
-      const validation = validateTab(tab)
-      Object.assign(allErrors, validation.errors)
-    }
-    
-    if (Object.keys(allErrors).length > 0) {
-      setFieldErrors(allErrors)
+
+    const validation = validateForm()
+
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors)
       setError('Please fill in all required fields before submitting')
-      // Switch to the first tab with errors
-      if (allErrors.employee_id) {
-        setActiveTab('basic')
-      } else if (allErrors.tas_badge_expiry_date) {
-        setActiveTab('certificates')
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
@@ -217,9 +160,9 @@ export default function CreatePassengerAssistantPage() {
         docType: string
         filePath: string
       }> = []
-      
+
       // Map file keys to document types
-      const fileKeyToDocType: {[key: string]: string} = {
+      const fileKeyToDocType: { [key: string]: string } = {
         tas_badge_file: 'TAS Badge',
         dbs_file: 'DBS Certificate',
         first_aid_file: 'First Aid Certificate',
@@ -234,12 +177,12 @@ export default function CreatePassengerAssistantPage() {
         logbook_file: 'Logbook',
         badge_photo_file: 'ID Badge Photo',
       }
-      
+
       for (const [key, file] of Object.entries(fileUploads)) {
         if (file) {
           const fileExt = file.name.split('.').pop()
           const fileName = `assistants/${formData.employee_id}/${key}_${Date.now()}.${fileExt}`
-          
+
           const { data, error } = await supabase.storage
             .from('DRIVER_DOCUMENTS')
             .upload(fileName, file)
@@ -248,7 +191,7 @@ export default function CreatePassengerAssistantPage() {
             console.error(`Error uploading file ${file.name}:`, error)
             // Provide helpful error message for bucket not found
             if (error.message.includes('Bucket not found') || error.message.includes('not found')) {
-              throw new Error('Storage bucket "DRIVER_DOCUMENTS" not found. Please create a public bucket named "DRIVER_DOCUMENTS" in your Supabase Storage settings.')
+              throw new Error('Storage bucket "DRIVER_DOCUMENTS" not found.')
             }
             throw error
           }
@@ -257,7 +200,7 @@ export default function CreatePassengerAssistantPage() {
             const { data: { publicUrl } } = supabase.storage
               .from('DRIVER_DOCUMENTS')
               .getPublicUrl(fileName)
-            
+
             uploadedDocuments.push({
               fileUrl: publicUrl,
               fileName: file.name,
@@ -343,10 +286,10 @@ export default function CreatePassengerAssistantPage() {
           employee_id: parseInt(formData.employee_id),
           owner_type: 'employee',
           owner_id: parseInt(formData.employee_id),
-          file_url: JSON.stringify([doc.fileUrl]), // Store as JSON array for consistency
+          file_url: JSON.stringify([doc.fileUrl]),
           file_name: doc.fileName,
           file_type: doc.fileType,
-          file_path: doc.fileUrl, // Store URL for backward compatibility
+          file_path: doc.fileUrl,
           doc_type: doc.docType,
           uploaded_at: new Date().toISOString(),
         }))
@@ -355,680 +298,405 @@ export default function CreatePassengerAssistantPage() {
           .from('documents')
           .insert(documentRecords)
 
-        if (documentsError) {
-          console.error('Error creating document records:', documentsError)
-          // Don't throw - PA was created successfully, documents just won't show up
-        }
+        if (documentsError) console.error('Error creating document records:', documentsError)
       }
 
       router.push('/dashboard/assistants')
     } catch (err: any) {
       console.error('Error creating passenger assistant:', err)
       setError(err.message || 'Failed to create passenger assistant')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setLoading(false)
     }
   }
 
+  // Component for compact date input
+  const CompactDateInput = ({ id, label, value, onChange, required = false, error }: any) => (
+    <div className="space-y-1">
+      <Label htmlFor={id} className="text-xs text-slate-500">{label} {required && <span className="text-red-500">*</span>}</Label>
+      <Input
+        type="date"
+        id={id}
+        name={id}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className={`h-8 text-sm ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
+      />
+      {error && <span className="text-[10px] text-red-500">{error}</span>}
+    </div>
+  )
+
+  // Component for compact file upload
+  const CompactFileUpload = ({ id, onChange, file }: any) => (
+    <div className="flex items-center gap-2 mt-1 w-full">
+      <label
+        htmlFor={id}
+        className="cursor-pointer bg-[#023E8A] text-white px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-[#023E8A]/90 transition-colors shrink-0 shadow-sm flex items-center gap-1"
+      >
+        <span className="hidden sm:inline">Upload</span>
+        <span className="sm:hidden">...</span>
+      </label>
+      <div
+        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-[10px] text-slate-500 truncate cursor-default select-none flex items-center gap-2 shadow-sm"
+        title={file?.name || 'No file selected'}
+      >
+        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${file ? 'bg-green-500' : 'bg-slate-300'}`} />
+        <span className={`truncate ${file ? 'text-slate-700 font-medium' : 'text-slate-400 italic'}`}>
+          {file?.name || 'No file selected'}
+        </span>
+      </div>
+      <input
+        type="file"
+        id={id}
+        accept=".pdf,.jpg,.jpeg,.png"
+        onChange={(e) => onChange(id, e.target.files?.[0] || null)}
+        className="hidden"
+      />
+    </div>
+  )
+
+  // Component for certificate card
+  const CertificateCard = ({ title, dateId, dateVal, fileId, fileVal, required = false, error }: any) => (
+    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-slate-700">{title}</span>
+        {required && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">REQUIRED</span>}
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        <CompactDateInput
+          id={dateId}
+          label="Expiry Date"
+          value={dateVal}
+          onChange={handleInputChange}
+          required={required}
+          error={error}
+        />
+        <div>
+          <Label htmlFor={fileId} className="text-xs text-slate-500">Upload Certificate</Label>
+          <CompactFileUpload id={fileId} onChange={handleFileChange} file={fileVal} />
+        </div>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <div className="max-w-[1600px] mx-auto p-4 space-y-6">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 -mx-6 -mt-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <Link href="/dashboard/assistants">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-navy">Add New Passenger Assistant</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Register a new passenger assistant with all required certifications
-            </p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Add Passenger Assistant</h1>
+            <p className="text-xs text-slate-500">Compact Mode</p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/assistants">
+            <Button variant="outline" size="sm" className="text-slate-600 border-slate-300 hover:bg-slate-50">Cancel</Button>
+          </Link>
+          <Button onClick={handleSubmit} disabled={loading} className="min-w-[100px]">
+            {loading ? 'Saving...' : 'Save PA'}
+          </Button>
         </div>
       </div>
 
       {error && (
-        <Card className="border-l-4 border-red-500 bg-red-50">
-          <CardContent className="py-4">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-red-800 mb-1">{error}</p>
-                {Object.keys(fieldErrors).length > 0 && (
-                  <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
-                    {Object.values(fieldErrors).map((err, idx) => (
-                      <li key={idx}>{err}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3 text-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium">{error}</p>
+            {Object.values(fieldErrors).length > 0 && (
+              <ul className="mt-1 list-disc list-inside text-xs">
+                {Object.values(fieldErrors).map((err, i) => <li key={i}>{err}</li>)}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Form sections">
-          {[
-            { id: 'basic', label: '👤 Basic Info', icon: '👤' },
-            { id: 'certificates', label: '📜 Certificates', icon: '📜' },
-            { id: 'documents', label: '📄 Documents', icon: '📄' },
-            { id: 'training', label: '🎓 Training', icon: '🎓' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`
-                border-b-2 px-1 py-4 text-sm font-medium transition-colors
-                ${activeTab === tab.id
-                  ? 'border-navy text-navy'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-              `}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Info Tab */}
-        {activeTab === 'basic' && (
+        {/* Column 1: Identity & Status (Left) */}
+        <div className="lg:col-span-3 flex flex-col gap-4 h-full">
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div>
-                <Label htmlFor="employee_id">
-                  Select Employee <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  id="employee_id"
-                  name="employee_id"
-                  value={formData.employee_id}
-                  onChange={handleInputChange}
-                  required
-                  error={!!fieldErrors.employee_id}
-                >
-                  <option value="">-- Select Employee --</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.full_name} ({emp.role})
-                    </option>
-                  ))}
-                </Select>
-                {fieldErrors.employee_id && (
-                  <p className="text-xs text-red-600 mt-1 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {fieldErrors.employee_id}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Only active employees who are not already drivers or passenger assistants are shown
-                </p>
-              </div>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Identity</h2>
 
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="spare_pa"
-                  name="spare_pa"
-                  checked={formData.spare_pa}
-                  onChange={(e) => setFormData({ ...formData, spare_pa: e.target.checked })}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <Label htmlFor="spare_pa" className="cursor-pointer font-medium">
-                  Mark as spare
-                </Label>
-              </div>
-              <p className="text-xs text-gray-500 -mt-2">
-                Spare PAs are not assigned to a route and can be used when needed (e.g. for sessions). View them under Spares → Spare PAs.
-              </p>
-
-              <div>
-                <Label htmlFor="additional_notes">Additional Notes / HR Comments</Label>
-                <textarea
-                  id="additional_notes"
-                  name="additional_notes"
-                  value={formData.additional_notes}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-navy focus:outline-none focus:ring-navy sm:text-sm"
-                  placeholder="Any additional information about the passenger assistant..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Navigation Buttons for Basic Info */}
-        {activeTab === 'basic' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex justify-end space-x-4">
-                <Link href="/dashboard/assistants">
-                  <Button type="button" variant="secondary">
-                    Cancel
-                  </Button>
-                </Link>
-                <Button 
-                  type="button" 
-                  onClick={handleNext}
-                  disabled={!isCurrentTabValid()}
-                  className={!isCurrentTabValid() ? 'opacity-50 cursor-not-allowed' : ''}
-                >
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Certificates Tab */}
-        {activeTab === 'certificates' && (
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Certificates & Expiry Dates</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              {/* Required Certificates Warning */}
-              <Card className="border-l-4 border-red-500 bg-red-50">
-                <CardContent className="py-4">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h3 className="text-sm font-medium text-red-800 mb-1">
-                        ⚠️ Required Certificates Policy
-                      </h3>
-                      <p className="text-sm text-red-700">
-                        <strong>Passenger Assistants MUST have this certificate with date set:</strong>
-                      </p>
-                      <ul className="text-sm text-red-700 mt-2 ml-4 list-disc">
-                        <li>TAS Badge expiry date</li>
-                      </ul>
-                      <p className="text-sm text-red-700 mt-2">
-                        <strong>Without this date, the passenger assistant will be flagged as "CANNOT WORK"</strong> and will not be authorized for routes.
-                      </p>
-                    </div>
+              <div className="space-y-4">
+                <div className="relative group">
+                  <div className="w-full aspect-square bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:border-primary/50 transition-colors cursor-pointer overflow-hidden">
+                    <input
+                      type="file"
+                      id="badge_photo_file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange('badge_photo_file', e.target.files?.[0] || null)}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    {fileUploads.badge_photo_file ? (
+                      <div className="relative w-full h-full">
+                        <p className="absolute bottom-2 left-0 right-0 text-center text-xs bg-black/50 text-white py-1">Photo Selected</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 mb-2" />
+                        <span className="text-xs font-medium">Upload Badge Photo</span>
+                      </>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* TAS Badge */}
-                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
-                  <h3 className="font-semibold text-navy flex items-center">
-                    TAS Badge
-                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
-                  </h3>
-                  <div>
-                    <Label htmlFor="tas_badge_number">Badge Number</Label>
+                <div>
+                  <Label htmlFor="employee_id" className="text-sm font-semibold">Select Employee <span className="text-red-500">*</span></Label>
+                  <Select
+                    id="employee_id"
+                    name="employee_id"
+                    value={formData.employee_id}
+                    onChange={handleInputChange}
+                    required
+                    error={!!fieldErrors.employee_id}
+                    className="mt-1"
+                  >
+                    <option value="">-- Select --</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.full_name}</option>
+                    ))}
+                  </Select>
+                  {fieldErrors.employee_id && <span className="text-xs text-red-500">{fieldErrors.employee_id}</span>}
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                  <input
+                    type="checkbox"
+                    id="spare_pa"
+                    name="spare_pa"
+                    checked={formData.spare_pa}
+                    onChange={(e) => setFormData({ ...formData, spare_pa: e.target.checked })}
+                    className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="spare_pa" className="text-sm font-semibold text-amber-900 cursor-pointer">Mark as Spare PA</Label>
+                    <p className="text-[10px] text-amber-700 leading-tight mt-0.5">Not assigned to specific route, available for cover.</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="flex-1">
+            <CardContent className="p-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b pb-2">Checklist</h2>
+              <div className="space-y-2">
+                {[
+                  { id: 'private_hire_badge', label: 'Private Hire Badge' },
+                  { id: 'dbs_check', label: 'DBS Checked', warning: 'Requires valid number' },
+                  { id: 'birth_certificate', label: 'Birth Certificate' },
+                ].map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-colors">
+                    <Label htmlFor={item.id} className="text-sm text-slate-700 cursor-pointer flex-1">{item.label}</Label>
+                    <input
+                      type="checkbox"
+                      id={item.id}
+                      name={item.id}
+                      checked={formData[item.id as keyof typeof formData] as boolean}
+                      onChange={handleInputChange}
+                      className="rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Column 2: Core Certificates (Center) */}
+        <div className="lg:col-span-5 flex flex-col gap-4 h-full">
+          <Card className="h-full">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Critical Certificates</h2>
+                <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Expiry tracking enabled</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                  <div className="mb-2">
+                    <Label htmlFor="tas_badge_number" className="text-xs font-semibold text-blue-900">TAS Badge Number</Label>
                     <Input
                       id="tas_badge_number"
                       name="tas_badge_number"
                       value={formData.tas_badge_number}
                       onChange={handleInputChange}
-                      placeholder="e.g., TAS12345"
+                      placeholder="e.g. TAS12345"
+                      className="h-8 text-sm mt-1"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="tas_badge_expiry_date">
-                      Expiry Date <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="date"
-                      id="tas_badge_expiry_date"
-                      name="tas_badge_expiry_date"
-                      value={formData.tas_badge_expiry_date}
-                      onChange={handleInputChange}
-                      required
-                      className={fieldErrors.tas_badge_expiry_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
-                    />
-                    {fieldErrors.tas_badge_expiry_date && (
-                      <p className="text-xs text-red-600 mt-1 flex items-center">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        {fieldErrors.tas_badge_expiry_date}
-                      </p>
+                  <CertificateCard
+                    title="TAS Badge Expiry"
+                    dateId="tas_badge_expiry_date"
+                    dateVal={formData.tas_badge_expiry_date}
+                    fileId="tas_badge_file"
+                    fileVal={fileUploads.tas_badge_file}
+                    required
+                    error={fieldErrors.tas_badge_expiry_date}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="dbs_number" className="text-xs text-slate-500">DBS Number</Label>
+                  <Input
+                    id="dbs_number"
+                    name="dbs_number"
+                    value={formData.dbs_number}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 001234567890"
+                    className="h-8 text-sm mb-2"
+                  />
+                  <CertificateCard
+                    title="DBS Certificate"
+                    dateId="dbs_date_placeholder"
+                    dateVal=""
+                    fileId="dbs_file"
+                    fileVal={fileUploads.dbs_file}
+                  />
+                </div>
+
+                <CertificateCard
+                  title="First Aid"
+                  dateId="first_aid_certificate_expiry_date"
+                  dateVal={formData.first_aid_certificate_expiry_date}
+                  fileId="first_aid_file"
+                  fileVal={fileUploads.first_aid_file}
+                />
+
+                <CertificateCard
+                  title="Passport"
+                  dateId="passport_expiry_date"
+                  dateVal={formData.passport_expiry_date}
+                  fileId="passport_file"
+                  fileVal={fileUploads.passport_file}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Column 3: Docs & Training (Right) */}
+        <div className="lg:col-span-4 flex flex-col gap-4 h-full">
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Training Status</h2>
+
+              <div className="space-y-3">
+                {[
+                  {
+                    id: 'safeguarding_training',
+                    label: 'Safeguarding',
+                    completed: formData.safeguarding_training_completed,
+                    date: formData.safeguarding_training_date
+                  },
+                  {
+                    id: 'tas_pats_training',
+                    label: 'TAS PATS',
+                    completed: formData.tas_pats_training_completed,
+                    date: formData.tas_pats_training_date
+                  },
+                ].map((t) => (
+                  <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`font-semibold ${t.completed ? 'text-green-800' : 'text-slate-600'}`}>{t.label}</span>
+                      <input
+                        type="checkbox"
+                        name={`${t.id}_completed`}
+                        checked={t.completed}
+                        onChange={handleInputChange}
+                        className="rounded border-slate-300 text-green-600 focus:ring-green-500"
+                      />
+                    </div>
+                    {t.completed && (
+                      <input
+                        type="date"
+                        name={`${t.id}_date`}
+                        value={t.date}
+                        onChange={handleInputChange}
+                        className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
+                      />
                     )}
-                    <p className="text-xs text-red-600 mt-1">⚠️ Required for passenger assistant to work</p>
                   </div>
-                  <div>
-                    <Label htmlFor="tas_badge_file">Upload Certificate</Label>
-                    <input
-                      type="file"
-                      id="tas_badge_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('tas_badge_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* DBS Certificate */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">DBS Certificate</h3>
-                  <div>
-                    <Label htmlFor="dbs_number">DBS Number</Label>
-                    <Input
-                      id="dbs_number"
-                      name="dbs_number"
-                      value={formData.dbs_number}
-                      onChange={handleInputChange}
-                      placeholder="e.g., DBS123456789"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="dbs_file">Upload Certificate</Label>
-                    <input
-                      type="file"
-                      id="dbs_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('dbs_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* First Aid */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">First Aid Certificate</h3>
-                  <div>
-                    <Label htmlFor="first_aid_certificate_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="first_aid_certificate_expiry_date"
-                      name="first_aid_certificate_expiry_date"
-                      value={formData.first_aid_certificate_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="first_aid_file">Upload Certificate</Label>
-                    <input
-                      type="file"
-                      id="first_aid_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('first_aid_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Passport */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Passport</h3>
-                  <div>
-                    <Label htmlFor="passport_expiry_date">Expiry Date</Label>
-                    <Input
-                      type="date"
-                      id="passport_expiry_date"
-                      name="passport_expiry_date"
-                      value={formData.passport_expiry_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="passport_file">Upload Copy</Label>
-                    <input
-                      type="file"
-                      id="passport_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('passport_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Utility Bill */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Utility Bill</h3>
-                  <div>
-                    <Label htmlFor="utility_bill_date">Date</Label>
-                    <Input
-                      type="date"
-                      id="utility_bill_date"
-                      name="utility_bill_date"
-                      value={formData.utility_bill_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="utility_bill_file">Upload Bill</Label>
-                    <input
-                      type="file"
-                      id="utility_bill_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('utility_bill_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                  </div>
-                </div>
-
+                ))}
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Navigation Buttons for Certificates */}
-        {activeTab === 'certificates' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex space-x-4">
-                  <Link href="/dashboard/assistants">
-                    <Button type="button" variant="secondary">
-                      Cancel
-                    </Button>
-                  </Link>
-                  <Button 
-                    type="button" 
-                    onClick={handleNext}
-                    disabled={!isCurrentTabValid()}
-                    className={!isCurrentTabValid() ? 'opacity-50 cursor-not-allowed' : ''}
-                  >
-                    Next
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
+          <Card className="flex-1">
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Additional Docs</h2>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Utility Bill</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="date" name="utility_bill_date" value={formData.utility_bill_date} onChange={handleInputChange} className="h-7 text-xs" />
+                    <CompactFileUpload id="utility_bill_file" onChange={handleFileChange} file={fileUploads.utility_bill_file} />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-sm font-semibold">Additional Files</Label>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {['Paper Licence', 'Logbook', 'Birth Certificate', 'Marriage Certificate'].map((label, i) => {
+                      const fileKey = {
+                        'Paper Licence': 'paper_licence_file',
+                        'Logbook': 'logbook_file',
+                        'Birth Certificate': 'birth_cert_file',
+                        'Marriage Certificate': 'marriage_cert_file'
+                      }[label] || 'unknown'
+
+                      // Need to get state from fileUploads dynamically
+                      const mapping = {
+                        'Paper Licence': { key: 'paper_licence_file', state: fileUploads.paper_licence_file },
+                        'Logbook': { key: 'logbook_file', state: fileUploads.logbook_file },
+                        'Birth Certificate': { key: 'birth_cert_file', state: fileUploads.birth_cert_file },
+                        'Marriage Certificate': { key: 'marriage_cert_file', state: fileUploads.marriage_cert_file }
+                      }
+                      const { key, state } = mapping[label as keyof typeof mapping] || { key: fileKey, state: undefined }
+
+                      return (
+                        <div key={label} className="flex flex-col gap-1">
+                          <span className="text-slate-500 truncate">{label}</span>
+                          <CompactFileUpload id={key} onChange={handleFileChange} file={state} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Label htmlFor="additional_notes" className="text-sm font-semibold">Notes</Label>
+                  <textarea
+                    id="additional_notes"
+                    name="additional_notes"
+                    value={formData.additional_notes}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full mt-1 rounded-md border-slate-300 text-sm focus:border-primary focus:ring-primary h-full min-h-[80px]"
+                    placeholder="Private HR notes..."
+                  />
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
 
-        {/* Documents Tab */}
-        {activeTab === 'documents' && (
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Document Checklist</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="birth_certificate"
-                    name="birth_certificate"
-                    checked={formData.birth_certificate}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="birth_certificate" className="ml-2 text-sm text-gray-700">
-                    Birth Certificate
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="marriage_certificate"
-                    name="marriage_certificate"
-                    checked={formData.marriage_certificate}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="marriage_certificate" className="ml-2 text-sm text-gray-700">
-                    Marriage Certificate
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="photo_taken"
-                    name="photo_taken"
-                    checked={formData.photo_taken}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="photo_taken" className="ml-2 text-sm text-gray-700">
-                    Photo Taken
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="private_hire_badge"
-                    name="private_hire_badge"
-                    checked={formData.private_hire_badge}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="private_hire_badge" className="ml-2 text-sm text-gray-700">
-                    Private Hire Badge
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="paper_licence"
-                    name="paper_licence"
-                    checked={formData.paper_licence}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="paper_licence" className="ml-2 text-sm text-gray-700">
-                    Paper Licence
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="taxi_plate_photo"
-                    name="taxi_plate_photo"
-                    checked={formData.taxi_plate_photo}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="taxi_plate_photo" className="ml-2 text-sm text-gray-700">
-                    Taxi Plate Photo
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="logbook"
-                    name="logbook"
-                    checked={formData.logbook}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                  />
-                  <label htmlFor="logbook" className="ml-2 text-sm text-gray-700">
-                    Logbook
-                  </label>
-                </div>
-              </div>
-
-              {/* Badge Photo Upload */}
-              <div className="mt-6 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
-                <h3 className="font-semibold text-navy mb-4">Badge Photo</h3>
-                <div>
-                  <Label htmlFor="badge_photo_file">Upload Badge Photo</Label>
-                  <input
-                    type="file"
-                    id="badge_photo_file"
-                    accept=".jpg,.jpeg,.png"
-                    onChange={(e) => handleFileChange('badge_photo_file', e.target.files?.[0] || null)}
-                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Upload a photo for the passenger assistant's ID badge (JPG, PNG)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Navigation Buttons for Documents */}
-        {activeTab === 'documents' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex space-x-4">
-                  <Link href="/dashboard/assistants">
-                    <Button type="button" variant="secondary">
-                      Cancel
-                    </Button>
-                  </Link>
-                  <Button 
-                    type="button" 
-                    onClick={handleNext}
-                    disabled={!isCurrentTabValid()}
-                    className={!isCurrentTabValid() ? 'opacity-50 cursor-not-allowed' : ''}
-                  >
-                    Next
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Training Tab */}
-        {activeTab === 'training' && (
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Training & Compliance</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid gap-6 md:grid-cols-1">
-                {/* Safeguarding Training */}
-                <div className="space-y-4 p-6 border rounded-lg">
-                  <h3 className="text-lg font-semibold text-navy">Safeguarding Training</h3>
-                  <p className="text-sm text-gray-600">Mandatory child protection training</p>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="safeguarding_training_completed"
-                      name="safeguarding_training_completed"
-                      checked={formData.safeguarding_training_completed}
-                      onChange={handleInputChange}
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                    />
-                    <label htmlFor="safeguarding_training_completed" className="ml-2 text-sm font-medium text-gray-900">
-                      Training Completed
-                    </label>
-                  </div>
-                  {formData.safeguarding_training_completed && (
-                    <div>
-                      <Label htmlFor="safeguarding_training_date">Completion Date</Label>
-                      <Input
-                        type="date"
-                        id="safeguarding_training_date"
-                        name="safeguarding_training_date"
-                        value={formData.safeguarding_training_date}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* TAS PATS Training */}
-                <div className="space-y-4 p-6 border rounded-lg">
-                  <h3 className="text-lg font-semibold text-navy">TAS PATS Training</h3>
-                  <p className="text-sm text-gray-600">Passenger Assistant Training Scheme</p>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="tas_pats_training_completed"
-                      name="tas_pats_training_completed"
-                      checked={formData.tas_pats_training_completed}
-                      onChange={handleInputChange}
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                    />
-                    <label htmlFor="tas_pats_training_completed" className="ml-2 text-sm font-medium text-gray-900">
-                      Training Completed
-                    </label>
-                  </div>
-                  {formData.tas_pats_training_completed && (
-                    <div>
-                      <Label htmlFor="tas_pats_training_date">Completion Date</Label>
-                      <Input
-                        type="date"
-                        id="tas_pats_training_date"
-                        name="tas_pats_training_date"
-                        value={formData.tas_pats_training_date}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* PSA Training */}
-                <div className="space-y-4 p-6 border rounded-lg">
-                  <h3 className="text-lg font-semibold text-navy">PSA Training</h3>
-                  <p className="text-sm text-gray-600">Passenger Safety & Assistance</p>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="psa_training_completed"
-                      name="psa_training_completed"
-                      checked={formData.psa_training_completed}
-                      onChange={handleInputChange}
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                    />
-                    <label htmlFor="psa_training_completed" className="ml-2 text-sm font-medium text-gray-900">
-                      Training Completed
-                    </label>
-                  </div>
-                  {formData.psa_training_completed && (
-                    <div>
-                      <Label htmlFor="psa_training_date">Completion Date</Label>
-                      <Input
-                        type="date"
-                        id="psa_training_date"
-                        name="psa_training_date"
-                        value={formData.psa_training_date}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Submit Button - Only show on Training tab */}
-        {activeTab === 'training' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex space-x-4">
-                  <Link href="/dashboard/assistants">
-                    <Button type="button" variant="secondary">
-                      Cancel
-                    </Button>
-                  </Link>
-                  <Button type="submit" disabled={loading || !formData.employee_id}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {loading ? 'Creating...' : 'Create Passenger Assistant'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </form>
     </div>
   )

@@ -173,7 +173,7 @@ export default function VehicleSeatingClient({
                   </div>
                   <Button
                     onClick={() => setIsEditing(true)}
-                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
+                    className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25"
                   >
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Plan
@@ -212,120 +212,120 @@ export default function VehicleSeatingClient({
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="name">Plan Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Standard Coach (45 passengers)"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="total_capacity">Total Capacity</Label>
+                    <Label htmlFor="name">Plan Name</Label>
                     <Input
-                      id="total_capacity"
-                      name="total_capacity"
-                      type="number"
-                      min="1"
-                    value={formData.total_capacity}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="wheelchair_spaces">Wheelchair Spaces</Label>
-                    <Input
-                      id="wheelchair_spaces"
-                      name="wheelchair_spaces"
-                      type="number"
-                      min="0"
-                    value={formData.wheelchair_spaces}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="rows">Number of Rows</Label>
-                    <Input
-                      id="rows"
-                      name="rows"
-                      type="number"
-                      min="1"
-                    value={formData.rows}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="seats_per_row">Seats per Row</Label>
-                    <Input
-                      id="seats_per_row"
-                      name="seats_per_row"
-                      type="number"
-                      min="1"
-                    value={formData.seats_per_row}
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
+                      placeholder="e.g., Standard Coach (45 passengers)"
                       required
-                  />
+                    />
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 2 wheelchair lifts, emergency exit row 5"
-                    rows={3}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="total_capacity">Total Capacity</Label>
+                      <Input
+                        id="total_capacity"
+                        name="total_capacity"
+                        type="number"
+                        min="1"
+                        value={formData.total_capacity}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
 
-                <div className="flex gap-3">
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Saving...
-                      </span>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        {seatingPlan ? 'Update' : 'Create'} Plan
-                      </>
-                    )}
-                  </Button>
+                    <div>
+                      <Label htmlFor="wheelchair_spaces">Wheelchair Spaces</Label>
+                      <Input
+                        id="wheelchair_spaces"
+                        name="wheelchair_spaces"
+                        type="number"
+                        min="0"
+                        value={formData.wheelchair_spaces}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
 
-                  {seatingPlan && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="rows">Number of Rows</Label>
+                      <Input
+                        id="rows"
+                        name="rows"
+                        type="number"
+                        min="1"
+                        value={formData.rows}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="seats_per_row">Seats per Row</Label>
+                      <Input
+                        id="seats_per_row"
+                        name="seats_per_row"
+                        type="number"
+                        min="1"
+                        value={formData.seats_per_row}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Notes (Optional)</Label>
+                    <textarea
+                      id="notes"
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 2 wheelchair lifts, emergency exit row 5"
+                      rows={3}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
                     <Button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      variant="secondary"
+                      type="submit"
+                      disabled={isLoading}
+                      className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25"
                     >
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Saving...
+                        </span>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          {seatingPlan ? 'Update' : 'Create'} Plan
+                        </>
+                      )}
                     </Button>
-                  )}
-                </div>
+
+                    {seatingPlan && (
+                      <Button
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        variant="secondary"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -353,20 +353,20 @@ export default function VehicleSeatingClient({
                   <Button
                     onClick={handleFindSubstitutes}
                     disabled={isLoadingSubstitutes}
-                    className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 mb-4"
+                    className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 mb-4"
                   >
-                  {isLoadingSubstitutes ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Searching...
-                    </span>
-                  ) : (
-                    'Find Substitute Vehicles'
-                  )}
-                </Button>
+                    {isLoadingSubstitutes ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Searching...
+                      </span>
+                    ) : (
+                      'Find Substitute Vehicles'
+                    )}
+                  </Button>
 
                   {substitutionVehicles.length > 0 ? (
                     <div className="space-y-3">
@@ -393,11 +393,11 @@ export default function VehicleSeatingClient({
                           </div>
 
                           <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 mb-4">
-                          <div>Capacity: <span className="text-slate-900 font-medium">{vehicle.total_capacity}</span></div>
-                          <div>Wheelchair: <span className="text-slate-900 font-medium">{vehicle.wheelchair_spaces}</span></div>
-                          <div>Rows: <span className="text-slate-900 font-medium">{vehicle.rows}</span></div>
-                          <div>Seats/Row: <span className="text-slate-900 font-medium">{vehicle.seats_per_row}</span></div>
-                        </div>
+                            <div>Capacity: <span className="text-slate-900 font-medium">{vehicle.total_capacity}</span></div>
+                            <div>Wheelchair: <span className="text-slate-900 font-medium">{vehicle.wheelchair_spaces}</span></div>
+                            <div>Rows: <span className="text-slate-900 font-medium">{vehicle.rows}</span></div>
+                            <div>Seats/Row: <span className="text-slate-900 font-medium">{vehicle.seats_per_row}</span></div>
+                          </div>
 
                           <Link
                             href={`/dashboard/vehicles/${vehicle.vehicle_id}`}
@@ -409,7 +409,7 @@ export default function VehicleSeatingClient({
                       ))}
                     </div>
                   ) : substitutionVehicles.length === 0 && !isLoadingSubstitutes && error === null ? (
-                      <div className="text-center py-10 text-slate-500">
+                    <div className="text-center py-10 text-slate-500">
                       <div className="text-4xl mb-3">🔍</div>
                       <p>Click "Find Substitute Vehicles" to search</p>
                     </div>

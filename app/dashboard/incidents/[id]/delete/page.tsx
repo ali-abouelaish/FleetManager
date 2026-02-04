@@ -20,7 +20,7 @@ export default function DeleteIncidentPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     async function loadData() {
       const { id } = await params
-      
+
       // Check permissions first - only super admin can delete
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
@@ -190,7 +190,7 @@ export default function DeleteIncidentPage({ params }: { params: Promise<{ id: s
 
           <div className="flex justify-end space-x-4 mt-6">
             <Link href={`/dashboard/incidents/${incident.id}`}>
-              <Button type="button" variant="secondary">Cancel</Button>
+              <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">Cancel</Button>
             </Link>
             <Button
               type="button"

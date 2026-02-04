@@ -7,10 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertCircle, UserCog, Users, FileText, Car } from 'lucide-react'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 
 export default function EditIncidentPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -42,8 +40,7 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     async function loadData() {
       const { id } = await params
-      
-      // Check permissions first
+
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
         setUnauthorized(true)
@@ -63,7 +60,6 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
         return
       }
 
-      // Load incident
       const { data: incidentData, error: incidentError } = await supabase
         .from('incidents')
         .select('*')
@@ -76,7 +72,6 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
         return
       }
 
-      // Check if user is the creator
       if (incidentData.created_by !== userData.id) {
         setUnauthorized(true)
         setCheckingPermissions(false)
@@ -93,7 +88,6 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
         resolved: incidentData.resolved || false,
       })
 
-      // Load related data
       const [employeesResult, passengersResult, vehiclesResult, routesResult, employeesLinks, passengersLinks] = await Promise.all([
         supabase.from('employees').select('id, full_name').order('full_name'),
         supabase.from('passengers').select('id, full_name').order('full_name'),
@@ -120,12 +114,7 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
     setLoadingSessions(true)
     const { data } = await supabase
       .from('route_sessions')
-      .select(`
-        id,
-        session_date,
-        session_type,
-        routes(route_number)
-      `)
+      .select(`id, session_date, session_type, routes(route_number)`)
       .eq('route_id', routeId)
       .order('session_date', { ascending: false })
       .order('session_type', { ascending: true })
@@ -143,17 +132,13 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
 
   const toggleEmployee = (employeeId: number) => {
     setSelectedEmployees(prev =>
-      prev.includes(employeeId)
-        ? prev.filter(id => id !== employeeId)
-        : [...prev, employeeId]
+      prev.includes(employeeId) ? prev.filter(id => id !== employeeId) : [...prev, employeeId]
     )
   }
 
   const togglePassenger = (passengerId: number) => {
     setSelectedPassengers(prev =>
-      prev.includes(passengerId)
-        ? prev.filter(id => id !== passengerId)
-        : [...prev, passengerId]
+      prev.includes(passengerId) ? prev.filter(id => id !== passengerId) : [...prev, passengerId]
     )
   }
 
@@ -164,8 +149,7 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
 
     try {
       const { id } = await params
-      
-      // Update the incident
+
       const { error: updateError } = await supabase
         .from('incidents')
         .update({
@@ -180,7 +164,6 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
 
       if (updateError) throw updateError
 
-      // Update employee links
       await supabase.from('incident_employees').delete().eq('incident_id', id)
       if (selectedEmployees.length > 0) {
         const employeeLinks = selectedEmployees.map(employeeId => ({
@@ -190,7 +173,6 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
         await supabase.from('incident_employees').insert(employeeLinks)
       }
 
-      // Update passenger links
       await supabase.from('incident_passengers').delete().eq('incident_id', id)
       if (selectedPassengers.length > 0) {
         const passengerLinks = selectedPassengers.map(passengerId => ({
@@ -200,15 +182,10 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
         await supabase.from('incident_passengers').insert(passengerLinks)
       }
 
-      // Audit log
       await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table_name: 'incidents',
-          record_id: parseInt(id),
-          action: 'UPDATE',
-        }),
+        body: JSON.stringify({ table_name: 'incidents', record_id: parseInt(id), action: 'UPDATE' }),
       }).catch(err => console.error('Audit log error:', err))
 
       router.push(`/dashboard/incidents/${id}`)
@@ -222,161 +199,143 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
 
   if (checkingPermissions) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-gray-600">Checking permissions...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-slate-500">Checking permissions...</p>
       </div>
     )
   }
 
   if (unauthorized) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center space-x-4">
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
           <Link href="/dashboard/incidents">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
-              <p className="text-gray-600">You can only edit incidents that you created.</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-center">
+          <h2 className="text-lg font-bold text-red-600 mb-2">Access Denied</h2>
+          <p className="text-slate-600 text-sm">You can only edit incidents that you created.</p>
+        </div>
       </div>
     )
   }
 
   if (!incident) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-gray-600">Incident not found</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-slate-500">Incident not found</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
+    <div className="space-y-3">
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
         <Link href={`/dashboard/incidents/${incident.id}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-navy">Edit Incident #{incident.id}</h1>
-          <p className="mt-2 text-sm text-gray-600">Update incident information</p>
+          <h1 className="text-xl font-bold text-slate-900">Edit Incident #{incident.id}</h1>
+          <p className="text-sm text-slate-500">Update incident information</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle>Incident Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="text-sm text-red-800">{error}</div>
-              </div>
-            )}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="incident_type">Incident Type *</Label>
-                <Input
-                  id="incident_type"
-                  required
-                  value={formData.incident_type}
-                  onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })}
-                />
+      {/* Main Form Card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Incident Details Section */}
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <FileText className="mr-2 h-4 w-4" />
+            Incident Details
+          </h2>
+        </div>
+        <div className="p-4">
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="incident_type" className="text-xs font-medium text-slate-600">Incident Type *</Label>
+                <Input id="incident_type" required value={formData.incident_type} onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })} className="h-9" />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="resolved">Status</Label>
-                <Select
-                  id="resolved"
-                  value={formData.resolved ? 'true' : 'false'}
-                  onChange={(e) => setFormData({ ...formData, resolved: e.target.value === 'true' })}
-                >
+              <div className="space-y-1">
+                <Label htmlFor="resolved" className="text-xs font-medium text-slate-600">Status</Label>
+                <Select id="resolved" value={formData.resolved ? 'true' : 'false'} onChange={(e) => setFormData({ ...formData, resolved: e.target.value === 'true' })} className="h-9">
                   <option value="false">Open</option>
                   <option value="true">Resolved</option>
                 </Select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+            <div className="space-y-1">
+              <Label htmlFor="description" className="text-xs font-medium text-slate-600">Description *</Label>
               <textarea
                 id="description"
                 required
-                rows={6}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                rows={3}
+                className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:border-transparent"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
+          </div>
+        </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_id">Vehicle</Label>
-                <Select
-                  id="vehicle_id"
-                  value={formData.vehicle_id}
-                  onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
-                >
-                  <option value="">Select a vehicle</option>
-                  {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.vehicle_identifier || `${vehicle.make} ${vehicle.model}`}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="route_id">Route</Label>
-                <Select
-                  id="route_id"
-                  value={formData.route_id}
-                  onChange={(e) => {
-                    setFormData({ ...formData, route_id: e.target.value, route_session_id: '' })
-                    if (e.target.value) {
-                      loadRouteSessions(parseInt(e.target.value))
-                    } else {
-                      setRouteSessions([])
-                    }
-                  }}
-                >
-                  <option value="">Select a route</option>
-                  {routes.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.route_number || `Route ${route.id}`}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+        {/* Vehicle & Route Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <Car className="mr-2 h-4 w-4" />
+            Vehicle & Route
+          </h2>
+        </div>
+        <div className="p-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-1">
+              <Label htmlFor="vehicle_id" className="text-xs font-medium text-slate-600">Vehicle</Label>
+              <Select id="vehicle_id" value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })} className="h-9">
+                <option value="">Select vehicle</option>
+                {vehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.vehicle_identifier || `${vehicle.make} ${vehicle.model}`}
+                  </option>
+                ))}
+              </Select>
             </div>
-
+            <div className="space-y-1">
+              <Label htmlFor="route_id" className="text-xs font-medium text-slate-600">Route</Label>
+              <Select
+                id="route_id"
+                value={formData.route_id}
+                onChange={(e) => {
+                  setFormData({ ...formData, route_id: e.target.value, route_session_id: '' })
+                  if (e.target.value) loadRouteSessions(parseInt(e.target.value))
+                  else setRouteSessions([])
+                }}
+                className="h-9"
+              >
+                <option value="">Select route</option>
+                {routes.map((route) => (
+                  <option key={route.id} value={route.id}>{route.route_number || `Route ${route.id}`}</option>
+                ))}
+              </Select>
+            </div>
             {formData.route_id && (
-              <div className="space-y-2">
-                <Label htmlFor="route_session_id">Route Session</Label>
-                <Select
-                  id="route_session_id"
-                  value={formData.route_session_id}
-                  onChange={(e) => setFormData({ ...formData, route_session_id: e.target.value })}
-                  disabled={loadingSessions}
-                >
-                  <option value="">Select a session (optional)</option>
+              <div className="space-y-1">
+                <Label htmlFor="route_session_id" className="text-xs font-medium text-slate-600">Route Session</Label>
+                <Select id="route_session_id" value={formData.route_session_id} onChange={(e) => setFormData({ ...formData, route_session_id: e.target.value })} disabled={loadingSessions} className="h-9">
+                  <option value="">Select session (optional)</option>
                   {routeSessions.map((session) => (
                     <option key={session.id} value={session.id}>
                       {session.route_name} - {session.session_date} ({session.session_type})
@@ -385,65 +344,73 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
                 </Select>
               </div>
             )}
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label>Related Employees</Label>
-              <div className="max-h-48 overflow-y-auto border rounded-md p-4">
-                {employees.length === 0 ? (
-                  <p className="text-sm text-gray-500">No employees available</p>
-                ) : (
-                  <div className="space-y-2">
-                    {employees.map((employee) => (
-                      <label key={employee.id} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedEmployees.includes(employee.id)}
-                          onChange={() => toggleEmployee(employee.id)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">{employee.full_name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* Related Employees Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <UserCog className="mr-2 h-4 w-4" />
+            Related Employees ({selectedEmployees.length} selected)
+          </h2>
+        </div>
+        <div className="p-4">
+          {employees.length === 0 ? (
+            <p className="text-sm text-slate-500 italic">No employees available</p>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-4 lg:grid-cols-5 max-h-40 overflow-y-auto">
+              {employees.map((employee) => (
+                <div
+                  key={employee.id}
+                  className={`flex items-center p-2 border rounded-lg cursor-pointer transition-colors ${selectedEmployees.includes(employee.id) ? 'border-[#023E8A] bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}`}
+                  onClick={() => toggleEmployee(employee.id)}
+                >
+                  <input type="checkbox" checked={selectedEmployees.includes(employee.id)} onChange={() => toggleEmployee(employee.id)} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                  <span className="ml-2 text-sm text-slate-700 truncate">{employee.full_name}</span>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
 
-            <div className="space-y-2">
-              <Label>Related Passengers</Label>
-              <div className="max-h-48 overflow-y-auto border rounded-md p-4">
-                {passengers.length === 0 ? (
-                  <p className="text-sm text-gray-500">No passengers available</p>
-                ) : (
-                  <div className="space-y-2">
-                    {passengers.map((passenger) => (
-                      <label key={passenger.id} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedPassengers.includes(passenger.id)}
-                          onChange={() => togglePassenger(passenger.id)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">{passenger.full_name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* Related Passengers Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Related Passengers ({selectedPassengers.length} selected)
+          </h2>
+        </div>
+        <div className="p-4">
+          {passengers.length === 0 ? (
+            <p className="text-sm text-slate-500 italic">No passengers available</p>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-4 lg:grid-cols-5 max-h-40 overflow-y-auto">
+              {passengers.map((passenger) => (
+                <div
+                  key={passenger.id}
+                  className={`flex items-center p-2 border rounded-lg cursor-pointer transition-colors ${selectedPassengers.includes(passenger.id) ? 'border-[#023E8A] bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}`}
+                  onClick={() => togglePassenger(passenger.id)}
+                >
+                  <input type="checkbox" checked={selectedPassengers.includes(passenger.id)} onChange={() => togglePassenger(passenger.id)} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                  <span className="ml-2 text-sm text-slate-700 truncate">{passenger.full_name}</span>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
+      </div>
 
-            <div className="flex justify-end space-x-4">
-              <Link href={`/dashboard/incidents/${incident.id}`}>
-                <Button type="button" variant="secondary">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Bottom Actions */}
+      <div className="flex justify-end gap-3 pt-3 border-t border-slate-200">
+        <Link href={`/dashboard/incidents/${incident.id}`}>
+          <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
+            Cancel
+          </Button>
+        </Link>
+        <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
+          {loading ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
     </div>
   )
 }
-

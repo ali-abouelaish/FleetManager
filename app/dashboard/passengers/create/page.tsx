@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Plus, Trash2, Users, AlertCircle } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/Card'
+import { ArrowLeft, Plus, Trash2, Users, AlertCircle, MapPin, School as SchoolIcon, Bus } from 'lucide-react'
 import Link from 'next/link'
 import { generateUUID } from '@/lib/utils'
 
@@ -45,6 +45,7 @@ export default function CreatePassengerPage() {
     supervision_type: '',
   })
 
+  // Start with one empty contact
   const [parentContacts, setParentContacts] = useState<ParentContact[]>([
     {
       id: generateUUID(),
@@ -98,6 +99,10 @@ export default function CreatePassengerPage() {
     loadData()
   }, [supabase])
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -107,7 +112,11 @@ export default function CreatePassengerPage() {
       // Step 1: Create the passenger
       const { data: passengerData, error: passengerError } = await supabase
         .from('passengers')
-        .insert([formData])
+        .insert([{
+          ...formData,
+          school_id: formData.school_id ? parseInt(formData.school_id) : null,
+          route_id: formData.route_id ? parseInt(formData.route_id) : null,
+        }])
         .select()
         .single()
 
@@ -115,14 +124,13 @@ export default function CreatePassengerPage() {
 
       const passengerId = passengerData.id
 
-      // Step 2: Create parent contacts (only ones with names filled in)
+      // Step 2: Create parent contacts
       const validParentContacts = parentContacts.filter(
         (contact) => contact.full_name.trim() !== ''
       )
 
       if (validParentContacts.length > 0) {
         for (const contact of validParentContacts) {
-          // Create parent contact
           const { data: contactData, error: contactError } = await supabase
             .from('parent_contacts')
             .insert({
@@ -136,11 +144,10 @@ export default function CreatePassengerPage() {
             .single()
 
           if (contactError) {
-            console.error('Error creating parent contact:', contactError)
-            continue // Skip this contact but continue with others
+            console.error('Error creating contact:', contactError)
+            continue
           }
 
-          // Link parent contact to passenger
           const { error: linkError } = await supabase
             .from('passenger_parent_contacts')
             .insert({
@@ -148,13 +155,11 @@ export default function CreatePassengerPage() {
               parent_contact_id: contactData.id,
             })
 
-          if (linkError) {
-            console.error('Error linking parent contact:', linkError)
-          }
+          if (linkError) console.error('Error linking contact:', linkError)
         }
       }
 
-      // Step 3: Audit log
+      // Audit log
       await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -163,7 +168,7 @@ export default function CreatePassengerPage() {
           record_id: passengerId,
           action: 'CREATE',
         }),
-      })
+      }).catch(console.error)
 
       router.push('/dashboard/passengers')
       router.refresh()
@@ -176,374 +181,215 @@ export default function CreatePassengerPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Link href="/dashboard/passengers">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+    <div className="max-w-[1600px] mx-auto p-4 space-y-6">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 -mx-6 -mt-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/passengers">
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Add New Passenger</h1>
+            <p className="text-xs text-slate-500">Create a new passenger profile</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/passengers">
+            <Button variant="outline" size="sm" className="text-slate-600 border-slate-300 hover:bg-slate-50">Cancel</Button>
+          </Link>
+          <Button onClick={handleSubmit} disabled={loading} className="min-w-[100px]">
+            {loading ? 'Creating...' : 'Create Passenger'}
           </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-navy">Add New Passenger</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Fill in the passenger information and add parent/guardian contacts
-          </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle>Passenger Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="text-sm text-red-800">{error}</div>
-              </div>
-            )}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3 text-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <p className="font-medium">{error}</p>
+        </div>
+      )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  required
-                  value={formData.full_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, full_name: e.target.value })
-                  }
-                />
-              </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-              <div className="space-y-2">
-                <Label htmlFor="dob">Date of Birth</Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={formData.dob}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dob: e.target.value })
-                  }
-                />
-              </div>
+        {/* Column 1: Identity & Status (Left) */}
+        <div className="lg:col-span-3 space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Identity</h2>
 
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
-                <Select
-                  id="gender"
-                  value={formData.gender}
-                  onChange={(e) =>
-                    setFormData({ ...formData, gender: e.target.value })
-                  }
-                >
-                  <option value="">Select gender (optional)</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
-                </Select>
-              </div>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="full_name" className="text-xs text-slate-500">Full Name *</Label>
+                  <Input id="full_name" value={formData.full_name} onChange={handleInputChange} required className="h-8 text-sm font-medium" placeholder="e.g. John Doe" />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="school_id">School</Label>
-                <Select
-                  id="school_id"
-                  value={formData.school_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, school_id: e.target.value })
-                  }
-                >
-                  <option value="">Select a school</option>
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="dob" className="text-xs text-slate-500">Date of Birth</Label>
+                    <Input type="date" id="dob" value={formData.dob} onChange={handleInputChange} className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="gender" className="text-xs text-slate-500">Gender</Label>
+                    <Select id="gender" value={formData.gender} onChange={handleInputChange} className="h-8 text-xs">
+                      <option value="">Select...</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </Select>
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="route_id">Route</Label>
-                <Select
-                  id="route_id"
-                  value={formData.route_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, route_id: e.target.value })
-                  }
-                >
-                  <option value="">Select a route</option>
-                  {routes.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.route_number || `Route ${route.id}`}
-                    </option>
-                  ))}
-                </Select>
+                <div className="space-y-1 pt-2">
+                  <Label htmlFor="mobility_type" className="text-xs text-slate-500">Mobility Type</Label>
+                  <Select id="mobility_type" value={formData.mobility_type} onChange={handleInputChange} className="h-8 text-sm">
+                    <option value="">Select Mobility...</option>
+                    <option value="Ambulant">Ambulant</option>
+                    <option value="Wheelchair">Wheelchair</option>
+                    <option value="Walker">Walker</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="supervision_type" className="text-xs text-slate-500">Supervision Level</Label>
+                  <Input id="supervision_type" value={formData.supervision_type} onChange={handleInputChange} className="h-8 text-sm" placeholder="e.g. 1:1, General" />
+                </div>
+
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Column 2: Journey & Logistics (Center) */}
+        <div className="lg:col-span-5 space-y-4">
+
+          {/* Journey Details */}
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Journey Details</h2>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 md:col-span-1 space-y-1">
+                  <Label htmlFor="school_id" className="text-xs text-slate-500 flex items-center gap-1"><SchoolIcon className="h-3 w-3" /> School</Label>
+                  <Select id="school_id" value={formData.school_id} onChange={handleInputChange} className="h-8 text-sm">
+                    <option value="">Select School...</option>
+                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </Select>
+                </div>
+                <div className="col-span-2 md:col-span-1 space-y-1">
+                  <Label htmlFor="route_id" className="text-xs text-slate-500 flex items-center gap-1"><Bus className="h-3 w-3" /> Route</Label>
+                  <Select id="route_id" value={formData.route_id} onChange={handleInputChange} className="h-8 text-sm">
+                    <option value="">Select Route...</option>
+                    {routes.map(r => <option key={r.id} value={r.id}>{r.route_number || `Route ${r.id}`}</option>)}
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mobility_type">Mobility Type</Label>
-                <Select
-                  id="mobility_type"
-                  value={formData.mobility_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, mobility_type: e.target.value })
-                  }
-                >
-                  <option value="">Select mobility type</option>
-                  <option value="Ambulant">Ambulant</option>
-                  <option value="Wheelchair">Wheelchair</option>
-                  <option value="Walker">Walker</option>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="seat_number" className="text-xs text-slate-500">Seat Number</Label>
+                  <Input id="seat_number" value={formData.seat_number} onChange={handleInputChange} className="h-8 text-sm" placeholder="e.g. 3A" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="personal_item" className="text-xs text-slate-500">Personal Item</Label>
+                  <Input id="personal_item" value={formData.personal_item} onChange={handleInputChange} className="h-8 text-sm" placeholder="e.g. Backpack" />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="seat_number">Seat Number</Label>
-                <Input
-                  id="seat_number"
-                  value={formData.seat_number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, seat_number: e.target.value })
-                  }
-                />
+              <div className="space-y-1">
+                <Label htmlFor="address" className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="h-3 w-3" /> Home Address</Label>
+                <textarea id="address" value={formData.address} onChange={handleInputChange} rows={2} className="w-full text-sm border-slate-300 rounded-md focus:ring-primary focus:border-primary" placeholder="Full home address..." />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <textarea
-                id="address"
-                rows={3}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-              />
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="important_notes">
-                Important Notes <span className="text-orange-600 font-semibold">⚠️</span>
-              </Label>
-              <textarea
-                id="important_notes"
-                rows={4}
-                className="flex w-full rounded-md border-2 border-orange-300 bg-orange-50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-                value={formData.important_notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, important_notes: e.target.value })
-                }
-                placeholder="Enter any flagged or important information about this passenger that should be prominently displayed..."
-              />
-              <p className="text-xs text-orange-600 mt-1">
-                This information will be prominently displayed on the passenger profile
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sen_requirements">SEN Requirements</Label>
-              <textarea
-                id="sen_requirements"
-                rows={3}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={formData.sen_requirements}
-                onChange={(e) =>
-                  setFormData({ ...formData, sen_requirements: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
+          {/* SEN & Notes */}
+          <Card>
+            <CardContent className="p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="personal_item">Personal Item</Label>
-                <Input
-                  id="personal_item"
-                  value={formData.personal_item}
-                  onChange={(e) =>
-                    setFormData({ ...formData, personal_item: e.target.value })
-                  }
-                  placeholder="e.g., backpack, medication bag, etc."
-                />
+                <Label htmlFor="sen_requirements" className="text-xs font-bold text-slate-700 uppercase tracking-wider">SEN Requirements</Label>
+                <textarea id="sen_requirements" value={formData.sen_requirements} onChange={handleInputChange} rows={3} className="w-full text-sm bg-blue-50/50 border-blue-200 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Specific educational or health needs..." />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="supervision_type">Supervision Type</Label>
-                <Input
-                  id="supervision_type"
-                  value={formData.supervision_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, supervision_type: e.target.value })
-                  }
-                  placeholder="Type of supervision required"
-                />
+                <Label htmlFor="important_notes" className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Important Notes</Label>
+                <textarea id="important_notes" value={formData.important_notes} onChange={handleInputChange} rows={3} className="w-full text-sm bg-amber-50 border-amber-200 rounded-md focus:ring-amber-500 focus:border-amber-500" placeholder="Critical information visible to drivers..." />
               </div>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Parent Contacts Section */}
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              <Users className="mr-2 h-5 w-5" />
-              Parent / Guardian Contacts
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={addParentContact}
-              className="bg-white text-navy hover:bg-gray-100"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Contact
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-2 mb-4">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-gray-600">
-                Add emergency contacts, parents, or guardians for this passenger. 
-                You can add multiple contacts. Leave fields empty if not applicable.
-              </p>
-            </div>
-          </div>
+        {/* Column 3: Contacts (Right) */}
+        <div className="lg:col-span-4 space-y-4">
+          <Card className="h-full">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Users className="h-4 w-4" /> Parent Contacts</h2>
+                <Button type="button" variant="ghost" size="sm" onClick={addParentContact} className="h-6 w-6 p-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
 
-          <div className="space-y-6">
-            {parentContacts.map((contact, index) => (
-              <Card key={contact.id} className="border-2 border-gray-200">
-                <CardHeader className="bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-navy">
-                      Contact {index + 1}
-                    </h3>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+                {parentContacts.map((contact, index) => (
+                  <div key={contact.id} className="p-3 rounded-lg border border-slate-200 bg-slate-50 relative group">
                     {parentContacts.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeParentContact(contact.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <button type="button" onClick={() => removeParentContact(contact.id)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor={`parent_name_${contact.id}`}>
-                        Full Name
-                      </Label>
+                      <h3 className="text-xs font-semibold text-slate-400 uppercase">Contact {index + 1}</h3>
                       <Input
-                        id={`parent_name_${contact.id}`}
                         value={contact.full_name}
-                        onChange={(e) =>
-                          updateParentContact(contact.id, 'full_name', e.target.value)
-                        }
-                        placeholder="e.g., Sarah Johnson"
+                        onChange={(e) => updateParentContact(contact.id, 'full_name', e.target.value)}
+                        className="h-7 text-sm bg-white"
+                        placeholder="Full Name"
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`parent_relationship_${contact.id}`}>
-                        Relationship
-                      </Label>
-                      <Select
-                        id={`parent_relationship_${contact.id}`}
-                        value={contact.relationship}
-                        onChange={(e) =>
-                          updateParentContact(contact.id, 'relationship', e.target.value)
-                        }
-                      >
-                        <option value="">-- Select Relationship --</option>
-                        <option value="Mother">Mother</option>
-                        <option value="Father">Father</option>
-                        <option value="Guardian">Guardian</option>
-                        <option value="Grandparent">Grandparent</option>
-                        <option value="Aunt">Aunt</option>
-                        <option value="Uncle">Uncle</option>
-                        <option value="Sibling">Sibling</option>
-                        <option value="Other">Other</option>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`parent_phone_${contact.id}`}>
-                        Phone Number
-                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select
+                          value={contact.relationship}
+                          onChange={(e) => updateParentContact(contact.id, 'relationship', e.target.value)}
+                          className="h-7 text-xs bg-white"
+                        >
+                          <option value="">Relationship...</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Father">Father</option>
+                          <option value="Guardian">Guardian</option>
+                          <option value="Other">Other</option>
+                        </Select>
+                        <Input
+                          value={contact.phone_number}
+                          onChange={(e) => updateParentContact(contact.id, 'phone_number', e.target.value)}
+                          className="h-7 text-xs bg-white"
+                          placeholder="Phone"
+                        />
+                      </div>
                       <Input
-                        id={`parent_phone_${contact.id}`}
-                        type="tel"
-                        value={contact.phone_number}
-                        onChange={(e) =>
-                          updateParentContact(contact.id, 'phone_number', e.target.value)
-                        }
-                        placeholder="e.g., 07123456789"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`parent_email_${contact.id}`}>
-                        Email
-                      </Label>
-                      <Input
-                        id={`parent_email_${contact.id}`}
-                        type="email"
                         value={contact.email}
-                        onChange={(e) =>
-                          updateParentContact(contact.id, 'email', e.target.value)
-                        }
-                        placeholder="e.g., sarah@example.com"
+                        onChange={(e) => updateParentContact(contact.id, 'email', e.target.value)}
+                        className="h-7 text-xs bg-white"
+                        placeholder="Email"
                       />
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor={`parent_address_${contact.id}`}>
-                        Address
-                      </Label>
-                      <textarea
-                        id={`parent_address_${contact.id}`}
-                        rows={2}
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      <Input
                         value={contact.address}
-                        onChange={(e) =>
-                          updateParentContact(contact.id, 'address', e.target.value)
-                        }
-                        placeholder="Full address..."
+                        onChange={(e) => updateParentContact(contact.id, 'address', e.target.value)}
+                        className="h-7 text-xs bg-white"
+                        placeholder="Address (if different)"
                       />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Submit Buttons */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-end space-x-4">
-            <Link href="/dashboard/passengers">
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </Link>
-            <Button type="submit" onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Creating...' : 'Create Passenger'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      </form>
     </div>
   )
 }
-

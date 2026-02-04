@@ -33,20 +33,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'active:scale-[0.98]',
           // Variant styles
           {
-            // Primary - Gradient violet/blue with glow (matches theme)
-            'bg-gradient-to-r from-violet-600 to-blue-700 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 hover:from-violet-700 hover:to-blue-800 focus-visible:ring-violet-500':
+            // Primary - Navy Blue (matches theme)
+            'bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:ring-primary':
               variant === 'primary',
-            // Secondary - Slate background with dark text (matches theme)
-            'bg-slate-100 text-slate-800 border border-slate-300 hover:bg-slate-200 hover:border-slate-400 focus-visible:ring-slate-400':
+            // Secondary - Light Blue (matches theme)
+            'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 focus-visible:ring-secondary':
               variant === 'secondary',
-            // Danger - Red gradient
-            'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/30 hover:from-red-700 hover:to-red-600 focus-visible:ring-red-500':
+            // Danger - Red
+            'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 focus-visible:ring-destructive':
               variant === 'danger',
-            // Ghost - Transparent with hover
-            'text-slate-600 hover:bg-slate-100 hover:text-violet-700 focus-visible:ring-violet-500':
+            // Ghost - Transparent
+            'hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring':
               variant === 'ghost',
             // Outline - Bordered
-            'border-2 border-violet-600 text-violet-700 bg-transparent hover:bg-violet-600 hover:text-white focus-visible:ring-violet-500':
+            'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring':
               variant === 'outline',
           },
           // Size styles
@@ -61,19 +61,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         {...props}
       >
-        {isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Loading...</span>
-          </>
-        ) : (
-          <>
-            {leftIcon && <span className="flex-shrink-0">{leftIcon}</span>}
-            {children}
-            {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
-          </>
-        )}
-      </button>
+        {
+          isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading...</span>
+            </>
+          ) : (
+            <>
+              {leftIcon && <span className="flex-shrink-0">{leftIcon}</span>}
+              {children}
+              {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
+            </>
+          )}
+      </button >
     )
   }
 )

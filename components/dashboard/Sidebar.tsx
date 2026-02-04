@@ -183,8 +183,12 @@ export function Sidebar() {
   const sidebarContent = (
     <>
       {/* Header */}
-      <div className="relative flex h-16 items-center justify-center border-b border-slate-200/60 transition-all duration-300">
-        <h1 className="text-xl font-bold text-violet-700 tracking-tight">CountyCars</h1>
+      <div className="relative flex h-28 items-center justify-center border-b border-slate-200/60 transition-all duration-300 py-4">
+        <img
+          src="/assets/countylogofin.png"
+          alt="CountyCars"
+          className="h-24 w-auto object-contain"
+        />
         <button
           className="lg:hidden absolute right-4 p-2 rounded-lg hover:bg-slate-100 transition-colors"
           onClick={() => setIsMobileOpen(false)}
@@ -217,7 +221,7 @@ export function Sidebar() {
                 className={cn(
                   'group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200',
                   isActive
-                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                    ? 'bg-primary text-white shadow-lg shadow-primary/25'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 )}
               >
@@ -253,20 +257,20 @@ export function Sidebar() {
                 className={cn(
                   'w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200',
                   hasActiveItem
-                    ? 'bg-violet-50 text-violet-700'
+                    ? 'bg-primary/10 text-primary'
                     : 'text-slate-600 hover:bg-slate-100'
                 )}
               >
                 <div className="flex items-center gap-3">
                   <group.icon className={cn(
                     "h-[18px] w-[18px] flex-shrink-0",
-                    hasActiveItem ? "text-violet-500" : "text-slate-400"
+                    hasActiveItem ? "text-primary" : "text-slate-400"
                   )} />
                   <span>{group.name}</span>
                 </div>
                 <ChevronDown className={cn(
                   "h-4 w-4 transition-transform duration-200",
-                  hasActiveItem ? "text-violet-500" : "text-slate-400",
+                  hasActiveItem ? "text-primary" : "text-slate-400",
                   isExpanded && "rotate-180"
                 )} />
               </button>
@@ -288,14 +292,14 @@ export function Sidebar() {
                         className={cn(
                           'group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150',
                           isActive
-                            ? 'bg-violet-50 text-violet-700 border-l-2 border-violet-500 -ml-[11px] pl-[21px]'
+                            ? 'bg-primary/10 text-primary border-l-2 border-primary -ml-[11px] pl-[21px]'
                             : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                         )}
                       >
                         <item.icon
                           className={cn(
                             'h-4 w-4 flex-shrink-0 transition-colors',
-                            isActive ? 'text-violet-500' : 'text-slate-400 group-hover:text-slate-500'
+                            isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-500'
                           )}
                         />
                         <span className="flex-1">{item.name}</span>

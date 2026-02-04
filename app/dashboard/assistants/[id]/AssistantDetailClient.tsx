@@ -52,8 +52,8 @@ export default function AssistantDetailClient({ assistant }: AssistantDetailClie
       const idBadgeDoc = data?.find(doc => {
         if (!doc.doc_type) return false
         const docTypeLower = doc.doc_type.toLowerCase()
-        return docTypeLower === 'id badge' || 
-               (docTypeLower.includes('id') && docTypeLower.includes('badge'))
+        return docTypeLower === 'id badge' ||
+          (docTypeLower.includes('id') && docTypeLower.includes('badge'))
       })
 
       if (idBadgeDoc) {
@@ -69,7 +69,7 @@ export default function AssistantDetailClient({ assistant }: AssistantDetailClie
 
         const urls = parseFileUrls(idBadgeDoc.file_url || idBadgeDoc.file_path)
         // Find first image URL
-        let imageUrl = urls.find(url => 
+        let imageUrl = urls.find(url =>
           url && (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif'))
         ) || urls[0]
 
@@ -103,19 +103,19 @@ export default function AssistantDetailClient({ assistant }: AssistantDetailClie
         <img
           src={idBadgePhotoUrl}
           alt={`${employee?.full_name || 'Assistant'} - ID Badge`}
-          className="h-24 w-24 rounded-full object-cover border-4 border-violet-500 shadow-lg shadow-violet-500/25"
+          className="h-24 w-24 rounded-full object-cover border-4 border-primary shadow-lg shadow-primary/25"
           onError={(e) => {
             // Fallback if image fails to load
             e.currentTarget.style.display = 'none'
           }}
         />
       ) : (
-        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center border-4 border-violet-500 shadow-lg shadow-violet-500/25">
+        <div className="h-24 w-24 rounded-full bg-primary flex items-center justify-center border-4 border-primary shadow-lg shadow-primary/25">
           <span className="text-white text-2xl font-bold">{initials}</span>
         </div>
       )}
       {assistant.tas_badge_number && (
-        <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-violet-600 to-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white shadow-md shadow-violet-500/25">
+        <div className="absolute -bottom-1 -right-1 bg-primary text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white shadow-md shadow-primary/25">
           {assistant.tas_badge_number}
         </div>
       )}

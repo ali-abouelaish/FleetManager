@@ -38,7 +38,7 @@ export function RefreshNotificationsButton() {
     <Button
       onClick={handleRefresh}
       disabled={loading}
-      className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
+      className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25"
     >
       <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
       {loading ? 'Refreshing...' : 'Refresh Notifications'}

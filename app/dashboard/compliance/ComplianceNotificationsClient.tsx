@@ -485,7 +485,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                     <TableCell>
                       <Link
                         href={getEntityLink(notification.entity_type, notification.entity_id)}
-                        className="text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1 font-medium"
+                        className="text-primary hover:text-primary/80 hover:underline flex items-center gap-1 font-medium"
                       >
                         <span>View {notification.entity_type}</span>
                         <ExternalLink className="h-3 w-3" />
@@ -561,7 +561,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                           variant="ghost"
                           onClick={() => handleOpenCase(notification.id)}
                           disabled={openingCase === notification.id}
-                          className="text-slate-600 hover:text-violet-600 hover:bg-violet-50 h-8 w-8 p-0"
+                          className="text-slate-600 hover:text-primary hover:bg-primary/10 h-8 w-8 p-0"
                           title="Open case"
                         >
                           <FolderOpen className="h-4 w-4" />
@@ -571,7 +571,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                             size="sm"
                             onClick={() => handleOpenEmailEditor(notification)}
                             disabled={sendingEmail === notification.id}
-                            className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-sm h-8 w-8 p-0"
+                            className="bg-primary hover:bg-primary/90 text-white shadow-sm h-8 w-8 p-0"
                             title="Send Email"
                           >
                             <Mail className="h-4 w-4" />
@@ -583,7 +583,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                             onClick={() => handleOpenEmailEditor(notification)}
                             disabled={sendingEmail === notification.id}
                             variant="ghost"
-                            className="text-violet-600 hover:text-violet-700 hover:bg-violet-50 h-8 w-8 p-0"
+                            className="text-primary hover:text-primary/80 hover:bg-primary/10 h-8 w-8 p-0"
                             title="Resend Email"
                           >
                             <Mail className="h-4 w-4" />
@@ -659,7 +659,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                       <TableCell>
                         <Link
                           href={getEntityLink(notification.entity_type, notification.entity_id)}
-                          className="text-violet-600 hover:underline"
+                          className="text-primary hover:underline"
                         >
                           View {notification.entity_type}
                         </Link>
@@ -701,7 +701,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
 
               {loadingTemplate ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="mt-2 text-slate-500">Loading email template...</p>
                 </div>
               ) : (
@@ -713,7 +713,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                         type="checkbox"
                         checked={holdOnSend}
                         onChange={(e) => setHoldOnSend(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                       />
                       <div>
                         <Label htmlFor="hold-on-send" className="text-slate-800">Put on hold until admin clears</Label>
@@ -728,7 +728,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                         type="checkbox"
                         checked={includeAppointmentLink}
                         onChange={(e) => setIncludeAppointmentLink(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                       />
                       <div>
                         <Label htmlFor="include-appointment-link" className="text-slate-800">Include appointment booking link</Label>
@@ -748,7 +748,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                         id="email-to"
                         value={selectedRecipient}
                         onChange={(e) => setSelectedRecipient(e.target.value)}
-                        className="mt-1 flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        className="mt-1 flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         required
                       >
                         {availableRecipients.map((recipient) => (
@@ -793,7 +793,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                       value={emailBody}
                       onChange={(e) => setEmailBody(e.target.value)}
                       required
-                      className="mt-1 flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+                      className="mt-1 flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                     />
                     <p className="text-xs text-slate-400 mt-1">
                       You can edit the email content above. The upload link will be automatically included.
@@ -818,7 +818,7 @@ export function ComplianceNotificationsClient({ initialNotifications }: Complian
                     <Button
                       onClick={handleSendEmail}
                       disabled={sendingEmail === editingNotification.id || !emailSubject.trim() || !emailBody.trim() || !selectedRecipient.trim()}
-                      className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25"
+                      className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25"
                     >
                       <Mail className="h-4 w-4 mr-2" />
                       {sendingEmail === editingNotification.id ? 'Sending...' : 'Send Email'}

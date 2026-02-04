@@ -69,12 +69,12 @@ async function VehiclesTable({
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Link href={`/dashboard/vehicles/${vehicle.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/vehicles/${vehicle.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -123,7 +123,7 @@ export default async function VehiclesPage({
           </div>
         </div>
         <Link href="/dashboard/vehicles/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25">
             <Plus className="mr-2 h-4 w-4" />
             Add Vehicle
           </Button>

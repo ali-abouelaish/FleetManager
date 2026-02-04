@@ -138,7 +138,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
               ${activeTab === 'overview'
-                ? 'border-violet-500 text-violet-600'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
@@ -149,7 +149,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
               ${activeTab === 'compliance'
-                ? 'border-violet-500 text-violet-600'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
@@ -160,7 +160,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
               ${activeTab === 'documents'
-                ? 'border-violet-500 text-violet-600'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
@@ -171,7 +171,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
             className={`
               border-b-2 px-1 py-4 text-sm font-medium transition-colors
               ${activeTab === 'daily-checks'
-                ? 'border-violet-500 text-violet-600'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
             `}
           >
@@ -216,10 +216,10 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                   <dd className="mt-1">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${vehicle.off_the_road
-                          ? 'bg-rose-100 text-rose-700'
-                          : vehicle.spare_vehicle
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-emerald-100 text-emerald-700'
+                        ? 'bg-rose-100 text-rose-700'
+                        : vehicle.spare_vehicle
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-emerald-100 text-emerald-700'
                         }`}
                     >
                       {vehicle.off_the_road ? 'VOR' : vehicle.spare_vehicle ? 'Spare' : 'Active'}
@@ -372,7 +372,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                           <div className="flex-1">
                             <Link
                               href={`/dashboard/routes/${route.id}`}
-                              className="font-semibold text-violet-600 hover:text-violet-800 transition-colors"
+                              className="font-semibold text-primary hover:text-blue-800 transition-colors"
                             >
                               {route.route_number || `Route ${route.id}`}
                             </Link>

@@ -110,11 +110,10 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
             <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
             <dd className="mt-1">
               <span
-                className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                  employee.employment_status === 'Active'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
+                className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${employee.employment_status === 'Active'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-gray-100 text-gray-800'
+                  }`}
               >
                 {employee.employment_status || 'N/A'}
               </span>
@@ -129,11 +128,10 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
             <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
             <dd className="mt-1">
               <span
-                className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
-                  employee.can_work === false
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-green-100 text-green-800'
-                }`}
+                className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${employee.can_work === false
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-green-100 text-green-800'
+                  }`}
               >
                 {employee.can_work === false ? (
                   <>
@@ -174,7 +172,7 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-violet-600" />
+              <Building2 className="h-5 w-5 text-primary" />
               Assigned Schools
             </CardTitle>
           </CardHeader>
@@ -187,7 +185,7 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
                   <li key={school.id}>
                     <Link
                       href={`/dashboard/schools/${school.id}`}
-                      className="text-sm font-medium text-violet-600 hover:underline"
+                      className="text-sm font-medium text-primary hover:underline"
                     >
                       {school.name}
                     </Link>

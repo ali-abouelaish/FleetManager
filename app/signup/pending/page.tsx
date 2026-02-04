@@ -1,12 +1,24 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { CheckCircle, Clock } from 'lucide-react'
 
 export default function PendingApprovalPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg text-center">
+        <div className="flex justify-center mb-6">
+          <div className="relative w-24 h-24">
+            <Image
+              src="/assets/countylogofin.png"
+              alt="CountyCars Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
         <div className="flex justify-center">
           <div className="rounded-full bg-yellow-100 p-4">
             <Clock className="h-12 w-12 text-yellow-600" />

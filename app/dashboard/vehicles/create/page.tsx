@@ -23,7 +23,7 @@ export default function CreateVehiclePage() {
   const [activeTab, setActiveTab] = useState<TabType>('basic')
 
   // File uploads state
-  const [fileUploads, setFileUploads] = useState<{[key: string]: File | null}>({
+  const [fileUploads, setFileUploads] = useState<{ [key: string]: File | null }>({
     registration_file: null,
     mot_file: null,
     insurance_file: null,
@@ -173,9 +173,9 @@ export default function CreateVehiclePage() {
           docType: string
           filePath: string
         }> = []
-        
+
         // Map file keys to document types
-        const fileKeyToDocType: {[key: string]: string} = {
+        const fileKeyToDocType: { [key: string]: string } = {
           registration_file: 'Plate Certificate',
           mot_file: 'MOT Certificate',
           insurance_file: 'Vehicle Insurance',
@@ -188,12 +188,12 @@ export default function CreateVehiclePage() {
           logbook_file: 'Logbook',
           service_record_file: 'Service Record',
         }
-        
+
         for (const [key, file] of Object.entries(fileUploads)) {
           if (file) {
             const fileExt = file.name.split('.').pop()
             const fileName = `vehicles/${vehicleId}/${key}_${Date.now()}.${fileExt}`
-            
+
             const { data: uploadData, error: uploadError } = await supabase.storage
               .from('VEHICLE_DOCUMENTS')
               .upload(fileName, file)
@@ -208,7 +208,7 @@ export default function CreateVehiclePage() {
               const { data: { publicUrl } } = supabase.storage
                 .from('VEHICLE_DOCUMENTS')
                 .getPublicUrl(fileName)
-              
+
               uploadedDocuments.push({
                 fileUrl: publicUrl,
                 fileName: file.name,
@@ -286,16 +286,17 @@ export default function CreateVehiclePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           <Link href="/dashboard/vehicles">
-            <Button variant="ghost" size="sm">
+            <Button variant="outline" size="sm" className="h-9 px-3 text-slate-600 border-slate-300 hover:bg-slate-50">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
           </Link>
+          <div className="h-6 w-px bg-slate-200" />
           <div>
-            <h1 className="text-3xl font-bold text-navy">Add New Vehicle</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-xl font-semibold text-slate-900">Add New Vehicle</h1>
+            <p className="text-xs text-slate-500">
               Fill in the information below to create a new vehicle
             </p>
           </div>
@@ -328,10 +329,10 @@ export default function CreateVehiclePage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`
-                border-b-2 px-1 py-4 text-sm font-medium transition-colors
+                border-b-2 px-1 py-3 text-sm font-medium transition-colors
                 ${activeTab === tab.id
-                  ? 'border-navy text-navy'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
               `}
             >
               {tab.label}
@@ -344,11 +345,11 @@ export default function CreateVehiclePage() {
         {/* Basic Info Tab */}
         {activeTab === 'basic' && (
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Basic Information</CardTitle>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="vehicle_identifier">Vehicle Identifier</Label>
                   <Input
@@ -474,10 +475,10 @@ export default function CreateVehiclePage() {
         {/* Navigation Buttons for Basic Info */}
         {activeTab === 'basic' && (
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex justify-end space-x-4">
+            <CardContent className="pt-4">
+              <div className="flex justify-end gap-3">
                 <Link href="/dashboard/vehicles">
-                  <Button type="button" variant="secondary">
+                  <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
                     Cancel
                   </Button>
                 </Link>
@@ -493,14 +494,14 @@ export default function CreateVehiclePage() {
         {/* Certificates Tab */}
         {activeTab === 'certificates' && (
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Certificates & Expiry Dates</CardTitle>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Certificates & Expiry Dates</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 {/* Plate */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Plate</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Plate</h3>
                   <div>
                     <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
                     <Input
@@ -525,8 +526,8 @@ export default function CreateVehiclePage() {
                 </div>
 
                 {/* Plate */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Plate</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Plate</h3>
                   <div>
                     <Label htmlFor="plate_expiry_date">Expiry Date</Label>
                     <Input
@@ -551,8 +552,8 @@ export default function CreateVehiclePage() {
                 </div>
 
                 {/* MOT */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">MOT Certificate</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">MOT Certificate</h3>
                   <div>
                     <Label htmlFor="mot_date">Expiry Date</Label>
                     <Input
@@ -577,8 +578,8 @@ export default function CreateVehiclePage() {
                 </div>
 
                 {/* Tax */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Tax Certificate</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Tax Certificate</h3>
                   <div>
                     <Label htmlFor="tax_date">Tax Date</Label>
                     <Input
@@ -603,8 +604,8 @@ export default function CreateVehiclePage() {
                 </div>
 
                 {/* Insurance */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Vehicle Insurance</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Vehicle Insurance</h3>
                   <div>
                     <Label htmlFor="insurance_expiry_date">Expiry Date</Label>
                     <Input
@@ -672,8 +673,8 @@ export default function CreateVehiclePage() {
                 </div>
 
                 {/* First Aid */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">First Aid Certificate</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">First Aid Certificate</h3>
                   <div>
                     <Label htmlFor="first_aid_expiry">Expiry Date</Label>
                     <Input
@@ -698,8 +699,8 @@ export default function CreateVehiclePage() {
                 </div>
 
                 {/* Fire Extinguisher */}
-                <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-navy">Fire Extinguisher Certificate</h3>
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Fire Extinguisher Certificate</h3>
                   <div>
                     <Label htmlFor="fire_extinguisher_expiry">Expiry Date</Label>
                     <Input
@@ -732,13 +733,13 @@ export default function CreateVehiclePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
                 <div className="flex space-x-4">
                   <Link href="/dashboard/vehicles">
-                    <Button type="button" variant="secondary">
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
                       Cancel
                     </Button>
                   </Link>
@@ -755,14 +756,14 @@ export default function CreateVehiclePage() {
         {/* Documents Tab */}
         {activeTab === 'documents' && (
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Additional Documents</CardTitle>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Additional Documents</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-4 space-y-4">
               <p className="text-sm text-gray-600">
                 Upload additional vehicle documents such as logbook, service records, and other relevant paperwork.
               </p>
-              
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="logbook_file">Logbook</Label>
@@ -797,13 +798,13 @@ export default function CreateVehiclePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
                 <div className="flex space-x-4">
                   <Link href="/dashboard/vehicles">
-                    <Button type="button" variant="secondary">
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
                       Cancel
                     </Button>
                   </Link>
@@ -820,10 +821,10 @@ export default function CreateVehiclePage() {
         {/* Maintenance & Status Tab */}
         {activeTab === 'maintenance' && (
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Maintenance & Status</CardTitle>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Maintenance & Status</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-4 space-y-4">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="last_serviced">Last Serviced</Label>
@@ -858,7 +859,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, tail_lift: e.target.checked })
                       }
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <Label htmlFor="tail_lift">Tail Lift</Label>
                   </div>
@@ -866,7 +867,7 @@ export default function CreateVehiclePage() {
 
                 {formData.tail_lift && (
                   <div className="space-y-4 p-4 border rounded-lg md:col-span-2">
-                    <h3 className="font-semibold text-navy">LOLER Certificate</h3>
+                    <h3 className="font-semibold text-slate-700 text-sm">LOLER Certificate</h3>
                     <div>
                       <Label htmlFor="loler_expiry_date">
                         Expiry Date
@@ -902,7 +903,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, spare_vehicle: e.target.checked })
                       }
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <Label htmlFor="spare_vehicle">Spare Vehicle</Label>
                   </div>
@@ -917,7 +918,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, off_the_road: e.target.checked })
                       }
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <Label htmlFor="off_the_road">Off the Road</Label>
                   </div>
@@ -946,13 +947,13 @@ export default function CreateVehiclePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
                 <div className="flex space-x-4">
                   <Link href="/dashboard/vehicles">
-                    <Button type="button" variant="secondary">
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
                       Cancel
                     </Button>
                   </Link>
@@ -969,14 +970,14 @@ export default function CreateVehiclePage() {
         {/* Seating Plan Tab */}
         {activeTab === 'seating' && (
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Seating Plan (Optional)</CardTitle>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Seating Plan (Optional)</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-4 space-y-4">
               <p className="text-sm text-gray-600">
                 Configure the seating layout for this vehicle. You can also add this later from the vehicle detail page.
               </p>
-              
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="seating_plan_name">Plan Name</Label>
@@ -1069,13 +1070,13 @@ export default function CreateVehiclePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
                 <div className="flex space-x-4">
                   <Link href="/dashboard/vehicles">
-                    <Button type="button" variant="secondary">
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
                       Cancel
                     </Button>
                   </Link>
@@ -1092,10 +1093,10 @@ export default function CreateVehiclePage() {
         {/* Notes Tab */}
         {activeTab === 'notes' && (
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Additional Notes</CardTitle>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Additional Notes</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <textarea
@@ -1118,13 +1119,13 @@ export default function CreateVehiclePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between space-x-4">
-                <Button type="button" variant="secondary" onClick={handlePrevious}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
                 <div className="flex space-x-4">
                   <Link href="/dashboard/vehicles">
-                    <Button type="button" variant="secondary">
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
                       Cancel
                     </Button>
                   </Link>

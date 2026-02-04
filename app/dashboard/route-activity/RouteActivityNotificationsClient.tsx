@@ -200,7 +200,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
   const fetchParentCancellations = async () => {
     try {
       const supabase = createClient()
-      
+
       // Fetch all parent absence reports (both acknowledged and unacknowledged)
       // Show unacknowledged first, then acknowledged
       const { data: reports, error: reportsError } = await supabase
@@ -226,7 +226,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
       const passengerIds = Array.from(new Set(reports.map((r: any) => parseInt(r.passenger_id)).filter((id: any) => !isNaN(id) && id > 0)))
       const routeIds = Array.from(new Set(reports.map((r: any) => parseInt(r.route_id)).filter((id: any) => !isNaN(id) && id > 0)))
       const sessionIds = Array.from(new Set(reports.map((r: any) => parseInt(r.route_session_id || r.session_id)).filter((id: any) => !isNaN(id) && id > 0)))
-      
+
       // Get reported_by_email emails (could be email strings)
       // Clean and normalize emails: trim whitespace and convert to lowercase
       const reportedByEmails = Array.from(new Set(
@@ -258,12 +258,12 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
         const { data: allParentContacts, error: parentContactsError } = await supabase
           .from('parent_contacts')
           .select('id, full_name, phone_number, email')
-        
+
         if (parentContactsError) {
           console.error('Error fetching parent contacts:', parentContactsError)
         } else if (allParentContacts) {
           // Filter parent contacts where email (lowercase) matches any reported_by email
-          parentContactsByEmail = allParentContacts.filter((pc: any) => 
+          parentContactsByEmail = allParentContacts.filter((pc: any) =>
             pc.email && reportedByEmails.includes(pc.email.trim().toLowerCase())
           )
           console.log('Parent contacts matched by email:', parentContactsByEmail.length)
@@ -273,27 +273,27 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
       const [passengersResult, routesResult, sessionsResult, usersResult] = await Promise.all([
         passengerIds.length > 0
           ? supabase
-              .from('passengers')
-              .select('id, full_name, address, route_id')
-              .in('id', passengerIds)
+            .from('passengers')
+            .select('id, full_name, address, route_id')
+            .in('id', passengerIds)
           : Promise.resolve({ data: [], error: null }),
         routeIds.length > 0
           ? supabase
-              .from('routes')
-              .select('id, route_number, school_id')
-              .in('id', routeIds)
+            .from('routes')
+            .select('id, route_number, school_id')
+            .in('id', routeIds)
           : Promise.resolve({ data: [], error: null }),
         sessionIds.length > 0
           ? supabase
-              .from('route_sessions')
-              .select('id, session_date, session_type, route_id')
-              .in('id', sessionIds)
+            .from('route_sessions')
+            .select('id, session_date, session_type, route_id')
+            .in('id', sessionIds)
           : Promise.resolve({ data: [], error: null }),
         acknowledgedByUserIds.length > 0
           ? supabase
-              .from('users')
-              .select('id, full_name, email')
-              .in('id', acknowledgedByUserIds)
+            .from('users')
+            .select('id, full_name, email')
+            .in('id', acknowledgedByUserIds)
           : Promise.resolve({ data: [], error: null }),
       ])
 
@@ -330,7 +330,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
           .filter((pc: any) => pc.email) // Only include contacts with email
           .map((pc: any) => [pc.email.toLowerCase().trim(), pc])
       )
-      
+
       console.log('Parent contacts found by email:', parentContactsByEmail.length)
       console.log('Parent contacts map entries:', Array.from(parentContactsByEmailMap.keys()))
 
@@ -340,7 +340,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
           .map((p: any) => parseInt(p.route_id))
           .filter((id: any) => !isNaN(id) && id > 0 && !routeIds.includes(id))
       ))
-      
+
       // Get route IDs from sessions
       const sessionRouteIds = Array.from(new Set(
         (sessionsResult.data || [])
@@ -356,7 +356,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
           .from('routes')
           .select('id, route_number, school_id')
           .in('id', allAdditionalRouteIds)
-        
+
         if (additionalRoutesResult.data) {
           additionalRoutesResult.data.forEach((r: any) => {
             routesMap.set(parseInt(r.id), r)
@@ -370,17 +370,17 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
         const routeId = parseInt(report.route_id)
         const sessionId = parseInt(report.route_session_id || report.session_id)
         const acknowledgedById = parseInt(report.acknowledged_by)
-        
+
         const passenger = (!isNaN(passengerId) && passengerId > 0) ? (passengersMap.get(passengerId) || null) : null
         const session = (!isNaN(sessionId) && sessionId > 0) ? (sessionsMap.get(sessionId) || null) : null
         const acknowledgedByUser = (!isNaN(acknowledgedById) && acknowledgedById > 0) ? (usersMap.get(acknowledgedById) || null) : null
-        
+
         // Get parent contact by matching reported_by_email
         const reportedByEmail = report.reported_by_email || report.reported_by
         const parentContact = reportedByEmail && typeof reportedByEmail === 'string'
           ? (parentContactsByEmailMap.get(reportedByEmail.trim().toLowerCase()) || null)
           : null
-        
+
         // Try to get route from report first, then from session, then from passenger's route_id
         let route = (!isNaN(routeId) && routeId > 0) ? (routesMap.get(routeId) || null) : null
         if (!route && session && session.route_id) {
@@ -395,7 +395,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
             route = routesMap.get(passengerRouteId) || null
           }
         }
-        
+
         return {
           ...report,
           passenger,
@@ -504,7 +504,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
     setAcknowledging(cancellationId)
     try {
       const supabase = createClient()
-      
+
       // Verify we have a valid cancellation ID
       if (!cancellationId || isNaN(cancellationId)) {
         throw new Error('Invalid cancellation ID')
@@ -528,12 +528,12 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
       }
 
       console.log('Updating parent_absence_reports with ID:', cancellationId, 'acknowledged_by:', userData.id)
-      
+
       // Update the parent_absence_reports record to mark as acknowledged
       // Update acknowledged_at timestamp, status to 'acknowledged', and acknowledged_by user ID
       const { data, error } = await supabase
         .from('parent_absence_reports')
-        .update({ 
+        .update({
           acknowledged_at: new Date().toISOString(),
           status: 'acknowledged',
           acknowledged_by: userData.id
@@ -562,15 +562,15 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
 
       // Update the local state to reflect the acknowledgment
       setParentCancellations(prev =>
-        prev.map(c => 
-          c.id === cancellationId 
-            ? { 
-                ...c, 
-                acknowledged_at: new Date().toISOString(),
-                status: 'acknowledged',
-                acknowledged_by: userData.id,
-                acknowledged_by_user: { id: userData.id, full_name: authUser.user_metadata?.full_name || authUser.email || 'Unknown', email: authUser.email || '' }
-              }
+        prev.map(c =>
+          c.id === cancellationId
+            ? {
+              ...c,
+              acknowledged_at: new Date().toISOString(),
+              status: 'acknowledged',
+              acknowledged_by: userData.id,
+              acknowledged_by_user: { id: userData.id, full_name: authUser.user_metadata?.full_name || authUser.email || 'Unknown', email: authUser.email || '' }
+            }
             : c
         )
       )
@@ -725,7 +725,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
               {breakdownNotifications.length} Active
             </span>
           </div>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -812,7 +812,7 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
               {tardinessNotifications.length} Pending
             </span>
           </div>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -925,19 +925,17 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
               {parentCancellations.length} Active
             </span>
           </div>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Passenger</TableHead>
                   <TableHead>Parent/Guardian</TableHead>
                   <TableHead>Route</TableHead>
-                  <TableHead>Session</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Session / Date</TableHead>
                   <TableHead>Reason</TableHead>
-                  <TableHead>Reported</TableHead>
-                  <TableHead>Acknowledged By</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right w-28">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -947,134 +945,124 @@ export function RouteActivityNotificationsClient({ initialNotifications }: Route
                   const route = cancellation.route
                   const session = cancellation.route_session
                   const parentContact = cancellation.parent_contact
-                  
+
                   // Determine route ID for link (use route_id from report, session, or passenger's route_id)
-                  const routeIdForLink = cancellation.route_id 
+                  const routeIdForLink = cancellation.route_id
                     || (session?.route_id ? parseInt(session.route_id) : null)
                     || (passenger?.route_id ? parseInt(passenger.route_id) : null)
-                  
+
+                  const absenceDate = session?.session_date
+                    || cancellation.absence_date
+                    || cancellation.session_date
+
                   return (
                     <TableRow key={cancellation.id} className="hover:bg-slate-50">
                       <TableCell>
                         {passenger && passenger.full_name ? (
-                          <Link 
-                            href={`/dashboard/passengers/${cancellation.passenger_id}`} 
-                            className="font-medium text-slate-900 hover:text-violet-600 hover:underline"
+                          <Link
+                            href={`/dashboard/passengers/${cancellation.passenger_id}`}
+                            className="font-medium text-slate-900 hover:text-navy hover:underline text-sm"
                           >
                             {passenger.full_name}
                           </Link>
                         ) : cancellation.passenger_id ? (
-                          <span className="text-slate-400">Passenger ID: {cancellation.passenger_id}</span>
+                          <span className="text-slate-400 text-sm">ID: {cancellation.passenger_id}</span>
                         ) : (
-                          <span className="text-slate-400">Unknown</span>
+                          <span className="text-slate-400 text-sm">Unknown</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {parentContact && parentContact.full_name ? (
                           <div>
-                            <Link 
+                            <Link
                               href={`/dashboard/parent-contacts/${parentContact.id}`}
-                              className="text-sm font-medium text-slate-900 hover:text-violet-600 hover:underline"
+                              className="text-sm font-medium text-slate-900 hover:text-navy hover:underline"
                             >
                               {parentContact.full_name}
                             </Link>
                             {parentContact.phone_number && (
-                              <div className="text-xs text-slate-500 mt-1">{parentContact.phone_number}</div>
-                            )}
-                            {parentContact.email && (
-                              <div className="text-xs text-slate-400">{parentContact.email}</div>
+                              <div className="text-xs text-slate-500">{parentContact.phone_number}</div>
                             )}
                           </div>
                         ) : cancellation.reported_by_email || cancellation.reported_by ? (
-                          <span className="text-slate-400">{cancellation.reported_by_email || cancellation.reported_by}</span>
+                          <span className="text-slate-500 text-sm truncate max-w-[120px] block">{cancellation.reported_by_email || cancellation.reported_by}</span>
                         ) : (
-                          <span className="text-slate-400">N/A</span>
+                          <span className="text-slate-400 text-sm">N/A</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {route && route.route_number ? (
-                          <Link 
-                            href={`/dashboard/routes/${routeIdForLink || route.id}`} 
-                            className="text-sm text-slate-600 hover:text-violet-600 hover:underline"
+                          <Link
+                            href={`/dashboard/routes/${routeIdForLink || route.id}`}
+                            className="text-sm text-slate-600 hover:text-navy hover:underline"
                           >
-                            Route {route.route_number}
+                            {route.route_number}
                           </Link>
                         ) : routeIdForLink ? (
-                          <Link 
-                            href={`/dashboard/routes/${routeIdForLink}`} 
-                            className="text-sm text-slate-600 hover:text-violet-600 hover:underline"
+                          <Link
+                            href={`/dashboard/routes/${routeIdForLink}`}
+                            className="text-sm text-slate-600 hover:text-navy hover:underline"
                           >
-                            Route {routeIdForLink}
+                            #{routeIdForLink}
                           </Link>
                         ) : (
-                          <span className="text-sm text-slate-400">N/A</span>
+                          <span className="text-sm text-slate-400">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm text-slate-700">
                           {session?.session_type || cancellation.session_type || 'N/A'}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-slate-500 text-sm">
-                        {session?.session_date 
-                          ? formatDate(session.session_date) 
-                          : cancellation.absence_date 
-                          ? formatDate(cancellation.absence_date) 
-                          : cancellation.session_date
-                          ? formatDate(cancellation.session_date)
-                          : 'N/A'}
+                        <div className="text-xs text-slate-500">
+                          {absenceDate ? formatDate(absenceDate) : '—'}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-slate-700">
-                          {cancellation.reason || cancellation.notes || 'No reason provided'}
+                        <span className="text-sm text-slate-700 line-clamp-2 max-w-[150px]" title={cancellation.reason || cancellation.notes}>
+                          {cancellation.reason || cancellation.notes || 'No reason'}
                         </span>
-                      </TableCell>
-                      <TableCell className="text-slate-500 text-sm">
-                        {formatDateTime(cancellation.created_at || cancellation.reported_at)}
                       </TableCell>
                       <TableCell>
                         {cancellation.acknowledged_by_user ? (
-                          <div>
-                            <div className="text-sm font-medium text-slate-900">
-                              {cancellation.acknowledged_by_user.full_name || cancellation.acknowledged_by_user.email || 'Unknown'}
+                          <div className="text-xs">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                              <CheckCircle className="h-3 w-3" />
+                              Ack
+                            </span>
+                            <div className="text-slate-500 mt-1 truncate max-w-[100px]">
+                              {cancellation.acknowledged_by_user.full_name || 'User'}
                             </div>
-                            {cancellation.acknowledged_at && (
-                              <div className="text-xs text-slate-500 mt-1">
-                                {formatDateTime(cancellation.acknowledged_at)}
-                              </div>
-                            )}
                           </div>
                         ) : (
-                          <span className="text-sm text-slate-400">—</span>
+                          <div className="text-xs">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                              <Clock className="h-3 w-3" />
+                              Pending
+                            </span>
+                            <div className="text-slate-400 mt-1">
+                              {formatDate(cancellation.created_at || cancellation.reported_at)}
+                            </div>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         {cancellation.acknowledged_at ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled
-                            className="h-8 px-3 text-xs bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
-                            title="Already Acknowledged"
-                          >
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            Acknowledged
-                          </Button>
+                          <span className="text-xs text-slate-400">Done</span>
                         ) : (
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleAcknowledgeCancellation(cancellation.id)}
                             disabled={acknowledging === cancellation.id}
-                            className="h-8 px-3 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200"
-                            title={acknowledging === cancellation.id ? 'Acknowledging...' : 'Mark as Acknowledged'}
+                            className="h-7 px-2 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                            title="Mark as Acknowledged"
                           >
                             {acknowledging === cancellation.id ? (
-                              'Acknowledging...'
+                              '...'
                             ) : (
                               <>
                                 <CheckCircle className="mr-1 h-3 w-3" />
-                                Acknowledge
+                                Ack
                               </>
                             )}
                           </Button>

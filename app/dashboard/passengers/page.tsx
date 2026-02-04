@@ -100,7 +100,7 @@ async function PassengersTable(filters?: {
                 <TableCell className="text-slate-600">{passenger.seat_number || 'N/A'}</TableCell>
                 <TableCell>
                   {passenger.updateCount > 0 ? (
-                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold" title={`${passenger.updateCount} update(s) recorded`}>
+                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold" title={`${passenger.updateCount} update(s) recorded`}>
                       <MessageSquare className="h-3 w-3" />
                       {passenger.updateCount}
                     </div>
@@ -111,12 +111,12 @@ async function PassengersTable(filters?: {
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Link href={`/dashboard/passengers/${passenger.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#023E8A] hover:bg-blue-50">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/passengers/${passenger.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-[#023E8A] hover:bg-blue-50">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -149,7 +149,7 @@ export default async function PassengersPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <UserCheck className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -158,7 +158,7 @@ export default async function PassengersPage({
           </div>
         </div>
         <Link href="/dashboard/passengers/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white shadow-sm">
             <Plus className="mr-2 h-4 w-4" />
             Add Passenger
           </Button>

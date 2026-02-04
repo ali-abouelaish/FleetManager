@@ -220,159 +220,154 @@ export default function AddIncidentForm({
   }
 
   return (
-    <Card className="border-2 border-blue-200 bg-blue-50">
-      <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-start p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="flex items-start p-3 bg-red-50 border border-red-200 rounded-lg">
+          <AlertCircle className="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="incident_type">
+            Incident Type <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            id="incident_type"
+            required
+            value={formData.incident_type}
+            onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })}
+          >
+            <option value="">Select type</option>
+            <option value="Accident">Accident</option>
+            <option value="Complaint">Complaint</option>
+            <option value="Safety Issue">Safety Issue</option>
+            <option value="Other">Other</option>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="route_id">
+            Related Route
+            {formData.route_id && <span className="text-xs text-gray-500 ml-2">(Auto-filled from passenger)</span>}
+          </Label>
+          <Select
+            id="route_id"
+            value={formData.route_id}
+            onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
+          >
+            <option value="">Select route</option>
+            {routes.map((route) => (
+              <option key={route.id} value={route.id}>
+                {route.route_number || `Route ${route.id}`}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="vehicle_id">
+            Vehicle
+            {formData.vehicle_id && <span className="text-xs text-gray-500 ml-2">(Auto-filled from route)</span>}
+          </Label>
+          <Select
+            id="vehicle_id"
+            value={formData.vehicle_id}
+            onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
+          >
+            <option value="">Select vehicle</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.vehicle_identifier || `Vehicle ${vehicle.id}`}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">
+          Description <span className="text-red-500">*</span>
+        </Label>
+        <textarea
+          id="description"
+          required
+          rows={4}
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Describe the incident in detail..."
+        />
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="resolved"
+          checked={formData.resolved}
+          onChange={(e) => setFormData({ ...formData, resolved: e.target.checked })}
+          className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+        />
+        <Label htmlFor="resolved">Mark as Resolved</Label>
+      </div>
+
+      {/* Related Employees Section */}
+      <div className="space-y-2">
+        <Label className="flex items-center">
+          <UserCog className="mr-2 h-4 w-4" />
+          Related Employees ({selectedEmployees.length} selected)
+          {selectedEmployees.length > 0 && <span className="text-xs text-gray-500 ml-2">(Driver and PA auto-selected from route)</span>}
+        </Label>
+        <div className="text-xs text-gray-500 mb-2">
+          Driver and passenger assistant from the route are automatically selected. You can add or remove employees as needed.
+        </div>
+        {employees.length > 0 && (
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-48 overflow-y-auto border rounded-lg p-3 bg-white">
+            {employees.map((employee) => (
+              <div
+                key={employee.id}
+                className={`flex items-center p-2 border rounded cursor-pointer transition-colors ${selectedEmployees.includes(employee.id)
+                    ? 'border-navy bg-blue-50'
+                    : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                onClick={() => toggleEmployee(employee.id)}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedEmployees.includes(employee.id)}
+                  onChange={() => toggleEmployee(employee.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                />
+                <div className="ml-2">
+                  <p className="text-xs font-medium text-gray-900">
+                    {employee.full_name}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="incident_type">
-                Incident Type <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                id="incident_type"
-                required
-                value={formData.incident_type}
-                onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })}
-              >
-                <option value="">Select type</option>
-                <option value="Accident">Accident</option>
-                <option value="Complaint">Complaint</option>
-                <option value="Safety Issue">Safety Issue</option>
-                <option value="Other">Other</option>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="route_id">
-                Related Route
-                {formData.route_id && <span className="text-xs text-gray-500 ml-2">(Auto-filled from passenger)</span>}
-              </Label>
-              <Select
-                id="route_id"
-                value={formData.route_id}
-                onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
-              >
-                <option value="">Select route</option>
-                {routes.map((route) => (
-                  <option key={route.id} value={route.id}>
-                    {route.route_number || `Route ${route.id}`}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="vehicle_id">
-                Vehicle
-                {formData.vehicle_id && <span className="text-xs text-gray-500 ml-2">(Auto-filled from route)</span>}
-              </Label>
-              <Select
-                id="vehicle_id"
-                value={formData.vehicle_id}
-                onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
-              >
-                <option value="">Select vehicle</option>
-                {vehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.vehicle_identifier || `Vehicle ${vehicle.id}`}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            ))}
           </div>
+        )}
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              Description <span className="text-red-500">*</span>
-            </Label>
-            <textarea
-              id="description"
-              required
-              rows={4}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe the incident in detail..."
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="resolved"
-              checked={formData.resolved}
-              onChange={(e) => setFormData({ ...formData, resolved: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-            />
-            <Label htmlFor="resolved">Mark as Resolved</Label>
-          </div>
-
-          {/* Related Employees Section */}
-          <div className="space-y-2">
-            <Label className="flex items-center">
-              <UserCog className="mr-2 h-4 w-4" />
-              Related Employees ({selectedEmployees.length} selected)
-              {selectedEmployees.length > 0 && <span className="text-xs text-gray-500 ml-2">(Driver and PA auto-selected from route)</span>}
-            </Label>
-            <div className="text-xs text-gray-500 mb-2">
-              Driver and passenger assistant from the route are automatically selected. You can add or remove employees as needed.
-            </div>
-            {employees.length > 0 && (
-              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-48 overflow-y-auto border rounded-lg p-3 bg-white">
-                {employees.map((employee) => (
-                  <div
-                    key={employee.id}
-                    className={`flex items-center p-2 border rounded cursor-pointer transition-colors ${
-                      selectedEmployees.includes(employee.id)
-                        ? 'border-navy bg-blue-50'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                    onClick={() => toggleEmployee(employee.id)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedEmployees.includes(employee.id)}
-                      onChange={() => toggleEmployee(employee.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                    />
-                    <div className="ml-2">
-                      <p className="text-xs font-medium text-gray-900">
-                        {employee.full_name}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onCancel}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Incident'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end space-x-2 pt-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={loading}>
+          {loading ? 'Creating...' : 'Create Incident'}
+        </Button>
+      </div>
+    </form>
   )
 }
 

@@ -131,7 +131,7 @@ async function IncidentsTable({
                 <TableCell className="text-sm text-slate-500">{formatDateTime(incident.reported_at)}</TableCell>
                 <TableCell>
                   <Link href={`/dashboard/incidents/${incident.id}`} prefetch={true}>
-                    <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                    <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                       <Eye className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -159,8 +159,8 @@ export default async function IncidentsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
-            <AlertCircle className="h-6 w-6 text-white" />
+          <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
+            <AlertCircle className="h-6 w-6 text-slate-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Incidents</h1>
@@ -170,7 +170,7 @@ export default async function IncidentsPage({
           </div>
         </div>
         <Link href="/dashboard/incidents/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white">
             <Plus className="mr-2 h-4 w-4" />
             Report Incident
           </Button>
