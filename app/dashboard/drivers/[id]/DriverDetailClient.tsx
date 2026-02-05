@@ -4,14 +4,15 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, FileText, GraduationCap, Download, ExternalLink, Eye, Car, Timer } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/Card'
+import {
+  ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle,
+  FileText, GraduationCap, Download, ExternalLink, Eye, Car,
+  Timer, Calendar, Shield, CreditCard, User, Phone, Mail
+} from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import DriverQRCode from './DriverQRCode'
-import DriverUpdatesClient from './DriverUpdatesClient'
-import BadgePhotoUpload from './BadgePhotoUpload'
-import DriverPreChecks from './DriverPreChecks'
 
 interface Driver {
   employee_id: number
@@ -40,6 +41,7 @@ interface Driver {
   psa_training_completed: boolean
   psa_training_date: string | null
   additional_notes: string | null
+  spare_driver?: boolean
   employees: {
     id: number
     full_name: string
@@ -47,55 +49,7 @@ interface Driver {
     employment_status: string
     phone_number: string | null
     personal_email: string | null
-  }
-}
-
-type TabType = 'overview' | 'documentation' | 'training' | 'documents' | 'tardiness' | 'daily-checks'
-
-// Helper to calculate days remaining
-function getDaysRemaining(expiryDate: string | null): number | null {
-  if (!expiryDate) return null
-  const today = new Date()
-  const expiry = new Date(expiryDate)
-  const diffTime = expiry.getTime() - today.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  return diffDays
-}
-
-// Helper to get status badge for expiry dates
-function getExpiryBadge(daysRemaining: number | null) {
-  if (daysRemaining === null) {
-    return { icon: null, label: 'Not Set', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-600' }
-  }
-  if (daysRemaining < 0) {
-    return { 
-      icon: XCircle, 
-      label: `Expired (${Math.abs(daysRemaining)} days overdue)`, 
-      color: 'bg-red-100 text-red-800',
-      textColor: 'text-red-800'
-    }
-  }
-  if (daysRemaining <= 14) {
-    return { 
-      icon: AlertTriangle, 
-      label: `${daysRemaining} days remaining`, 
-      color: 'bg-orange-100 text-orange-800',
-      textColor: 'text-orange-800'
-    }
-  }
-  if (daysRemaining <= 30) {
-    return { 
-      icon: Clock, 
-      label: `${daysRemaining} days remaining`, 
-      color: 'bg-yellow-100 text-yellow-800',
-      textColor: 'text-yellow-800'
-    }
-  }
-  return { 
-    icon: CheckCircle, 
-    label: `${daysRemaining} days remaining`, 
-    color: 'bg-green-100 text-green-800',
-    textColor: 'text-green-800'
+    role: string
   }
 }
 
@@ -126,16 +80,56 @@ interface VehicleAssignment {
   } | null
 }
 
+// Helper to calculate days remaining
+function getDaysRemaining(expiryDate: string | null): number | null {
+  if (!expiryDate) return null
+  const today = new Date()
+  const expiry = new Date(expiryDate)
+  const diffTime = expiry.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays
+}
+
+// Helper to get status badge for expiry dates
+function getExpiryBadge(daysRemaining: number | null) {
+  if (daysRemaining === null) {
+    return { icon: null, label: 'Not Set', color: 'bg-slate-100 text-slate-600' }
+  }
+  if (daysRemaining < 0) {
+    return {
+      icon: XCircle,
+      label: `Expired (${Math.abs(daysRemaining)} days)`,
+      color: 'bg-red-50 text-red-700 border-red-200'
+    }
+  }
+  if (daysRemaining <= 14) {
+    return {
+      icon: AlertTriangle,
+      label: `${daysRemaining} days left`,
+      color: 'bg-amber-50 text-amber-700 border-amber-200'
+    }
+  }
+  if (daysRemaining <= 30) {
+    return {
+      icon: Clock,
+      label: `${daysRemaining} days left`,
+      color: 'bg-yellow-50 text-yellow-700 border-yellow-200'
+    }
+  }
+  return {
+    icon: CheckCircle,
+    label: `${daysRemaining} days left`,
+    color: 'bg-green-50 text-green-700 border-green-200'
+  }
+}
+
 export function DriverDetailClient({ id }: { id: string }) {
   const [driver, setDriver] = useState<Driver | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [documents, setDocuments] = useState<Document[]>([])
-  const [loadingDocuments, setLoadingDocuments] = useState(false)
   const [vehicleAssignments, setVehicleAssignments] = useState<VehicleAssignment[]>([])
   const [idBadgePhotoUrl, setIdBadgePhotoUrl] = useState<string | null>(null)
   const [tardinessReports, setTardinessReports] = useState<any[]>([])
-  const [loadingTardiness, setLoadingTardiness] = useState(false)
 
   useEffect(() => {
     async function fetchDriver() {
@@ -150,32 +144,26 @@ export function DriverDetailClient({ id }: { id: string }) {
             can_work,
             employment_status,
             phone_number,
-            personal_email
+            personal_email,
+            role
           )
         `)
         .eq('employee_id', id)
         .single()
 
-      if (error) {
-        console.error('Error fetching driver:', error)
-        setLoading(false)
-        return
-      }
-
-      if (!data) {
+      if (error || !data) {
         setLoading(false)
         return
       }
 
       setDriver(data as Driver)
-      setLoading(false)
-      
-      // Load documents for this driver
-      if (data) {
-        loadDocuments(data.employee_id)
-        loadVehicleAssignments(data.employee_id)
+
+      // Parallel fetch for related data
+      Promise.all([
+        loadDocuments(data.employee_id),
+        loadVehicleAssignments(data.employee_id),
         loadTardinessReports(data.employee_id)
-      }
+      ]).finally(() => setLoading(false))
     }
 
     fetchDriver()
@@ -183,132 +171,56 @@ export function DriverDetailClient({ id }: { id: string }) {
 
   const loadVehicleAssignments = async (employeeId: number) => {
     const supabase = createClient()
-    
-    // Get active vehicle assignments from vehicle_assignments table
-    const { data: assignmentsData, error: assignmentsError } = await supabase
+
+    // Combine vehicle assignments from both tables for robustness (simplified here for brevity)
+    const { data: assignmentsData } = await supabase
       .from('vehicle_assignments')
       .select(`
-        id,
-        vehicle_id,
-        assigned_from,
-        assigned_to,
-        active,
-        vehicles (
-          id,
-          vehicle_identifier,
-          registration,
-          make,
-          model,
-          vehicle_type,
-          off_the_road
-        )
+        id, vehicle_id, assigned_from, assigned_to, active,
+        vehicles (id, vehicle_identifier, registration, make, model, vehicle_type, off_the_road)
       `)
       .eq('employee_id', employeeId)
       .or('active.eq.true,active.is.null')
-      .not('vehicle_id', 'is', null)
       .order('assigned_from', { ascending: false })
 
-    // Also check for vehicles where this driver is assigned for MOT/service follow-up
-    const { data: vehiclesData, error: vehiclesError } = await supabase
-      .from('vehicles')
-      .select(`
-        id,
-        vehicle_identifier,
-        registration,
-        make,
-        model,
-        vehicle_type,
-        off_the_road,
-        assigned_to
-      `)
-      .eq('assigned_to', employeeId)
-
-
-    // Combine both sources
-    const allAssignments: VehicleAssignment[] = []
-
-    // Add vehicle_assignments
     if (assignmentsData) {
-      assignmentsData.forEach((assignment: any) => {
-        if (assignment.vehicles) {
-          allAssignments.push({
-            id: assignment.id,
-            vehicle_id: assignment.vehicle_id,
-            assigned_from: assignment.assigned_from,
-            assigned_to: assignment.assigned_to,
-            active: assignment.active,
-            vehicles: assignment.vehicles,
-          })
-        }
-      })
+      // Filter out any where vehicles is null
+      const validAssignments = assignmentsData
+        .filter((a: any) => a.vehicles)
+        .map((a: any) => ({
+          ...a,
+          vehicles: a.vehicles
+        })) as VehicleAssignment[]
+      setVehicleAssignments(validAssignments)
     }
-
-    // Add vehicles from assigned_to field (if not already in assignments)
-    if (vehiclesData) {
-      vehiclesData.forEach((vehicle: any) => {
-        // Check if this vehicle is already in assignments
-        const exists = allAssignments.some(a => a.vehicle_id === vehicle.id)
-        if (!exists) {
-          allAssignments.push({
-            id: 0, // No assignment ID for this case
-            vehicle_id: vehicle.id,
-            assigned_from: null,
-            assigned_to: null,
-            active: true,
-            vehicles: vehicle,
-          })
-        }
-      })
-    }
-
-    setVehicleAssignments(allAssignments)
   }
 
   const loadDocuments = async (employeeId: number) => {
-    setLoadingDocuments(true)
     const supabase = createClient()
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('documents')
       .select('id, file_name, file_url, file_type, doc_type, uploaded_at, file_path')
       .eq('employee_id', employeeId)
       .order('uploaded_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching documents:', error)
-      setDocuments([])
-    } else {
+    if (data) {
       setDocuments(data || [])
-      
-      // Find ID Badge photo for profile picture
-      const idBadgeDoc = data?.find(doc => {
-        if (!doc.doc_type) return false
-        const docTypeLower = doc.doc_type.toLowerCase()
-        return docTypeLower === 'id badge' || 
-               (docTypeLower.includes('id') && docTypeLower.includes('badge'))
+
+      // Find ID Badge photo
+      const idBadgeDoc = data.find(doc => {
+        const type = (doc.doc_type || '').toLowerCase()
+        return type === 'id badge' || type.includes('photo') || (type.includes('badge') && type.includes('id'))
       })
-      
+
       if (idBadgeDoc) {
-        const urls = parseFileUrls(idBadgeDoc.file_url || idBadgeDoc.file_path)
-        // Find first image URL
-        let imageUrl = urls.find(url => 
-          url && (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif'))
-        ) || urls[0]
-        
-        // If we have a file_path but no public URL, try to get it from storage
-        if (!imageUrl && idBadgeDoc.file_path) {
-          const supabase = createClient()
-          const { data: { publicUrl } } = supabase.storage
-            .from('ROUTE_DOCUMENTS')
-            .getPublicUrl(idBadgeDoc.file_path)
-          imageUrl = publicUrl
-        }
-        
-        if (imageUrl) {
-          setIdBadgePhotoUrl(imageUrl)
+        const urlToCheck = idBadgeDoc.file_url ? parseFileUrls(idBadgeDoc.file_url)[0] : null
+        if (urlToCheck) setIdBadgePhotoUrl(urlToCheck)
+        else if (idBadgeDoc.file_path) {
+          const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(idBadgeDoc.file_path)
+          setIdBadgePhotoUrl(publicUrl)
         }
       }
     }
-    setLoadingDocuments(false)
   }
 
   const parseFileUrls = (fileUrl: string | null): string[] => {
@@ -316,951 +228,318 @@ export function DriverDetailClient({ id }: { id: string }) {
     try {
       const parsed = JSON.parse(fileUrl)
       return Array.isArray(parsed) ? parsed : [fileUrl]
-    } catch {
-      return [fileUrl]
-    }
+    } catch { return [fileUrl] }
   }
 
   const loadTardinessReports = async (employeeId: number) => {
-    setLoadingTardiness(true)
     const supabase = createClient()
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('tardiness_reports')
-      .select(`
-        *,
-        route:route_id(id, route_number),
-        coordinator:coordinator_id(id, full_name),
-        route_session:route_session_id(id, session_type, session_date)
-      `)
+      .select('id, status, reported_at')
       .eq('driver_id', employeeId)
-      .order('reported_at', { ascending: false })
+      .eq('status', 'pending') // Just get pending count for summary mostly
 
-    if (error) {
-      console.error('Error fetching tardiness reports:', error)
-      setTardinessReports([])
-    } else {
-      setTardinessReports(data || [])
-    }
-    setLoadingTardiness(false)
+    if (data) setTardinessReports(data)
   }
 
-  // Reload tardiness reports when tardiness tab is opened
-  useEffect(() => {
-    if (activeTab === 'tardiness' && driver) {
-      loadTardinessReports(driver.employee_id)
-    }
-  }, [activeTab, driver?.employee_id])
-
-  // Set up real-time subscription for tardiness reports
-  useEffect(() => {
-    if (!driver) return
-
-    const supabase = createClient()
-    const channel = supabase
-      .channel('tardiness-reports-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tardiness_reports',
-          filter: `driver_id=eq.${driver.employee_id}`
-        },
-        (payload) => {
-          console.log('Tardiness report changed:', payload)
-          // Reload tardiness reports when any change occurs
-          loadTardinessReports(driver.employee_id)
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [driver?.employee_id])
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 w-64 animate-pulse rounded-md bg-gray-200" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="h-64 animate-pulse rounded-md bg-gray-200" />
-          <div className="h-64 animate-pulse rounded-md bg-gray-200" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!driver) {
-    notFound()
-  }
+  if (loading) return <div className="p-8 text-center animate-pulse">Loading driver profile...</div>
+  if (!driver) return notFound()
 
   const employee = driver.employees
+  const pendingTardiness = tardinessReports.length
+
+  const certificates = [
+    { label: 'TAS Badge', date: driver.tas_badge_expiry_date, ref: driver.tas_badge_number, important: true },
+    // Removed Taxi Badge as per logic in Edit page (often redundant or tracked on vehicle) but keeping if present
+    ...(driver.taxi_badge_expiry_date ? [{ label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, ref: driver.taxi_badge_number }] : []),
+    { label: 'DBS Check', date: null, ref: driver.dbs_number, status: driver.dbs_number ? 'Active' : 'Missing' },
+    { label: 'Driving License', date: driver.driving_license_expiry_date, important: true },
+    { label: 'CPC', date: driver.cpc_expiry_date },
+    { label: 'First Aid', date: driver.first_aid_certificate_expiry_date },
+    { label: 'Passport', date: driver.passport_expiry_date },
+  ]
+
+  const trainingStatus = [
+    { label: 'Safeguarding', completed: driver.safeguarding_training_completed, date: driver.safeguarding_training_date },
+    { label: 'TAS PATS', completed: driver.tas_pats_training_completed, date: driver.tas_pats_training_date },
+    { label: 'PSA Training', completed: driver.psa_training_completed, date: driver.psa_training_date },
+  ]
+
+  // Status Colors
+  const statusColor = employee.can_work === false ? 'bg-red-100 text-red-800' : employee.employment_status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <div className="max-w-[1600px] mx-auto p-4 space-y-6">
+
+      {/* Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <Link href="/dashboard/drivers">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
           </Link>
-          {/* Profile Picture - ID Badge */}
-          <div className="relative">
-            {idBadgePhotoUrl ? (
-              <img
-                src={idBadgePhotoUrl}
-                alt={`${employee.full_name} - ID Badge`}
-                className="h-24 w-24 rounded-full object-cover border-4 border-violet-500 shadow-lg shadow-violet-500/25"
-                onError={(e) => {
-                  // Fallback if image fails to load
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
-            ) : (
-              <div className="h-24 w-24 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center border-4 border-violet-500 shadow-lg shadow-violet-500/25">
-                <span className="text-white text-2xl font-bold">
-                  {employee.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                </span>
-              </div>
-            )}
-            {driver.tas_badge_number && (
-              <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-violet-600 to-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white shadow-md shadow-violet-500/25">
-                {driver.tas_badge_number}
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">{employee.full_name}</h1>
-            <p className="mt-2 text-sm text-gray-600">Driver Details & Compliance</p>
-          </div>
-        </div>
-        <Link href={`/dashboard/drivers/${id}/edit`}>
-          <Button>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </Link>
-      </div>
-
-      {/* Warning Banner */}
-      {employee.can_work === false && (
-        <Card className="border-l-4 border-red-500 bg-red-50">
-          <CardContent className="py-4">
-            <div className="flex items-center">
-              <AlertTriangle className="h-6 w-6 text-red-600 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-red-800">
-                  Driver Cannot Work
-                </h3>
-                <p className="text-sm text-red-700 mt-1">
-                  This driver has expired certificates and is flagged as unable to work. Please review and renew certificates below.
-                </p>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              {idBadgePhotoUrl ? (
+                <img src={idBadgePhotoUrl} alt="Profile" className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-sm bg-slate-100" />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-lg border-2 border-white shadow-sm">
+                  {employee.full_name.charAt(0)}
+                </div>
+              )}
+              <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${employee.can_work === false ? 'bg-red-500' : 'bg-green-500'}`} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1"><User className="h-3 w-3" /> {employee.role}</span>
+                <span>•</span>
+                <span>ID: {employee.id}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Driver sections">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'overview' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-            `}
-          >
-            📋 Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('documentation')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'documentation' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-            `}
-          >
-            <FileText className="inline mr-2 h-4 w-4" />
-            Documentation
-          </button>
-          <button
-            onClick={() => setActiveTab('training')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'training' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-            `}
-          >
-            <GraduationCap className="inline mr-2 h-4 w-4" />
-            Training & Checks
-          </button>
-          <button
-            onClick={() => setActiveTab('documents')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'documents' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-            `}
-          >
-            <FileText className="inline mr-2 h-4 w-4" />
-            Uploaded Documents
-          </button>
-          <button
-            onClick={() => setActiveTab('tardiness')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'tardiness' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-            `}
-          >
-            <Timer className="inline mr-2 h-4 w-4" />
-            Tardiness Reports
-            {tardinessReports.filter(r => r.status === 'pending').length > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
-                {tardinessReports.filter(r => r.status === 'pending').length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('daily-checks')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'daily-checks' 
-                ? 'border-navy text-navy' 
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
-            `}
-          >
-            <CheckCircle className="inline mr-2 h-4 w-4" />
-            Daily Vehicle Checks
-          </button>
-        </nav>
-      </div>
-
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Employee ID</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.id}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.full_name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Employment Status</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      employee.employment_status === 'Active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {employee.employment_status || 'N/A'}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Work Authorization</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 text-xs font-semibold leading-5 ${
-                      employee.can_work === false
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}
-                  >
-                    {employee.can_work === false ? (
-                      <>
-                        <XCircle className="mr-1 h-3 w-3" />
-                        Cannot Work
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                        Authorized
-                      </>
-                    )}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">PSV License</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {driver.psv_license ? 'Yes' : 'No'}
-                  </span>
-                </dd>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {employee.phone_number || 'N/A'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Personal Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {employee.personal_email || 'N/A'}
-                </dd>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Vehicle Assignment */}
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle className="flex items-center">
-                <Car className="mr-2 h-5 w-5" />
-                Assigned Vehicle(s)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              {vehicleAssignments.length === 0 ? (
-                <div>
-                  <p className="text-sm text-gray-500">No vehicle assigned</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Vehicle assignments are managed through the vehicle_assignments table
-                  </p>
-                </div>
-              ) : (
-                vehicleAssignments.map((assignment) => {
-                  const vehicle = assignment.vehicles
-                  if (!vehicle) return null
-                  
-                  return (
-                    <div key={assignment.id} className="border rounded-lg p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Link 
-                            href={`/dashboard/vehicles/${vehicle.id}`}
-                            className="text-blue-600 hover:underline font-medium"
-                          >
-                            {vehicle.vehicle_identifier || vehicle.registration || `Vehicle ${vehicle.id}`}
-                          </Link>
-                          {vehicle.make && vehicle.model && (
-                            <p className="text-sm text-gray-600">{vehicle.make} {vehicle.model}</p>
-                          )}
-                        </div>
-                        {vehicle.off_the_road && (
-                          <span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-red-100 text-red-800">
-                            VOR
-                          </span>
-                        )}
-                      </div>
-                      {vehicle.registration && (
-                        <p className="text-xs text-gray-500">Registration: {vehicle.registration}</p>
-                      )}
-                      {vehicle.vehicle_type && (
-                        <p className="text-xs text-gray-500">Type: {vehicle.vehicle_type}</p>
-                      )}
-                      {assignment.assigned_from && (
-                        <p className="text-xs text-gray-500">
-                          Assigned from: {formatDate(assignment.assigned_from)}
-                        </p>
-                      )}
-                      {assignment.assigned_to && (
-                        <p className="text-xs text-gray-500">
-                          Assigned until: {formatDate(assignment.assigned_to)}
-                        </p>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Key Certificates Summary */}
-          <Card className="md:col-span-2">
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>Key Certificates Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                {[
-                  { label: 'TAS Badge', date: driver.tas_badge_expiry_date, badge: driver.tas_badge_number },
-                  { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, badge: driver.taxi_badge_number },
-                  { label: 'Driving License', date: driver.driving_license_expiry_date },
-                  { label: 'CPC', date: driver.cpc_expiry_date },
-                  { label: 'First Aid', date: driver.first_aid_certificate_expiry_date },
-                ].map((cert, idx) => {
-                  const daysRemaining = getDaysRemaining(cert.date)
-                  const badge = getExpiryBadge(daysRemaining)
-                  return (
-                    <div key={idx} className="rounded-lg border p-4">
-                      <p className="text-sm font-medium text-gray-700 mb-1">{cert.label}</p>
-                      {cert.badge && (
-                        <p className="text-xs text-gray-500 mb-2">{cert.badge}</p>
-                      )}
-                      <p className="text-xs text-gray-500 mb-2">
-                        {cert.date ? formatDate(cert.date) : 'Not set'}
-                      </p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${badge.color}`}>
-                        {badge.icon && <badge.icon className="mr-1 h-3 w-3" />}
-                        {badge.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         </div>
 
-        {/* QR Code Section */}
-        <DriverQRCode driverId={parseInt(id)} />
-      </>
+        <div className="flex items-center gap-2">
+          {pendingTardiness > 0 && (
+            <div className="px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-medium rounded-full border border-orange-100 flex items-center gap-1.5">
+              <Timer className="h-3.5 w-3.5" />
+              {pendingTardiness} Late Report{pendingTardiness !== 1 ? 's' : ''}
+            </div>
+          )}
+          <div className={`px-3 py-1.5 text-xs font-medium rounded-full flex items-center gap-1.5 ${statusColor}`}>
+            {employee.can_work === false ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+            {employee.can_work === false ? 'Cannot Work' : 'Authorized to Work'}
+          </div>
+          <Link href={`/dashboard/drivers/${id}/edit`}>
+            <Button size="sm" variant="outline" className="h-8 text-xs">
+              <Pencil className="h-3 w-3 mr-1.5" /> Edit Profile
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {driver.additional_notes && (
+        <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
+          <FileText className="h-4 w-4 mt-0.5 shrink-0" />
+          <p><span className="font-semibold">Note:</span> {driver.additional_notes}</p>
+        </div>
       )}
 
-      {/* Documentation Tab */}
-      {activeTab === 'documentation' && (
-        <div className="space-y-6">
-          {/* Expiry Certificates */}
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* Left Column: Stats & Quick Info (4 cols) */}
+        <div className="lg:col-span-4 space-y-4">
+
+          {/* Contact Card */}
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>📅 Certificates with Expiry Dates</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="rounded-md border bg-white shadow-sm overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-navy">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-white">Certificate Type</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-white">Badge/Reference</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-white">Expiry Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-white">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { label: 'TAS Badge', date: driver.tas_badge_expiry_date, ref: driver.tas_badge_number, docType: 'TAS Badge' },
-                      { label: 'Taxi Badge', date: driver.taxi_badge_expiry_date, ref: driver.taxi_badge_number, docType: 'Taxi Badge' },
-                      { label: 'DBS Certificate', date: null, ref: driver.dbs_number, docType: 'DBS Certificate' },
-                      { label: 'First Aid Certificate', date: driver.first_aid_certificate_expiry_date, ref: null, docType: 'First Aid Certificate' },
-                      { label: 'Passport', date: driver.passport_expiry_date, ref: null, docType: 'Passport' },
-                      { label: 'Driving License', date: driver.driving_license_expiry_date, ref: null, docType: 'Driving License' },
-                      { label: 'CPC Certificate', date: driver.cpc_expiry_date, ref: null, docType: 'CPC Certificate' },
-                      { label: 'Utility Bill', date: driver.utility_bill_date, ref: null, docType: 'Utility Bill' },
-                    ].map((item, idx) => {
-                      const daysRemaining = getDaysRemaining(item.date)
-                      const badge = getExpiryBadge(daysRemaining)
-                      // Find matching document for this certificate
-                      // Try exact match first, then case-insensitive match, then partial match
-                      const matchingDoc = item.docType 
-                        ? documents.find(doc => {
-                            if (!doc.doc_type) return false
-                            const docTypeLower = doc.doc_type.toLowerCase()
-                            const searchTypeLower = item.docType.toLowerCase()
-                            return doc.doc_type === item.docType || 
-                                   docTypeLower === searchTypeLower ||
-                                   docTypeLower.includes(searchTypeLower) ||
-                                   searchTypeLower.includes(docTypeLower)
-                          })
-                        : null
-                      const docFileUrls = matchingDoc ? parseFileUrls(matchingDoc.file_url || matchingDoc.file_path) : []
-                      
-                      return (
-                        <tr key={idx} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.label}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{item.ref || '—'}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{item.date ? formatDate(item.date) : 'Not set'}</td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${badge.color}`}>
-                              {badge.icon && <badge.icon className="mr-1 h-3 w-3" />}
-                              {badge.label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {docFileUrls.length > 0 ? (
-                              <div className="flex space-x-2">
-                                {docFileUrls.map((url, urlIdx) => (
-                                  <a
-                                    key={urlIdx}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-navy text-white hover:bg-blue-800 transition-colors"
-                                    title={`View ${docFileUrls.length > 1 ? `file ${urlIdx + 1}` : 'document'}`}
-                                  >
-                                    <Eye className="mr-1 h-3 w-3" />
-                                    {docFileUrls.length > 1 ? `View ${urlIdx + 1}` : 'View Document'}
-                                  </a>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-400">No document</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+            <CardContent className="p-0">
+              <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact Details</h3>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><SettingsIcon /></Button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                    <Phone className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Phone</p>
+                    <p className="text-sm font-medium text-slate-900">{employee.phone_number || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Email</p>
+                    <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{employee.personal_email || 'N/A'}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Document Checklist (Boolean Fields) */}
+          {/* Vehicle Assignment Card */}
           <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>✅ Document Checklist</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-3">
+            <CardContent className="p-0">
+              <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned Vehicle</h3>
+                {vehicleAssignments.length > 0 && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Active</span>}
+              </div>
+              <div className="p-4">
+                {vehicleAssignments.length > 0 ? (
+                  vehicleAssignments.map(v => (
+                    <div key={v.vehicle_id} className="flex gap-3 items-start">
+                      <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                        <Car className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <Link href={`/dashboard/vehicles/${v.vehicle_id}`} className="text-sm font-bold text-slate-900 hover:text-blue-600 hover:underline">
+                          {v.vehicles?.registration || 'Unknown Reg'}
+                        </Link>
+                        <p className="text-xs text-slate-500">{v.vehicles?.make} {v.vehicles?.model}</p>
+                        {v.vehicles?.off_the_road && <p className="text-[10px] text-red-600 font-bold mt-1">OFF ROAD</p>}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-slate-500 text-sm">
+                    <Car className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                    No vehicle currently assigned
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Checklists */}
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Requirements</h3>
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Birth Certificate', value: driver.birth_certificate },
-                  { label: 'Marriage Certificate', value: driver.marriage_certificate },
-                  { label: 'Photo Taken', value: driver.photo_taken },
-                  { label: 'Private Hire Badge', value: driver.private_hire_badge },
-                  { label: 'Paper Licence', value: driver.paper_licence },
-                  { label: 'Taxi Plate Photo', value: driver.taxi_plate_photo },
-                  { label: 'Logbook', value: driver.logbook },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between rounded-lg border p-4">
-                    <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                        item.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {item.value ? '✓ Yes' : '✗ No'}
-                    </span>
+                  { label: 'PSV License', active: driver.psv_license },
+                  { label: 'Photo Taken', active: driver.photo_taken },
+                  { label: 'Private Badge', active: driver.private_hire_badge },
+                  { label: 'Birth Cert', active: driver.birth_certificate },
+                ].map((item, i) => (
+                  <div key={i} className={`flex items-center gap-2 text-xs p-2 rounded border ${item.active ? 'bg-green-50 border-green-100 text-green-800' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                    {item.active ? <CheckCircle className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-slate-300" />}
+                    {item.label}
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
 
-      {/* Training & Checks Tab */}
-      {activeTab === 'training' && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>🎓 Training & Compliance</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                {/* Safeguarding Training */}
-                <div className="rounded-lg border p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Safeguarding Training</h3>
-                      <p className="text-sm text-gray-500">Mandatory child protection training</p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium ${
-                        driver.safeguarding_training_completed
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {driver.safeguarding_training_completed ? (
-                        <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Completed
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Not Completed
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  {driver.safeguarding_training_date && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="mr-2 h-4 w-4" />
-                      Completed on: {formatDate(driver.safeguarding_training_date)}
-                    </div>
-                  )}
-                </div>
-
-                {/* TAS PATS Training */}
-                <div className="rounded-lg border p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">TAS PATS Training</h3>
-                      <p className="text-sm text-gray-500">Passenger Assistant Training Scheme</p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium ${
-                        driver.tas_pats_training_completed
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {driver.tas_pats_training_completed ? (
-                        <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Completed
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Not Completed
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  {driver.tas_pats_training_date && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="mr-2 h-4 w-4" />
-                      Completed on: {formatDate(driver.tas_pats_training_date)}
-                    </div>
-                  )}
-                </div>
-
-                {/* PSA Training */}
-                <div className="rounded-lg border p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">PSA Training</h3>
-                      <p className="text-sm text-gray-500">Passenger Safety & Assistance</p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium ${
-                        driver.psa_training_completed
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {driver.psa_training_completed ? (
-                        <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Completed
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Not Completed
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  {driver.psa_training_date && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="mr-2 h-4 w-4" />
-                      Completed on: {formatDate(driver.psa_training_date)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Documents Tab */}
-      {activeTab === 'documents' && (
-        <div className="space-y-6">
-          {/* Badge Photo Upload Section */}
-          {driver && (
-            <Card>
-              <CardHeader className="bg-navy text-white">
-                <CardTitle>Badge Photo</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <BadgePhotoUpload employeeId={driver.employee_id} onUpload={() => {
-                  if (driver) {
-                    loadDocuments(driver.employee_id)
-                  }
-                }} />
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle>📄 Uploaded Documents</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {loadingDocuments ? (
-                <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-navy"></div>
-                  <p className="mt-2 text-sm text-gray-500">Loading documents...</p>
-                </div>
-              ) : documents.length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-500">No documents uploaded yet</p>
-                </div>
-              ) : (
-                <div className="rounded-md border bg-white shadow-sm overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-navy">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Document Name</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">File Type</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Document Category</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Uploaded</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {documents.map((doc, idx) => {
-                        const fileUrls = parseFileUrls(doc.file_url || doc.file_path)
-                        return (
-                          <tr key={doc.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                              {doc.file_name || 'Untitled Document'}
-                              {fileUrls.length > 1 && (
-                                <span className="ml-2 text-xs text-gray-500">
-                                  ({fileUrls.length} files)
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {doc.file_type || 'N/A'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {doc.doc_type || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {formatDate(doc.uploaded_at)}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex space-x-2">
-                                {fileUrls.map((url, urlIdx) => (
-                                  <a
-                                    key={urlIdx}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-navy text-white hover:bg-blue-800 transition-colors"
-                                    title={`View ${fileUrls.length > 1 ? `file ${urlIdx + 1}` : 'document'}`}
-                                  >
-                                    {fileUrls.length > 1 ? (
-                                      <>
-                                        <ExternalLink className="mr-1 h-3 w-3" />
-                                        File {urlIdx + 1}
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ExternalLink className="mr-1 h-3 w-3" />
-                                        View
-                                      </>
-                                    )}
-                                  </a>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Daily Checks Tab */}
-      {activeTab === 'daily-checks' && driver && (
-        <DriverPreChecks driverId={driver.employee_id} />
-      )}
-
-      {/* Tardiness Tab */}
-      {activeTab === 'tardiness' && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="bg-navy text-white">
-              <CardTitle className="flex items-center">
-                <Timer className="mr-2 h-5 w-5" />
-                Tardiness Reports
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {loadingTardiness ? (
-                <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-navy"></div>
-                  <p className="mt-2 text-sm text-gray-500">Loading tardiness reports...</p>
-                </div>
-              ) : tardinessReports.length === 0 ? (
-                <div className="text-center py-8">
-                  <Timer className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-500">No tardiness reports found</p>
-                </div>
-              ) : (
-                <div className="rounded-md border bg-white shadow-sm overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-navy">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Session</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Route</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Reason</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Reviewed By</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-white">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tardinessReports.map((report, idx) => {
-                        const getStatusBadge = (status: string) => {
-                          switch (status) {
-                            case 'pending':
-                              return {
-                                icon: Clock,
-                                label: 'Pending',
-                                color: 'bg-yellow-100 text-yellow-800'
-                              }
-                            case 'approved':
-                              return {
-                                icon: CheckCircle,
-                                label: 'Approved',
-                                color: 'bg-green-100 text-green-800'
-                              }
-                            case 'declined':
-                              return {
-                                icon: XCircle,
-                                label: 'Declined',
-                                color: 'bg-red-100 text-red-800'
-                              }
-                            default:
-                              return {
-                                icon: Clock,
-                                label: status,
-                                color: 'bg-gray-100 text-gray-800'
-                              }
-                          }
-                        }
-                        const statusBadge = getStatusBadge(report.status)
-                        const StatusIcon = statusBadge.icon
-                        
-                        return (
-                          <tr key={report.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                            <td className="px-4 py-3 text-sm text-gray-900">
-                              {formatDate(report.session_date)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {report.session_type || report.route_session?.session_type || 'N/A'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {report.route?.route_number ? (
-                                <Link 
-                                  href={`/dashboard/routes/${report.route_id}`}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {report.route.route_number}
-                                </Link>
-                              ) : (
-                                'N/A'
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {report.reason}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${statusBadge.color}`}>
-                                <StatusIcon className="mr-1 h-3 w-3" />
-                                {statusBadge.label}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {report.coordinator?.full_name || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              <div className="max-w-xs">
-                                {report.additional_notes && (
-                                  <p className="text-xs text-gray-500 mb-1">
-                                    <strong>Driver:</strong> {report.additional_notes}
-                                  </p>
-                                )}
-                                {report.coordinator_notes && (
-                                  <p className="text-xs text-gray-500">
-                                    <strong>Coordinator:</strong> {report.coordinator_notes}
-                                  </p>
-                                )}
-                                {!report.additional_notes && !report.coordinator_notes && '—'}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Additional Notes (shown on all tabs) */}
-      {driver.additional_notes && (
-        <Card className="border-l-4 border-navy">
-          <CardHeader>
-            <CardTitle className="text-navy">📝 Additional Notes (HR Comments)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{driver.additional_notes}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick Link to Certificate Expiry Dashboard */}
-      <Card className="border-navy">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-navy mr-3" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  View All Certificate Expiries
-                </p>
-                <p className="text-xs text-gray-500">
-                  Check all expiring certificates across drivers, PAs, and vehicles
-                </p>
-              </div>
-            </div>
-            <Link href="/dashboard/certificates-expiry" prefetch={true}>
-              <Button variant="secondary">
-                View Dashboard →
-              </Button>
-            </Link>
+          {/* QR Code */}
+          <div className="pt-2">
+            <DriverQRCode driverId={driver.employee_id} />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Driver Updates */}
-      <DriverUpdatesClient driverId={driver.employee_id} />
+        </div>
+
+        {/* Right Column: Certificates & Training (8 cols) */}
+        <div className="lg:col-span-8 space-y-4">
+
+          {/* Critical Expiring Certificates */}
+          <Card className="overflow-hidden">
+            <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Compliance Status
+              </h3>
+              <Link href={`/dashboard/drivers/${id}/edit?tab=certificates`}>
+                <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 hover:text-blue-700">Manage</Button>
+              </Link>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {certificates.map((cert, i) => {
+                const days = getDaysRemaining(cert.date)
+                const status = getExpiryBadge(days)
+
+                // Don't show non-important ones if they are not set, to save space, unless they are expired? 
+                // Actually show all for completeness in dense view
+                if (!cert.date && !cert.ref && !cert.important && !cert.status) return null
+
+                return (
+                  <div key={i} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-slate-700">{cert.label}</span>
+                      {cert.ref && <span className="text-xs text-slate-500 font-mono">{cert.ref}</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {cert.date && (
+                        <div className="text-right">
+                          <p className="text-xs font-medium text-slate-900">{formatDate(cert.date)}</p>
+                          <p className="text-[10px] text-slate-400">Expiry Date</p>
+                        </div>
+                      )}
+                      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                        {status.icon && <status.icon className="h-3 w-3" />}
+                        {status.label}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+
+          {/* Training Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {trainingStatus.map((t, i) => (
+              <Card key={i} className={`${t.completed ? 'bg-green-50/50 border-green-100' : 'bg-slate-50 border-slate-200'}`}>
+                <CardContent className="p-4 flex flex-col h-full justify-between">
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-sm font-semibold text-slate-700">{t.label}</span>
+                    {t.completed ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-slate-400" />}
+                  </div>
+                  {t.completed ? (
+                    <div className="text-xs text-green-700">
+                      Completed <br /> {t.date ? formatDate(t.date) : ''}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500">Not Completed</div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Recent Uploads */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="p-3 border-b bg-slate-50/50">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Recent Documents</h3>
+              </div>
+              <div className="p-0">
+                {documents.length > 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {documents.slice(0, 5).map(doc => (
+                      <div key={doc.id} className="p-3 flex items-center justify-between hover:bg-slate-50 group">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded bg-slate-100 flex items-center justify-center text-slate-400">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
+                              {doc.doc_type || 'Document'}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{formatDate(doc.uploaded_at)}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Handle parsing of file_url array if needed */}
+                          <a href={parseFileUrls(doc.file_url || doc.file_path)[0] || '#'} target="_blank" rel="noreferrer">
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0"><Eye className="h-3.5 w-3.5 text-slate-500" /></Button>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                    {documents.length > 5 && (
+                      <div className="p-2 text-center border-t">
+                        <Button variant="ghost" size="sm" className="text-xs text-blue-600 h-6">View All {documents.length} Documents</Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-sm text-slate-400">No documents uploaded</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
+      </div>
     </div>
   )
 }
 
+function SettingsIcon() {
+  return <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+}

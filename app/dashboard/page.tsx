@@ -175,7 +175,7 @@ async function DashboardContent() {
       {/* Row 1: Stats Grid - 4 cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Employees */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 p-5 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl transition-all">
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-blue-600 to-blue-500 p-5 text-white shadow-lg shadow-primary/20 hover:shadow-xl transition-all">
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full" />
           <div className="relative flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -183,7 +183,7 @@ async function DashboardContent() {
             </div>
             <div>
               <p className="text-3xl font-bold">{stats.employees}</p>
-              <p className="text-violet-100 text-sm">Employees</p>
+              <p className="text-blue-100 text-sm">Employees</p>
             </div>
           </div>
         </div>
@@ -242,7 +242,7 @@ async function DashboardContent() {
               </div>
               <h3 className="font-semibold text-slate-800">Recent Incidents</h3>
             </div>
-            <Link href="/dashboard/incidents" className="text-sm text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1">
+            <Link href="/dashboard/incidents" className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1">
               View all <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -326,7 +326,7 @@ async function DashboardContent() {
           )}
 
           {/* Compliance Status */}
-          <div className="rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 p-5 text-white shadow-lg flex-1">
+          <div className="rounded-2xl bg-gradient-to-br from-primary via-blue-600 to-blue-500 p-5 text-white shadow-lg flex-1">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
               Compliance Status
@@ -334,7 +334,7 @@ async function DashboardContent() {
             <div className="space-y-4">
               <Link href="/dashboard/certificates-expiry/employees" className="block">
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-violet-100">Employee Certs</span>
+                  <span className="text-blue-100">Employee Certs</span>
                   <span className="text-amber-300 font-medium">{stats.employeeExpiring30Days} expiring</span>
                 </div>
                 <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
@@ -343,7 +343,7 @@ async function DashboardContent() {
               </Link>
               <Link href="/dashboard/certificates-expiry/vehicles" className="block">
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-violet-100">Vehicle Certs</span>
+                  <span className="text-blue-100">Vehicle Certs</span>
                   <span className="text-rose-300 font-medium">{stats.vehicleExpiring30Days} expiring</span>
                 </div>
                 <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
@@ -380,7 +380,7 @@ async function DashboardContent() {
         {/* Quick Stats */}
         <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Target className="h-5 w-5 text-violet-500" />
+            <Target className="h-5 w-5 text-primary" />
             Quick Stats
           </h3>
           <div className="grid grid-cols-4 gap-3">
@@ -400,7 +400,7 @@ async function DashboardContent() {
               <p className="text-xs text-slate-500">Tracked</p>
             </div>
             <div className="text-center p-4 bg-slate-50 rounded-xl">
-              <Calendar className="h-6 w-6 mx-auto text-fuchsia-500 mb-2" />
+              <Calendar className="h-6 w-6 mx-auto text-blue-500 mb-2" />
               <p className="text-2xl font-bold text-slate-800">{stats.incidentsThisMonth}</p>
               <p className="text-xs text-slate-500">Month</p>
             </div>

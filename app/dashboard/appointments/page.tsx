@@ -99,8 +99,8 @@ export default function AppointmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <Calendar className="h-6 w-6 text-white" />
+          <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
+            <Calendar className="h-6 w-6 text-slate-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
@@ -110,8 +110,8 @@ export default function AppointmentsPage() {
       </div>
 
       <Card className="overflow-hidden border-slate-200">
-        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-          <CardTitle>Create Slot</CardTitle>
+        <CardHeader className="bg-slate-50 border-b border-slate-200">
+          <CardTitle className="text-slate-900 text-base font-semibold">Create Slot</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={createSlot} className="grid gap-4 md:grid-cols-2">
@@ -165,8 +165,8 @@ export default function AppointmentsPage() {
       </Card>
 
       <Card className="overflow-hidden border-slate-200">
-        <CardHeader className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-          <CardTitle>Slots & Bookings</CardTitle>
+        <CardHeader className="bg-slate-50 border-b border-slate-200">
+          <CardTitle className="text-slate-900 text-base font-semibold">Slots & Bookings</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -207,7 +207,7 @@ export default function AppointmentsPage() {
                       <TableCell>
                         {booking ? (
                           <div className="space-y-1">
-                            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-violet-100 text-violet-700">Booked</span>
+                            <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700">Booked</span>
                             <div className="text-sm text-slate-600">
                               {booking.booked_by_name || booking.booked_by_email || 'Recipient'}
                             </div>

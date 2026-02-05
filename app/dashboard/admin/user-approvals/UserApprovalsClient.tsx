@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
-import { 
-  Users, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  Users,
+  CheckCircle,
+  XCircle,
+  Clock,
   Search,
   RefreshCw,
   Mail,
@@ -221,13 +221,18 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Approvals</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Review and approve or reject new user signups
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
+            <UserCheck className="h-6 w-6 text-slate-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">User Approvals</h1>
+            <p className="text-sm text-slate-500">
+              Review and approve or reject new user signups
+            </p>
+          </div>
         </div>
-        <Button onClick={loadUsers} disabled={loading} variant="secondary">
+        <Button onClick={loadUsers} disabled={loading} variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -246,9 +251,9 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
       )}
 
       <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center">
-            <UserCheck className="mr-2 h-5 w-5" />
+        <CardHeader className="bg-slate-50 border-b border-slate-200">
+          <CardTitle className="flex items-center text-slate-900 text-base font-semibold">
+            <UserCheck className="mr-2 h-5 w-5 text-slate-500" />
             Pending User Approvals ({filteredUsers.length})
           </CardTitle>
         </CardHeader>
@@ -270,7 +275,7 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
           {/* Users List */}
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="mt-2 text-sm text-gray-500">Loading users...</p>
             </div>
           ) : filteredUsers.length === 0 ? (
@@ -326,8 +331,9 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
                               setSelectedUser(user)
                               setAdminNotes('')
                             }}
-                            variant="secondary"
+                            variant="outline"
                             size="sm"
+                            className="text-slate-600 border-slate-300 hover:bg-slate-50"
                           >
                             Review
                           </Button>
@@ -358,14 +364,14 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
       {selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="bg-navy text-white p-6 flex items-center justify-between rounded-t-lg">
-              <h2 className="text-xl font-bold">Review User Signup</h2>
+            <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center justify-between rounded-t-lg">
+              <h2 className="text-xl font-bold text-slate-900">Review User Signup</h2>
               <button
                 onClick={() => {
                   setSelectedUser(null)
                   setAdminNotes('')
                 }}
-                className="text-white hover:text-gray-200"
+                className="text-slate-500 hover:text-slate-700"
               >
                 ×
               </button>
@@ -394,7 +400,7 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
                 <textarea
                   id="admin-notes"
                   rows={4}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-navy"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Add notes about this user (required for rejection)"
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
@@ -405,19 +411,19 @@ export default function UserApprovalsClient({ initialUsers, error: initialError 
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => {
                     setSelectedUser(null)
                     setAdminNotes('')
                   }}
                   disabled={actionLoading !== null}
+                  className="text-slate-600 border-slate-300 hover:bg-slate-50"
                 >
                   Cancel
                 </Button>
                 {selectedUser.approval_status === 'pending' && (
                   <>
                     <Button
-                      variant="secondary"
                       className="bg-red-600 hover:bg-red-700 text-white"
                       onClick={() => handleReject(selectedUser.id)}
                       disabled={actionLoading !== null || !adminNotes.trim()}

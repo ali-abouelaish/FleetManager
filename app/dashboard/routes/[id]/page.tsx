@@ -24,7 +24,7 @@ function formatTime(time: string | null): string {
 
 async function getRouteDetails(id: string) {
   const supabase = await createClient()
-  
+
   const { data: route, error: routeError } = await supabase
     .from('routes')
     .select(`
@@ -69,7 +69,7 @@ async function getRouteDetails(id: string) {
     .order('stop_order')
 
   // Get vehicle directly from route
-  const vehicle = route.vehicles 
+  const vehicle = route.vehicles
     ? (Array.isArray(route.vehicles) ? route.vehicles[0] : route.vehicles)
     : null
 
@@ -113,26 +113,27 @@ export default async function ViewRoutePage({
   const { route, routePasList, passengers, routePoints, vehicle } = data
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {/* Header with Back Button */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           <Link href="/dashboard/routes">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-slate-900">
               {route.route_number || `Route ${route.id}`}
             </h1>
-            <p className="mt-2 text-sm text-gray-600">Route Details & Assignments</p>
+            <p className="text-sm text-slate-500">Route Details & Assignments</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <ExportTR1Button routeId={route.id} />
           <Link href={`/dashboard/routes/${route.id}/edit`}>
-            <Button>
+            <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
@@ -143,40 +144,36 @@ export default async function ViewRoutePage({
       <RouteDetailClient route={route} routeId={route.id} routePasList={routePasList} />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Statistics</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Total Passengers</span>
-            <span className="text-2xl font-bold text-gray-900">{passengers.length}</span>
+        <CardContent className="p-3 space-y-1">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Statistics</h2>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">Total Passengers</span>
+            <span className="text-base font-bold text-slate-900">{passengers.length}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Crew Members</span>
-            <span className="text-2xl font-bold text-gray-900">
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">Crew Members</span>
+            <span className="text-base font-bold text-slate-900">
               {(route.driver_id ? 1 : 0) + (routePasList?.length ?? (route.passenger_assistant_id ? 1 : 0))}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Pick-up Points</span>
-            <span className="text-2xl font-bold text-gray-900">{routePoints.length}</span>
+          <div className="flex items-center justify-between py-1">
+            <span className="text-xs text-slate-500">Pick-up Points</span>
+            <span className="text-base font-bold text-slate-900">{routePoints.length}</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Crew Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Crew Assignments</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Crew Assignments</h2>
           {!route.driver_id && (!routePasList?.length && !route.passenger_assistant_id) ? (
-            <p className="text-center text-gray-500 py-4">No crew assigned to this route.</p>
+            <p className="text-center text-gray-500 py-2 text-sm">No crew assigned.</p>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               {/* Driver Details */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Driver</h3>
+              <div className="space-y-1">
+                <h3 className="text-xs font-medium text-slate-600">Driver</h3>
                 {route.driver_id ? (() => {
                   const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver
                   const driverEmp = Array.isArray(driver?.employees) ? driver.employees[0] : driver?.employees
@@ -216,8 +213,8 @@ export default async function ViewRoutePage({
               </div>
 
               {/* Passenger Assistant(s) Details - multiple PAs per route */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Passenger Assistant(s)</h3>
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-slate-700">Passenger Assistant(s)</h3>
                 {(() => {
                   const pasToShow = routePasList?.length
                     ? routePasList
@@ -274,46 +271,35 @@ export default async function ViewRoutePage({
 
       {/* Vehicle Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Assigned Vehicle</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Assigned Vehicle</h2>
           {!vehicle ? (
-            <p className="text-center text-gray-500 py-4">
-              No vehicle assigned to this route.
-            </p>
+            <p className="text-center text-gray-500 py-2 text-sm">No vehicle assigned.</p>
           ) : (
-            <div className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Vehicle Identifier</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  <Link href={`/dashboard/vehicles/${vehicle.id}`} className="text-blue-600 hover:underline font-semibold">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                <dt className="text-xs text-slate-500">Vehicle Identifier</dt>
+                <dd className="text-xs font-medium text-slate-900">
+                  <Link href={`/dashboard/vehicles/${vehicle.id}`} className="text-blue-600 hover:underline">
                     {vehicle.vehicle_identifier || 'N/A'}
                   </Link>
                 </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Registration</dt>
-                <dd className="mt-1 text-sm text-gray-900">{vehicle.registration || vehicle.plate_number || 'N/A'}</dd>
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                <dt className="text-xs text-slate-500">Registration</dt>
+                <dd className="text-xs font-medium text-slate-900">{vehicle.registration || vehicle.plate_number || 'N/A'}</dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Make & Model</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {vehicle.make && vehicle.model 
-                    ? `${vehicle.make} ${vehicle.model}` 
+              <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                <dt className="text-xs text-slate-500">Make & Model</dt>
+                <dd className="text-xs font-medium text-slate-900">
+                  {vehicle.make && vehicle.model
+                    ? `${vehicle.make} ${vehicle.model}`
                     : vehicle.make || vehicle.model || 'N/A'}
                 </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Vehicle Type</dt>
-                <dd className="mt-1 text-sm text-gray-900">{vehicle.vehicle_type || 'N/A'}</dd>
-              </div>
-              <div className="pt-2">
-                <Link href={`/dashboard/vehicles/${vehicle.id}`}>
-                  <Button variant="ghost" size="sm">
-                    View Vehicle Details
-                  </Button>
-                </Link>
+              <div className="flex items-center justify-between py-1">
+                <dt className="text-xs text-slate-500">Vehicle Type</dt>
+                <dd className="text-xs font-medium text-slate-900">{vehicle.vehicle_type || 'N/A'}</dd>
               </div>
             </div>
           )}
@@ -322,12 +308,10 @@ export default async function ViewRoutePage({
 
       {/* Passengers Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Passengers</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Passengers</h2>
           {passengers.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No passengers on this route.</p>
+            <p className="text-center text-gray-500 py-2 text-sm">No passengers on this route.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -359,13 +343,11 @@ export default async function ViewRoutePage({
 
       {/* Pick-up Points Section */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Pick-up Points</CardTitle>
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-2 border-b pb-1.5">
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Pick-up Points</h2>
             <RoutePointsManager routeId={route.id} routePoints={routePoints} />
           </div>
-        </CardHeader>
-        <CardContent>
           {routePoints.length === 0 ? (
             <div className="text-center py-8">
               <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-400" />
@@ -394,11 +376,11 @@ export default async function ViewRoutePage({
               </TableHeader>
               <TableBody>
                 {routePoints.map((point: any) => {
-                  const passenger = Array.isArray(point.passengers) 
-                    ? point.passengers[0] 
+                  const passenger = Array.isArray(point.passengers)
+                    ? point.passengers[0]
                     : point.passengers
                   const passengerName = passenger?.full_name || null
-                  
+
                   return (
                     <TableRow key={point.id}>
                       <TableCell>{point.stop_order || 'N/A'}</TableCell>
@@ -408,7 +390,7 @@ export default async function ViewRoutePage({
                         {point.stop_order === 1 ? (
                           <span className="text-blue-600 font-medium">PA Pickup</span>
                         ) : passengerName ? (
-                          <Link 
+                          <Link
                             href={`/dashboard/passengers/${point.passenger_id}`}
                             className="text-blue-600 hover:underline"
                           >
@@ -431,7 +413,7 @@ export default async function ViewRoutePage({
                       </TableCell>
                       <TableCell className="text-right">
                         <Link href={`/dashboard/routes/${route.id}/edit`}>
-                          <Button variant="ghost" size="sm" className="text-violet-600 hover:text-violet-700 hover:bg-violet-50">
+                          <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/10">
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </Link>

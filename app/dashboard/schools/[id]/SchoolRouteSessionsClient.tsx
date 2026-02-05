@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { 
-  RouteServiceHistory, 
+import {
+  RouteServiceHistory,
   AttendanceStatus,
-  SessionType 
+  SessionType
 } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { Calendar, Users, CheckCircle, XCircle, AlertCircle, UserCheck, Eye } from 'lucide-react'
@@ -34,7 +34,7 @@ export default function SchoolRouteSessionsClient({ schoolId, routes }: SchoolRo
     setLoading(true)
     // Get all route IDs for this school
     const routeIds = routes.map(r => r.id)
-    
+
     if (routeIds.length === 0) {
       setSessions([])
       setLoading(false)
@@ -70,7 +70,7 @@ export default function SchoolRouteSessionsClient({ schoolId, routes }: SchoolRo
     }
   }
 
-  const filteredSessions = selectedRoute 
+  const filteredSessions = selectedRoute
     ? sessions.filter(s => s.route_id === selectedRoute)
     : sessions
 
@@ -82,7 +82,7 @@ export default function SchoolRouteSessionsClient({ schoolId, routes }: SchoolRo
     const totalAbsent = routeSessions.reduce((sum, s) => sum + s.absent_count, 0)
     const totalLate = routeSessions.reduce((sum, s) => sum + s.late_count, 0)
     const totalExcused = routeSessions.reduce((sum, s) => sum + s.excused_count, 0)
-    
+
     return {
       route,
       sessions: recentSessions,
@@ -269,11 +269,10 @@ export default function SchoolRouteSessionsClient({ schoolId, routes }: SchoolRo
                     <TableRow key={session.session_id}>
                       <TableCell>{formatDate(session.session_date)}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          session.session_type === 'AM' 
-                            ? 'bg-blue-100 text-blue-800' 
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${session.session_type === 'AM'
+                            ? 'bg-blue-100 text-blue-800'
                             : 'bg-purple-100 text-purple-800'
-                        }`}>
+                          }`}>
                           {session.session_type}
                         </span>
                       </TableCell>

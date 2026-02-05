@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Phone, Users, FileText } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CreateCallLogPage() {
@@ -57,26 +56,19 @@ export default function CreateCallLogPage() {
       if (passengersResult.data) setPassengers(passengersResult.data)
       if (employeesResult.data) setEmployees(employeesResult.data)
       if (routesResult.data) setRoutes(routesResult.data)
-      
-      // Process drivers data
       if (driversResult.data) {
-        const driversList = driversResult.data.map((d: any) => ({
+        setDrivers(driversResult.data.map((d: any) => ({
           employee_id: d.employee_id,
           full_name: d.employees?.full_name || 'Unknown'
-        }))
-        setDrivers(driversList)
+        })))
       }
-      
-      // Process assistants data
       if (assistantsResult.data) {
-        const assistantsList = assistantsResult.data.map((a: any) => ({
+        setAssistants(assistantsResult.data.map((a: any) => ({
           employee_id: a.employee_id,
           full_name: a.employees?.full_name || 'Unknown'
-        }))
-        setAssistants(assistantsList)
+        })))
       }
     }
-
     loadData()
   }, [supabase])
 
@@ -86,7 +78,6 @@ export default function CreateCallLogPage() {
     setLoading(true)
 
     try {
-      // Convert empty strings to null for foreign key fields
       const cleanedData = {
         ...formData,
         related_passenger_id: formData.related_passenger_id === '' ? null : (formData.related_passenger_id ? parseInt(formData.related_passenger_id) : null),
@@ -119,62 +110,85 @@ export default function CreateCallLogPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
+    <div className="space-y-3">
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
         <Link href="/dashboard/call-logs">
-          <Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
+          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Log New Call</h1>
-          <p className="mt-2 text-sm text-gray-600">Record details of the phone call</p>
+          <h1 className="text-xl font-bold text-slate-900">Log New Call</h1>
+          <p className="text-sm text-slate-500">Record details of the phone call</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Call Information</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="rounded-md bg-red-50 p-4"><div className="text-sm text-red-800">{error}</div></div>}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="call_date">Call Date/Time *</Label>
-                <Input id="call_date" type="datetime-local" required value={formData.call_date} onChange={(e) => setFormData({ ...formData, call_date: e.target.value })} />
-              </div>
+      {/* Main Form Card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Caller Information Section */}
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <Phone className="mr-2 h-4 w-4" />
+            Caller Information
+          </h2>
+        </div>
+        <div className="p-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="space-y-1">
+              <Label htmlFor="call_date" className="text-xs font-medium text-slate-600">Date/Time *</Label>
+              <Input id="call_date" type="datetime-local" required value={formData.call_date} onChange={(e) => setFormData({ ...formData, call_date: e.target.value })} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="caller_name" className="text-xs font-medium text-slate-600">Caller Name *</Label>
+              <Input id="caller_name" required value={formData.caller_name} onChange={(e) => setFormData({ ...formData, caller_name: e.target.value })} placeholder="Name" className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="caller_phone" className="text-xs font-medium text-slate-600">Phone</Label>
+              <Input id="caller_phone" type="tel" value={formData.caller_phone} onChange={(e) => setFormData({ ...formData, caller_phone: e.target.value })} placeholder="Phone number" className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="caller_type" className="text-xs font-medium text-slate-600">Caller Type</Label>
+              <Select id="caller_type" value={formData.caller_type} onChange={(e) => setFormData({ ...formData, caller_type: e.target.value })} className="h-9">
+                <option value="Parent">Parent</option>
+                <option value="School">School</option>
+                <option value="Employee">Employee</option>
+                <option value="Other">Other</option>
+              </Select>
+            </div>
+          </div>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="caller_name">Caller Name *</Label>
-                <Input id="caller_name" required value={formData.caller_name} onChange={(e) => setFormData({ ...formData, caller_name: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="caller_phone">Caller Phone</Label>
-                <Input id="caller_phone" type="tel" value={formData.caller_phone} onChange={(e) => setFormData({ ...formData, caller_phone: e.target.value })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="caller_type">Caller Type</Label>
-                <Select id="caller_type" value={formData.caller_type} onChange={(e) => setFormData({ ...formData, caller_type: e.target.value })}>
-                  <option value="Parent">Parent</option>
-                  <option value="School">School</option>
-                  <option value="Employee">Employee</option>
-                  <option value="Other">Other</option>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="call_to_type">Call To/From *</Label>
-                <Select id="call_to_type" required value={formData.call_to_type} onChange={(e) => setFormData({ ...formData, call_to_type: e.target.value })}>
+        {/* Call Details Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <FileText className="mr-2 h-4 w-4" />
+            Call Details
+          </h2>
+        </div>
+        <div className="p-4">
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="space-y-1">
+                <Label htmlFor="call_to_type" className="text-xs font-medium text-slate-600">Call To/From *</Label>
+                <Select id="call_to_type" required value={formData.call_to_type} onChange={(e) => setFormData({ ...formData, call_to_type: e.target.value })} className="h-9">
                   <option value="">Select...</option>
                   <option value="Staff">Staff</option>
                   <option value="Parent">Parent</option>
                   <option value="Admin">Admin</option>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="call_type">Call Type *</Label>
-                <Select id="call_type" required value={formData.call_type} onChange={(e) => setFormData({ ...formData, call_type: e.target.value })}>
+              <div className="space-y-1">
+                <Label htmlFor="call_type" className="text-xs font-medium text-slate-600">Call Type *</Label>
+                <Select id="call_type" required value={formData.call_type} onChange={(e) => setFormData({ ...formData, call_type: e.target.value })} className="h-9">
                   <option value="Inquiry">Inquiry</option>
                   <option value="Complaint">Complaint</option>
                   <option value="Incident Report">Incident Report</option>
@@ -183,115 +197,120 @@ export default function CreateCallLogPage() {
                   <option value="Other">Other</option>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
-                <Select id="priority" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
+              <div className="space-y-1">
+                <Label htmlFor="priority" className="text-xs font-medium text-slate-600">Priority</Label>
+                <Select id="priority" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="h-9">
                   <option value="Low">Low</option>
                   <option value="Medium">Medium</option>
                   <option value="High">High</option>
                   <option value="Urgent">Urgent</option>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select id="status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+              <div className="space-y-1">
+                <Label htmlFor="status" className="text-xs font-medium text-slate-600">Status</Label>
+                <Select id="status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="h-9">
                   <option value="Open">Open</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Resolved">Resolved</option>
                   <option value="Closed">Closed</option>
                 </Select>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="related_passenger_id">Related Passenger</Label>
-                <Select id="related_passenger_id" value={formData.related_passenger_id} onChange={(e) => setFormData({ ...formData, related_passenger_id: e.target.value })}>
-                  <option value="">None</option>
-                  {passengers.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                </Select>
+            <div className="space-y-1">
+              <Label htmlFor="subject" className="text-xs font-medium text-slate-600">Subject *</Label>
+              <Input id="subject" required value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} placeholder="Brief subject of the call" className="h-9" />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="notes" className="text-xs font-medium text-slate-600">Call Notes</Label>
+                <textarea id="notes" rows={2} className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:border-transparent" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Notes from the call..." />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="related_driver_id">Related Driver</Label>
-                <Select id="related_driver_id" value={formData.related_driver_id} onChange={(e) => setFormData({ ...formData, related_driver_id: e.target.value })}>
-                  <option value="">None</option>
-                  {drivers.map((d) => <option key={d.employee_id} value={d.employee_id}>{d.full_name}</option>)}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="related_assistant_id">Related Assistant (PA)</Label>
-                <Select id="related_assistant_id" value={formData.related_assistant_id} onChange={(e) => setFormData({ ...formData, related_assistant_id: e.target.value })}>
-                  <option value="">None</option>
-                  {assistants.map((a) => <option key={a.employee_id} value={a.employee_id}>{a.full_name}</option>)}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="related_employee_id">Related Employee (Other)</Label>
-                <Select id="related_employee_id" value={formData.related_employee_id} onChange={(e) => setFormData({ ...formData, related_employee_id: e.target.value })}>
-                  <option value="">None</option>
-                  {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="related_route_id">Related Route</Label>
-                <Select id="related_route_id" value={formData.related_route_id} onChange={(e) => setFormData({ ...formData, related_route_id: e.target.value })}>
-                  <option value="">None</option>
-                  {routes.map((r) => <option key={r.id} value={r.id}>{r.route_number || `Route ${r.id}`}</option>)}
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="follow_up_date">Follow-up Date & Time</Label>
-                <Input id="follow_up_date" type="datetime-local" value={formData.follow_up_date} onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })} />
+              <div className="space-y-1">
+                <Label htmlFor="action_taken" className="text-xs font-medium text-slate-600">Action Taken</Label>
+                <textarea id="action_taken" rows={2} className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:border-transparent" value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })} placeholder="Actions taken..." />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject *</Label>
-              <Input id="subject" required value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Call Notes</Label>
-              <textarea id="notes" rows={4} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="action_taken">Action Taken</Label>
-              <textarea id="action_taken" rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })} />
-            </div>
-
-            <div className="flex space-x-4">
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" id="action_required" checked={formData.action_required} onChange={(e) => setFormData({ ...formData, action_required: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                <Label htmlFor="action_required">Action Required</Label>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="action_required" checked={formData.action_required} onChange={(e) => setFormData({ ...formData, action_required: e.target.checked })} className="h-4 w-4 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                <Label htmlFor="action_required" className="text-sm text-slate-600">Action Required</Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" id="follow_up_required" checked={formData.follow_up_required} onChange={(e) => setFormData({ ...formData, follow_up_required: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                <Label htmlFor="follow_up_required">Follow-up Required</Label>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="follow_up_required" checked={formData.follow_up_required} onChange={(e) => setFormData({ ...formData, follow_up_required: e.target.checked })} className="h-4 w-4 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                <Label htmlFor="follow_up_required" className="text-sm text-slate-600">Follow-up Required</Label>
               </div>
+              {formData.follow_up_required && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="follow_up_date" className="text-xs text-slate-600">Follow-up Date:</Label>
+                  <Input id="follow_up_date" type="datetime-local" value={formData.follow_up_date} onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })} className="h-8 w-48" />
+                </div>
+              )}
             </div>
+          </div>
+        </div>
 
-            <div className="flex justify-end space-x-4">
-              <Link href="/dashboard/call-logs"><Button type="button" variant="secondary">Cancel</Button></Link>
-              <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Log Call'}</Button>
+        {/* Related Entities Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Related Entities
+          </h2>
+        </div>
+        <div className="p-4">
+          <div className="grid gap-3 md:grid-cols-5">
+            <div className="space-y-1">
+              <Label htmlFor="related_passenger_id" className="text-xs font-medium text-slate-600">Passenger</Label>
+              <Select id="related_passenger_id" value={formData.related_passenger_id} onChange={(e) => setFormData({ ...formData, related_passenger_id: e.target.value })} className="h-9">
+                <option value="">None</option>
+                {passengers.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+              </Select>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+            <div className="space-y-1">
+              <Label htmlFor="related_driver_id" className="text-xs font-medium text-slate-600">Driver</Label>
+              <Select id="related_driver_id" value={formData.related_driver_id} onChange={(e) => setFormData({ ...formData, related_driver_id: e.target.value })} className="h-9">
+                <option value="">None</option>
+                {drivers.map((d) => <option key={d.employee_id} value={d.employee_id}>{d.full_name}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="related_assistant_id" className="text-xs font-medium text-slate-600">Assistant (PA)</Label>
+              <Select id="related_assistant_id" value={formData.related_assistant_id} onChange={(e) => setFormData({ ...formData, related_assistant_id: e.target.value })} className="h-9">
+                <option value="">None</option>
+                {assistants.map((a) => <option key={a.employee_id} value={a.employee_id}>{a.full_name}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="related_employee_id" className="text-xs font-medium text-slate-600">Other Employee</Label>
+              <Select id="related_employee_id" value={formData.related_employee_id} onChange={(e) => setFormData({ ...formData, related_employee_id: e.target.value })} className="h-9">
+                <option value="">None</option>
+                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="related_route_id" className="text-xs font-medium text-slate-600">Route</Label>
+              <Select id="related_route_id" value={formData.related_route_id} onChange={(e) => setFormData({ ...formData, related_route_id: e.target.value })} className="h-9">
+                <option value="">None</option>
+                {routes.map((r) => <option key={r.id} value={r.id}>{r.route_number || `Route ${r.id}`}</option>)}
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Actions */}
+      <div className="flex justify-end gap-3 pt-3 border-t border-slate-200">
+        <Link href="/dashboard/call-logs">
+          <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
+            Cancel
+          </Button>
+        </Link>
+        <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
+          {loading ? 'Saving...' : 'Log Call'}
+        </Button>
+      </div>
     </div>
   )
 }
-
-
-
-
-
-
-
-
-

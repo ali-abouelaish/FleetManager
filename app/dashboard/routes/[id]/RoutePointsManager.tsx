@@ -64,7 +64,7 @@ export default function RoutePointsManager({ routeId, routePoints, onUpdate }: R
   return (
     <div className="flex items-center justify-end gap-2">
       <Link href={`/dashboard/routes/${routeId}/edit`}>
-        <Button variant="ghost" size="sm" className="text-violet-600 hover:text-violet-700 hover:bg-violet-50">
+        <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/10">
           <Pencil className="mr-1 h-4 w-4" />
           Manage Points
         </Button>

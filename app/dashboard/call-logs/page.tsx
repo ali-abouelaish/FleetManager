@@ -85,7 +85,7 @@ async function CallLogsTable() {
                     {log.passengers && (
                       <div>
                         <span className="text-slate-400">Passenger: </span>
-                        <Link href={`/dashboard/passengers/${log.related_passenger_id}`} className="text-violet-600 hover:underline">
+                        <Link href={`/dashboard/passengers/${log.related_passenger_id}`} className="text-primary hover:underline">
                           {log.passengers.full_name}
                         </Link>
                       </div>
@@ -110,12 +110,12 @@ async function CallLogsTable() {
                 <TableCell>
                   <span
                     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${log.priority === 'Urgent'
-                        ? 'bg-rose-100 text-rose-700'
-                        : log.priority === 'High'
-                          ? 'bg-orange-100 text-orange-700'
-                          : log.priority === 'Medium'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-slate-100 text-slate-600'
+                      ? 'bg-rose-100 text-rose-700'
+                      : log.priority === 'High'
+                        ? 'bg-orange-100 text-orange-700'
+                        : log.priority === 'Medium'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-slate-100 text-slate-600'
                       }`}
                   >
                     {log.priority || 'Low'}
@@ -124,10 +124,10 @@ async function CallLogsTable() {
                 <TableCell>
                   <span
                     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${log.status === 'Resolved' || log.status === 'Closed'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : log.status === 'In Progress'
-                          ? 'bg-sky-100 text-sky-700'
-                          : 'bg-slate-100 text-slate-600'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : log.status === 'In Progress'
+                        ? 'bg-sky-100 text-sky-700'
+                        : 'bg-slate-100 text-slate-600'
                       }`}
                   >
                     {log.status || 'Open'}
@@ -143,12 +143,12 @@ async function CallLogsTable() {
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Link href={`/dashboard/call-logs/${log.id}`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/call-logs/${log.id}/edit`} prefetch={true}>
-                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+                      <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -168,8 +168,8 @@ export default function CallLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-lg shadow-pink-500/20">
-            <Phone className="h-6 w-6 text-white" />
+          <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
+            <Phone className="h-6 w-6 text-slate-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Call Logs</h1>
@@ -177,7 +177,7 @@ export default function CallLogsPage() {
           </div>
         </div>
         <Link href="/dashboard/call-logs/create" prefetch={true}>
-          <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25">
+          <Button className="bg-primary hover:bg-primary/90 text-white">
             <Plus className="mr-2 h-4 w-4" />
             Log Call
           </Button>

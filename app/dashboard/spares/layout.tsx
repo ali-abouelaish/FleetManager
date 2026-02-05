@@ -44,7 +44,7 @@ export default function SparesLayout({
                 className={cn(
                   'flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-colors',
                   isActive
-                    ? 'border-violet-500 text-violet-700 bg-violet-50'
+                    ? 'border-primary text-primary bg-primary/10'
                     : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 )}
               >

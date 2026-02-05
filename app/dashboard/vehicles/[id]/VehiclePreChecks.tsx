@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
   Calendar,
   User,
   Video,
@@ -74,7 +74,7 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
   const loadPreChecks = async () => {
     setLoading(true)
     const supabase = createClient()
-    
+
     const { data, error } = await supabase
       .from('vehicle_pre_checks')
       .select(`
@@ -117,11 +117,11 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
       check.brake_fluid,
       check.fuel_level_adequate,
     ]
-    
+
     const passed = allChecks.filter(Boolean).length
     const total = allChecks.length
     const hasIssues = check.issues_found && check.issues_found.trim().length > 0
-    
+
     if (passed === total && !hasIssues) {
       return { status: 'complete', label: 'All Checks Passed', color: 'bg-green-100 text-green-800' }
     }
@@ -167,7 +167,7 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
             const status = getCheckStatus(check)
             const driver = check.driver?.employees
             const route = check.route_session?.routes
-            
+
             return (
               <Card key={check.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
@@ -180,11 +180,10 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
                         <span className="text-sm text-gray-500">
                           {formatDateTime(check.completed_at)}
                         </span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          check.session_type === 'AM' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${check.session_type === 'AM'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-primary/10 text-primary'
+                          }`}>
                           {check.session_type}
                         </span>
                       </div>

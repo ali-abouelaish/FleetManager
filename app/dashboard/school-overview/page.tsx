@@ -81,7 +81,7 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                 <span>Phone: {school.phone_number}</span>
               )}
               {school.contact_email && (
-                <span>Email: <a href={`mailto:${school.contact_email}`} className="text-violet-600 hover:underline">{school.contact_email}</a></span>
+                <span>Email: <a href={`mailto:${school.contact_email}`} className="text-primary hover:text-primary/80 hover:underline">{school.contact_email}</a></span>
               )}
               {school.contact_name && (
                 <span>Contact: {school.contact_name}</span>
@@ -93,11 +93,11 @@ async function SchoolOverviewCard({ school }: { school: any }) {
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-2xl font-bold text-violet-600">{routes.length}</p>
+              <p className="text-2xl font-bold text-primary">{routes.length}</p>
               <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Routes</p>
             </div>
             <Link href={`/dashboard/schools/${school.id}`} prefetch={true}>
-              <Button size="sm" variant="outline" className="text-violet-600 border-violet-200 hover:bg-violet-50">
+              <Button size="sm" variant="outline" className="text-primary border-primary/20 hover:bg-primary/10">
                 View Details
               </Button>
             </Link>
@@ -226,7 +226,7 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                             </span>
                           )}
                           {route.sen_passengers > 0 && (
-                            <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                               {route.sen_passengers} SEN
                             </span>
                           )}
@@ -254,7 +254,7 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                       </TableCell>
                       <TableCell className="text-right">
                         <Link href={`/dashboard/routes/${route.route_id}`} prefetch={true}>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-violet-600 hover:bg-violet-50">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-primary hover:bg-primary/10">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>

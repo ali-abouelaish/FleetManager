@@ -97,7 +97,7 @@ export default async function ComplianceCasesPage() {
                     <TableCell>
                       <Link
                         href={getEntityLink(notif?.entity_type || '', notif?.entity_id || 0)}
-                        className="text-violet-600 hover:underline"
+                        className="text-primary hover:underline hover:text-primary/80"
                       >
                         View {notif?.entity_type}
                       </Link>
@@ -121,7 +121,7 @@ export default async function ComplianceCasesPage() {
                     </TableCell>
                     <TableCell>
                       <Link href={`/dashboard/compliance/cases/${row.id}`} prefetch={true}>
-                        <Button variant="ghost" size="sm" className="text-violet-600 hover:bg-violet-50">
+                        <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
                           <Eye className="h-4 w-4 mr-1" /> View
                         </Button>
                       </Link>

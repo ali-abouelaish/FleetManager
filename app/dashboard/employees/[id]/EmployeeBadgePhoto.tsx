@@ -62,21 +62,21 @@ export default function EmployeeBadgePhoto({ employeeId, employeeName, badgeNumb
         <img
           src={badgePhotoUrl}
           alt={`${employeeName} - ID Badge`}
-          className="h-24 w-24 rounded-full object-cover border-4 border-violet-500 shadow-lg shadow-violet-500/25"
+          className="h-24 w-24 rounded-full object-cover border-4 border-primary shadow-lg shadow-primary/25"
           onError={(e) => {
             // Fallback if image fails to load
             e.currentTarget.style.display = 'none'
           }}
         />
       ) : (
-        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center border-4 border-violet-500 shadow-lg shadow-violet-500/25">
+        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center border-4 border-primary shadow-lg shadow-primary/25">
           <span className="text-white text-2xl font-bold">
             {initials}
           </span>
         </div>
       )}
       {badgeNumber && (
-        <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-violet-600 to-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white shadow-md shadow-violet-500/25">
+        <div className="absolute -bottom-1 -right-1 bg-primary text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white shadow-md shadow-primary/25">
           {badgeNumber}
         </div>
       )}

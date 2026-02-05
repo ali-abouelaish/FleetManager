@@ -199,7 +199,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
       if (badgePhotoFile) {
         const fileExt = badgePhotoFile.name.split('.').pop()
         const fileName = `employees/${id}/badge_photo_${Date.now()}.${fileExt}`
-        
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('EMPLOYEE_DOCUMENTS')
           .upload(fileName, badgePhotoFile)
@@ -481,7 +481,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                                 setAssignedSchoolIds((prev) => prev.filter((sid) => sid !== school.id))
                               }
                             }}
-                            className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                            className="rounded border-gray-300 text-primary focus:ring-primary"
                           />
                           <span className="text-sm text-gray-900">{school.name}</span>
                         </label>
@@ -500,7 +500,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                       <img
                         src={existingBadgePhotoUrl}
                         alt="Current badge photo"
-                        className="h-32 w-32 rounded-lg object-cover border-2 border-gray-300"
+                        className="h-32 w-32 rounded-lg object-cover border-2 border-primary shadow-lg shadow-primary/25"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
                         }}
@@ -515,7 +515,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                       <img
                         src={URL.createObjectURL(badgePhotoFile)}
                         alt="New badge photo preview"
-                        className="h-32 w-32 rounded-lg object-cover border-2 border-violet-500"
+                        className="h-32 w-32 rounded-lg object-cover border-2 border-primary shadow-primary/25"
                       />
                     </div>
                   </div>

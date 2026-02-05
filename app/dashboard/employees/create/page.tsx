@@ -301,46 +301,44 @@ export default function CreateEmployeePage() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
+    <div className="max-w-5xl mx-auto space-y-4">
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
         <Link href="/dashboard/employees">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Add New Employee</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Select role first, then fill in employee details and any role-specific details below in one form.
-          </p>
+          <h1 className="text-xl font-bold text-slate-900">Add New Employee</h1>
+          <p className="text-sm text-slate-500">Create employee with role-specific details</p>
         </div>
       </div>
 
       {error && (
-        <Card className="border-l-4 border-red-500 bg-red-50">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-              <div className="text-sm text-red-800">{error}</div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Employee Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6" id="create-employee-form">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="role">Role *</Label>
+      {/* Main Form Card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Employee Info Section Header */}
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700">Employee Information</h2>
+        </div>
+        <div className="p-4">
+          <form onSubmit={handleSubmit} className="space-y-4" id="create-employee-form">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="role" className="text-xs font-medium text-slate-600">Role *</Label>
                 <Select
                   id="role"
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="h-9"
                 >
                   <option value="">Select role first</option>
                   <option value="Driver">Driver</option>
@@ -352,8 +350,8 @@ export default function CreateEmployeePage() {
                 <p className="text-xs text-gray-500">Choosing Driver or PA will show role-specific details below.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name *</Label>
+              <div className="space-y-1">
+                <Label htmlFor="full_name" className="text-xs font-medium text-slate-600">Full Name *</Label>
                 <Input
                   id="full_name"
                   required
@@ -361,17 +359,19 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, full_name: e.target.value })
                   }
+                  className="h-9"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="employment_status">Employment Status</Label>
+              <div className="space-y-1">
+                <Label htmlFor="employment_status" className="text-xs font-medium text-slate-600">Employment Status</Label>
                 <Select
                   id="employment_status"
                   value={formData.employment_status}
                   onChange={(e) =>
                     setFormData({ ...formData, employment_status: e.target.value })
                   }
+                  className="h-9"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -379,8 +379,8 @@ export default function CreateEmployeePage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Phone Number</Label>
+              <div className="space-y-1">
+                <Label htmlFor="phone_number" className="text-xs font-medium text-slate-600">Phone Number</Label>
                 <Input
                   id="phone_number"
                   type="tel"
@@ -388,11 +388,12 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone_number: e.target.value })
                   }
+                  className="h-9"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="personal_email">Personal Email</Label>
+              <div className="space-y-1">
+                <Label htmlFor="personal_email" className="text-xs font-medium text-slate-600">Personal Email</Label>
                 <Input
                   id="personal_email"
                   type="email"
@@ -400,11 +401,12 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, personal_email: e.target.value })
                   }
+                  className="h-9"
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Address</Label>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="address" className="text-xs font-medium text-slate-600">Address</Label>
                 <Input
                   id="address"
                   value={formData.address}
@@ -412,11 +414,12 @@ export default function CreateEmployeePage() {
                     setFormData({ ...formData, address: e.target.value })
                   }
                   placeholder="Full address..."
+                  className="h-9"
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="next_of_kin">Next of Kin</Label>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="next_of_kin" className="text-xs font-medium text-slate-600">Next of Kin</Label>
                 <Input
                   id="next_of_kin"
                   value={formData.next_of_kin}
@@ -424,11 +427,12 @@ export default function CreateEmployeePage() {
                     setFormData({ ...formData, next_of_kin: e.target.value })
                   }
                   placeholder="Name and/or contact details..."
+                  className="h-9"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="date_of_birth">Date of Birth</Label>
+              <div className="space-y-1">
+                <Label htmlFor="date_of_birth" className="text-xs font-medium text-slate-600">Date of Birth</Label>
                 <Input
                   id="date_of_birth"
                   type="date"
@@ -436,12 +440,13 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, date_of_birth: e.target.value })
                   }
+                  className="h-9"
                 />
-                <p className="text-xs text-gray-500">Optional</p>
+                <p className="text-xs text-slate-500">Optional</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Start Date</Label>
+              <div className="space-y-1">
+                <Label htmlFor="start_date" className="text-xs font-medium text-slate-600">Start Date</Label>
                 <Input
                   id="start_date"
                   type="date"
@@ -449,12 +454,13 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, start_date: e.target.value })
                   }
+                  className="h-9"
                 />
-                <p className="text-xs text-gray-500">Optional - Leave blank if not applicable</p>
+                <p className="text-xs text-slate-500">Optional</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="end_date">End Date</Label>
+              <div className="space-y-1">
+                <Label htmlFor="end_date" className="text-xs font-medium text-slate-600">End Date</Label>
                 <Input
                   id="end_date"
                   type="date"
@@ -462,35 +468,38 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, end_date: e.target.value })
                   }
+                  className="h-9"
                 />
-                <p className="text-xs text-gray-500">Optional - Leave blank if employee is still active</p>
+                <p className="text-xs text-slate-500">Optional</p>
               </div>
 
               {formData.role === 'Coordinator' && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Assigned Schools</Label>
-                  <p className="text-xs text-gray-500 mb-2">Select the school(s) this coordinator is responsible for. A coordinator can be assigned to multiple schools.</p>
-                  <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2 bg-gray-50">
+                <div className="space-y-1 md:col-span-2">
+                  <Label className="text-xs font-medium text-slate-600">Assigned Schools</Label>
+                  <p className="text-xs text-slate-500 mb-1">Select schools this coordinator is responsible for.</p>
+                  <div className="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto bg-slate-50">
                     {schools.length === 0 ? (
-                      <p className="text-sm text-gray-500">No schools found. Create schools first.</p>
+                      <p className="text-xs text-slate-500">No schools found. Create schools first.</p>
                     ) : (
-                      schools.map((school) => (
-                        <label key={school.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={assignedSchoolIds.includes(school.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setAssignedSchoolIds((prev) => [...prev, school.id])
-                              } else {
-                                setAssignedSchoolIds((prev) => prev.filter((id) => id !== school.id))
-                              }
-                            }}
-                            className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                          />
-                          <span className="text-sm text-gray-900">{school.name}</span>
-                        </label>
-                      ))
+                      <div className="grid gap-1 md:grid-cols-2">
+                        {schools.map((school) => (
+                          <label key={school.id} className="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-white">
+                            <input
+                              type="checkbox"
+                              checked={assignedSchoolIds.includes(school.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setAssignedSchoolIds((prev) => [...prev, school.id])
+                                } else {
+                                  setAssignedSchoolIds((prev) => prev.filter((id) => id !== school.id))
+                                }
+                              }}
+                              className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
+                            />
+                            <span className="text-xs text-slate-700">{school.name}</span>
+                          </label>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -499,16 +508,16 @@ export default function CreateEmployeePage() {
 
             {/* Driver details – shown when role is Driver */}
             {formData.role === 'Driver' && (
-              <div className="space-y-4 border-t pt-6">
-                <h2 className="text-lg font-semibold text-gray-900">Driver details</h2>
-                <div className="border-b border-gray-200">
-                  <nav className="-mb-px flex gap-4">
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <h3 className="text-sm font-semibold text-slate-700">Driver Details</h3>
+                <div className="border-b border-slate-200">
+                  <nav className="-mb-px flex gap-2">
                     {(['basic', 'certificates', 'documents', 'training'] as const).map((tab) => (
                       <button
                         key={tab}
                         type="button"
                         onClick={() => setRoleDetailsTab(tab)}
-                        className={`py-2 px-1 text-sm font-medium border-b-2 ${roleDetailsTab === tab ? 'border-navy text-navy' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`py-1.5 px-2 text-xs font-medium border-b-2 ${roleDetailsTab === tab ? 'border-[#023E8A] text-[#023E8A]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                       >
                         {tab === 'basic' && 'Basic'}
                         {tab === 'certificates' && 'Certificates'}
@@ -519,18 +528,18 @@ export default function CreateEmployeePage() {
                   </nav>
                 </div>
                 {roleDetailsTab === 'basic' && (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2 pt-2">
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" id="spare_driver" name="spare_driver" checked={driverForm.spare_driver} onChange={handleDriverInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
-                      <Label htmlFor="spare_driver">Mark as spare driver</Label>
+                      <input type="checkbox" id="spare_driver" name="spare_driver" checked={driverForm.spare_driver} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                      <Label htmlFor="spare_driver" className="text-xs text-slate-600">Mark as spare driver</Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" id="psv_license" name="psv_license" checked={driverForm.psv_license} onChange={handleDriverInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
-                      <Label htmlFor="psv_license">PSV License</Label>
+                      <input type="checkbox" id="psv_license" name="psv_license" checked={driverForm.psv_license} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                      <Label htmlFor="psv_license" className="text-xs text-slate-600">PSV License</Label>
                     </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="driver_additional_notes">Additional notes</Label>
-                      <textarea id="driver_additional_notes" name="additional_notes" value={driverForm.additional_notes} onChange={handleDriverInput} rows={3} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                    <div className="md:col-span-2 space-y-1">
+                      <Label htmlFor="driver_additional_notes" className="text-xs font-medium text-slate-600">Additional notes</Label>
+                      <textarea id="driver_additional_notes" name="additional_notes" value={driverForm.additional_notes} onChange={handleDriverInput} rows={2} className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
                     </div>
                   </div>
                 )}
@@ -587,7 +596,7 @@ export default function CreateEmployeePage() {
                       { name: 'logbook', label: 'Logbook' },
                     ].map(({ name, label }) => (
                       <label key={name} className="flex items-center gap-2">
-                        <input type="checkbox" name={name} checked={(driverForm as Record<string, unknown>)[name] as boolean} onChange={handleDriverInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
+                        <input type="checkbox" name={name} checked={(driverForm as Record<string, unknown>)[name] as boolean} onChange={handleDriverInput} className="rounded border-gray-300 text-primary focus:ring-primary" />
                         <span className="text-sm">{label}</span>
                       </label>
                     ))}
@@ -621,16 +630,16 @@ export default function CreateEmployeePage() {
 
             {/* Passenger Assistant details – shown when role is PA */}
             {formData.role === 'PA' && (
-              <div className="space-y-4 border-t pt-6">
-                <h2 className="text-lg font-semibold text-gray-900">Passenger Assistant details</h2>
-                <div className="border-b border-gray-200">
-                  <nav className="-mb-px flex gap-4">
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <h3 className="text-sm font-semibold text-slate-700">Passenger Assistant Details</h3>
+                <div className="border-b border-slate-200">
+                  <nav className="-mb-px flex gap-2">
                     {(['basic', 'certificates', 'documents', 'training'] as const).map((tab) => (
                       <button
                         key={tab}
                         type="button"
                         onClick={() => setRoleDetailsTab(tab)}
-                        className={`py-2 px-1 text-sm font-medium border-b-2 ${roleDetailsTab === tab ? 'border-navy text-navy' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`py-1.5 px-2 text-xs font-medium border-b-2 ${roleDetailsTab === tab ? 'border-[#023E8A] text-[#023E8A]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                       >
                         {tab === 'basic' && 'Basic'}
                         {tab === 'certificates' && 'Certificates'}
@@ -641,14 +650,14 @@ export default function CreateEmployeePage() {
                   </nav>
                 </div>
                 {roleDetailsTab === 'basic' && (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2 pt-2">
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" id="spare_pa" name="spare_pa" checked={paForm.spare_pa} onChange={handlePAInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
-                      <Label htmlFor="spare_pa">Mark as spare PA</Label>
+                      <input type="checkbox" id="spare_pa" name="spare_pa" checked={paForm.spare_pa} onChange={handlePAInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                      <Label htmlFor="spare_pa" className="text-xs text-slate-600">Mark as spare PA</Label>
                     </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="pa_additional_notes">Additional notes</Label>
-                      <textarea id="pa_additional_notes" name="additional_notes" value={paForm.additional_notes} onChange={handlePAInput} rows={3} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                    <div className="md:col-span-2 space-y-1">
+                      <Label htmlFor="pa_additional_notes" className="text-xs font-medium text-slate-600">Additional notes</Label>
+                      <textarea id="pa_additional_notes" name="additional_notes" value={paForm.additional_notes} onChange={handlePAInput} rows={2} className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
                     </div>
                   </div>
                 )}
@@ -727,25 +736,26 @@ export default function CreateEmployeePage() {
               </div>
             )}
 
-            <div className="flex justify-end space-x-4">
+            {/* Form Footer */}
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
               <Link href="/dashboard/employees">
-                <Button type="button" variant="secondary">
+                <Button type="button" variant="outline" size="sm" className="h-9">
                   Cancel
                 </Button>
               </Link>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} size="sm" className="h-9">
                 {loading
                   ? 'Creating...'
                   : formData.role === 'Driver'
                     ? 'Create Employee & Driver'
                     : formData.role === 'PA'
-                      ? 'Create Employee & Passenger Assistant'
+                      ? 'Create Employee & PA'
                       : 'Create Employee'}
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

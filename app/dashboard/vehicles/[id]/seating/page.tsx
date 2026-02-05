@@ -14,7 +14,7 @@ interface VehicleSeatingPageProps {
 
 async function getVehicle(id: string) {
   const supabase = await createClient()
-  
+
   const { data: vehicle, error } = await supabase
     .from('vehicles')
     .select('id, registration, make, model, vehicle_identifier')
@@ -30,7 +30,7 @@ async function getVehicle(id: string) {
 
 export default async function VehicleSeatingPage({ params }: VehicleSeatingPageProps) {
   const supabase = await createClient()
-  
+
   // Check authentication
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -51,12 +51,12 @@ export default async function VehicleSeatingPage({ params }: VehicleSeatingPageP
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href={`/dashboard/vehicles/${params.id}`}>
-            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-violet-600 hover:bg-violet-50">
+            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
           </Link>
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20">
             <Car className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -71,7 +71,7 @@ export default async function VehicleSeatingPage({ params }: VehicleSeatingPageP
       </div>
 
       {/* Client component for interactive features */}
-      <VehicleSeatingClient 
+      <VehicleSeatingClient
         vehicleId={params.id}
         vehicle={vehicle}
         initialSeatingPlan={seatingPlan}

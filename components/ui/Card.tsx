@@ -28,10 +28,10 @@ const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
       className={cn(
         'flex flex-col space-y-1.5 p-6 relative',
         {
-          'bg-gradient-to-r from-navy to-blue-700 text-white rounded-t-xl -m-px mb-0':
+          'bg-gradient-to-r from-primary to-blue-700 text-white rounded-t-xl -m-px mb-0':
             variant === 'gradient',
           // Default accent: left border with gradient
-          'border-l-4 border-l-violet-500 bg-gradient-to-r from-violet-50/50 to-transparent':
+          'border-l-4 border-l-primary bg-gradient-to-r from-secondary/20 to-transparent':
             variant === 'default',
         },
         className

@@ -16,13 +16,13 @@ export default function ExportTAS5Button({ schoolId, schoolName }: ExportTAS5But
   const handleExport = async () => {
     setIsExporting(true)
     setError(null)
-    
+
     try {
       console.log(`[TAS5 Export] Starting export for school ${schoolId}`)
-      
+
       const apiUrl = `/api/schools/${schoolId}/export-tas5`
       console.log(`[TAS5 Export] Fetching: ${apiUrl}`)
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -41,7 +41,7 @@ export default function ExportTAS5Button({ schoolId, schoolName }: ExportTAS5But
       if (!response.ok) {
         const contentType = response.headers.get('content-type')
         let errorMessage = `Failed to export TAS 5: ${response.status} ${response.statusText}`
-        
+
         if (contentType && contentType.includes('application/json')) {
           try {
             const errorData = await response.json()
@@ -60,7 +60,7 @@ export default function ExportTAS5Button({ schoolId, schoolName }: ExportTAS5But
             // Ignore if text parsing fails
           }
         }
-        
+
         console.error(`[TAS5 Export] Error response:`, errorMessage)
         throw new Error(errorMessage)
       }
@@ -82,7 +82,7 @@ export default function ExportTAS5Button({ schoolId, schoolName }: ExportTAS5But
       // Get filename from Content-Disposition header or generate one
       const contentDisposition = response.headers.get('content-disposition')
       let filename = `TAS5_${schoolName.replace(/\s+/g, '_')}.xlsx`
-      
+
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
         if (filenameMatch && filenameMatch[1]) {
@@ -97,11 +97,11 @@ export default function ExportTAS5Button({ schoolId, schoolName }: ExportTAS5But
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      
+
       // Cleanup
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       console.log(`[TAS5 Export] Successfully downloaded: ${filename}`)
     } catch (error: any) {
       console.error('[TAS5 Export] Export error:', error)
@@ -117,7 +117,7 @@ export default function ExportTAS5Button({ schoolId, schoolName }: ExportTAS5But
       <Button
         onClick={handleExport}
         disabled={isExporting}
-        className="bg-gradient-to-r from-violet-600 to-blue-700 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 hover:from-violet-700 hover:to-blue-800"
+        className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-violet-500/30"
       >
         {isExporting ? (
           <>

@@ -51,26 +51,33 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
   if (!callLog) notFound()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Header with Back Button */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           <Link href="/dashboard/call-logs">
-            <Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Call Log #{callLog.id}</h1>
-            <p className="mt-2 text-sm text-gray-600">{formatDateTime(callLog.call_date)}</p>
+            <h1 className="text-xl font-bold text-slate-900">Call Log #{callLog.id}</h1>
+            <p className="text-sm text-slate-500">{formatDateTime(callLog.call_date)}</p>
           </div>
         </div>
         <Link href={`/dashboard/call-logs/${callLog.id}/edit`}>
-          <Button><Pencil className="mr-2 h-4 w-4" />Edit</Button>
+          <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Caller Information</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
+          <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4"><CardTitle className="text-sm font-semibold text-slate-700">Caller Information</CardTitle></CardHeader>
+          <CardContent className="space-y-3 pt-4">
             <div>
               <dt className="text-sm font-medium text-gray-500">Caller Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{callLog.caller_name || 'N/A'}</dd>
@@ -93,8 +100,8 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Call Details</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
+          <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4"><CardTitle className="text-sm font-semibold text-slate-700">Call Details</CardTitle></CardHeader>
+          <CardContent className="space-y-3 pt-4">
             <div>
               <dt className="text-sm font-medium text-gray-500">Call Type</dt>
               <dd className="mt-1"><span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800">{callLog.call_type || 'N/A'}</span></dd>
@@ -102,22 +109,20 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
             <div>
               <dt className="text-sm font-medium text-gray-500">Priority</dt>
               <dd className="mt-1">
-                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                  callLog.priority === 'Urgent' ? 'bg-red-100 text-red-800' :
+                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${callLog.priority === 'Urgent' ? 'bg-red-100 text-red-800' :
                   callLog.priority === 'High' ? 'bg-orange-100 text-orange-800' :
-                  callLog.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>{callLog.priority || 'Low'}</span>
+                    callLog.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                  }`}>{callLog.priority || 'Low'}</span>
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Status</dt>
               <dd className="mt-1">
-                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                  callLog.status === 'Resolved' || callLog.status === 'Closed' ? 'bg-green-100 text-green-800' :
+                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${callLog.status === 'Resolved' || callLog.status === 'Closed' ? 'bg-green-100 text-green-800' :
                   callLog.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>{callLog.status || 'Open'}</span>
+                    'bg-gray-100 text-gray-800'
+                  }`}>{callLog.status || 'Open'}</span>
               </dd>
             </div>
           </CardContent>
@@ -125,8 +130,8 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Subject & Notes</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4"><CardTitle className="text-sm font-semibold text-slate-700">Subject & Notes</CardTitle></CardHeader>
+        <CardContent className="space-y-3 pt-4">
           <div>
             <dt className="text-sm font-medium text-gray-500">Subject</dt>
             <dd className="mt-1 text-sm text-gray-900">{callLog.subject}</dd>
@@ -147,8 +152,8 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Related Information</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4"><CardTitle className="text-sm font-semibold text-slate-700">Related Information</CardTitle></CardHeader>
+        <CardContent className="space-y-3 pt-4">
           {callLog.passengers && (
             <div>
               <dt className="text-sm font-medium text-gray-500">Related Passenger</dt>

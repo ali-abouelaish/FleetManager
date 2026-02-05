@@ -4,10 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Users, UserCog, AlertCircle, Calendar } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -71,7 +69,6 @@ export default function CreateIncidentPage() {
     loadData()
   }, [supabase])
 
-  // Pre-fill route_session_id from URL when present and load sessions list
   useEffect(() => {
     const sessionId = searchParams.get('route_session_id')
     if (sessionId) {
@@ -80,7 +77,6 @@ export default function CreateIncidentPage() {
     }
   }, [searchParams])
 
-  // Load route session details when route_session_id changes (auto-fill route, vehicle, crew)
   useEffect(() => {
     if (formData.route_session_id) {
       loadRouteSessionDetails(parseInt(formData.route_session_id))
@@ -130,13 +126,11 @@ export default function CreateIncidentPage() {
       .single()
 
     if (!error && data) {
-      // Auto-populate route_id
       setFormData(prev => ({
         ...prev,
         route_id: data.route_id.toString(),
       }))
 
-      // Auto-populate driver and PA in selected employees
       const newEmployees = [...selectedEmployees]
       if (data.driver_id && !newEmployees.includes(data.driver_id)) {
         newEmployees.push(data.driver_id)
@@ -146,7 +140,6 @@ export default function CreateIncidentPage() {
       }
       setSelectedEmployees(newEmployees)
 
-      // Get vehicle from vehicle_assignments for the driver
       if (data.driver_id) {
         const { data: vehicleData } = await supabase
           .from('vehicle_assignments')
@@ -170,20 +163,17 @@ export default function CreateIncidentPage() {
     setLoading(true)
 
     try {
-      // Get current user
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
         throw new Error('You must be logged in to create an incident')
       }
 
-      // Get user ID from users table
       const { data: userData } = await supabase
         .from('users')
         .select('id')
         .eq('email', authUser.email)
         .maybeSingle()
 
-      // Step 1: Create the incident with created_by
       const incidentDataToInsert = {
         ...formData,
         created_by: userData?.id || null,
@@ -199,7 +189,6 @@ export default function CreateIncidentPage() {
 
       const incidentId = incidentData.id
 
-      // If route_session_id is set, update the incident with it
       if (formData.route_session_id) {
         await supabase
           .from('incidents')
@@ -207,7 +196,6 @@ export default function CreateIncidentPage() {
           .eq('id', incidentId)
       }
 
-      // Step 2: Link selected employees
       if (selectedEmployees.length > 0) {
         const employeeLinks = selectedEmployees.map(employeeId => ({
           incident_id: incidentId,
@@ -223,7 +211,6 @@ export default function CreateIncidentPage() {
         }
       }
 
-      // Step 3: Link selected passengers
       if (selectedPassengers.length > 0) {
         const passengerLinks = selectedPassengers.map(passengerId => ({
           incident_id: incidentId,
@@ -239,7 +226,6 @@ export default function CreateIncidentPage() {
         }
       }
 
-      // Step 4: Audit log
       await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -261,32 +247,53 @@ export default function CreateIncidentPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
+    <div className="space-y-3">
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
         <Link href="/dashboard/incidents">
-          <Button variant="ghost" size="sm"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
+          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-navy">Report New Incident</h1>
-          <p className="mt-2 text-sm text-gray-600">Fill in the details and select involved parties</p>
+          <h1 className="text-xl font-bold text-slate-900">Report New Incident</h1>
+          <p className="text-sm text-slate-500">Fill in the details and select involved parties</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="bg-navy text-white"><CardTitle>Incident Information</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="rounded-md bg-red-50 p-4"><div className="text-sm text-red-800">{error}</div></div>}
-            {formData.route_session_id && (
-              <div className="rounded-lg bg-violet-50 border border-violet-200 p-3 text-sm text-violet-800">
-                <strong>Route session pre-selected.</strong> Route, vehicle and crew will be auto-filled. After creating the incident, open it to complete TR5, TR6 or TR7 forms.
-              </div>
-            )}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="incident_type">Incident Type *</Label>
-                <Select id="incident_type" required value={formData.incident_type} onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })}>
+      {formData.route_session_id && (
+        <div className="rounded-lg bg-violet-50 border border-violet-200 p-2.5 text-sm text-violet-800">
+          <strong>Route session pre-selected.</strong> Route, vehicle and crew will be auto-filled.
+        </div>
+      )}
+
+      {/* Main Form Card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Incident Details Section */}
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700">Incident Details</h2>
+        </div>
+        <div className="p-4">
+          <div className="space-y-3">
+            {/* Row 1: Type + Route Session */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="incident_type" className="text-xs font-medium text-slate-600">Incident Type *</Label>
+                <Select
+                  id="incident_type"
+                  required
+                  value={formData.incident_type}
+                  onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })}
+                  className="h-9"
+                >
                   <option value="">Select type</option>
                   <option value="Accident">Accident</option>
                   <option value="Breakdown">Breakdown</option>
@@ -295,186 +302,165 @@ export default function CreateIncidentPage() {
                   <option value="Other">Other</option>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="route_session_id">
-                    <Calendar className="inline mr-2 h-4 w-4" />
-                    Route Session (Optional - Auto-fills route, vehicle, and crew)
+                  <Label htmlFor="route_session_id" className="text-xs font-medium text-slate-600">
+                    <Calendar className="inline mr-1 h-3 w-3" />
+                    Route Session
                   </Label>
                   {routeSessions.length === 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={loadRouteSessions}
-                      disabled={loadingSessions}
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={loadRouteSessions} disabled={loadingSessions} className="h-6 text-xs px-2">
                       {loadingSessions ? 'Loading...' : 'Load Sessions'}
                     </Button>
                   )}
                 </div>
-                <Select 
-                  id="route_session_id" 
-                  value={formData.route_session_id} 
+                <Select
+                  id="route_session_id"
+                  value={formData.route_session_id}
                   onChange={(e) => setFormData({ ...formData, route_session_id: e.target.value })}
+                  className="h-9"
                 >
-                  <option value="">Select route session (optional)</option>
+                  <option value="">Select session (optional)</option>
                   {routeSessions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {session.label}
-                    </option>
+                    <option key={session.id} value={session.id}>{session.label}</option>
                   ))}
                 </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Selecting a route session will automatically populate the route, vehicle, and crew members
-                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_id">Vehicle {formData.route_session_id && <span className="text-xs text-gray-500">(Auto-filled from session)</span>}</Label>
-                <Select id="vehicle_id" value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}>
+            </div>
+
+            {/* Row 2: Vehicle + Route */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="vehicle_id" className="text-xs font-medium text-slate-600">
+                  Vehicle {formData.route_session_id && <span className="text-slate-400">(Auto-filled)</span>}
+                </Label>
+                <Select id="vehicle_id" value={formData.vehicle_id} onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })} className="h-9">
                   <option value="">Select vehicle</option>
                   {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicle_identifier || `Vehicle ${vehicle.id}`}</option>)}
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="route_id">Related Route {formData.route_session_id && <span className="text-xs text-gray-500">(Auto-filled from session)</span>}</Label>
-                <Select id="route_id" value={formData.route_id} onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}>
+              <div className="space-y-1">
+                <Label htmlFor="route_id" className="text-xs font-medium text-slate-600">
+                  Related Route {formData.route_session_id && <span className="text-slate-400">(Auto-filled)</span>}
+                </Label>
+                <Select id="route_id" value={formData.route_id} onChange={(e) => setFormData({ ...formData, route_id: e.target.value })} className="h-9">
                   <option value="">Select route</option>
                   {routes.map((route) => <option key={route.id} value={route.id}>{route.route_number || `Route ${route.id}`}</option>)}
                 </Select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
-              <textarea id="description" required rows={5} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+            {/* Row 3: Description */}
+            <div className="space-y-1">
+              <Label htmlFor="description" className="text-xs font-medium text-slate-600">Description *</Label>
+              <textarea
+                id="description"
+                required
+                rows={3}
+                className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:border-transparent"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Describe the incident..."
+              />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input type="checkbox" id="resolved" checked={formData.resolved} onChange={(e) => setFormData({ ...formData, resolved: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy" />
-              <Label htmlFor="resolved">Mark as Resolved</Label>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Related Employees Section */}
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center">
-            <UserCog className="mr-2 h-5 w-5" />
-            Related Employees ({selectedEmployees.length} selected)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-2 mb-4">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-gray-600">
-                Select all employees involved in or related to this incident (drivers, assistants, staff).
-              </p>
+            {/* Row 4: Resolved checkbox */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="resolved"
+                checked={formData.resolved}
+                onChange={(e) => setFormData({ ...formData, resolved: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
+              />
+              <Label htmlFor="resolved" className="text-sm text-slate-600">Mark as Resolved</Label>
             </div>
           </div>
+        </div>
 
+        {/* Related Employees Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <UserCog className="mr-2 h-4 w-4" />
+            Related Employees ({selectedEmployees.length} selected)
+          </h2>
+        </div>
+        <div className="p-4">
           {employees.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">No employees available</p>
+            <p className="text-sm text-slate-500 italic">No employees available</p>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+            <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4 max-h-48 overflow-y-auto">
               {employees.map((employee) => (
                 <div
                   key={employee.id}
-                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedEmployees.includes(employee.id)
-                      ? 'border-navy bg-blue-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
+                  className={`flex items-center p-2 border rounded-lg cursor-pointer transition-colors ${selectedEmployees.includes(employee.id)
+                    ? 'border-[#023E8A] bg-blue-50'
+                    : 'border-slate-200 hover:bg-slate-50'
+                    }`}
                   onClick={() => toggleEmployee(employee.id)}
                 >
                   <input
                     type="checkbox"
                     checked={selectedEmployees.includes(employee.id)}
                     onChange={() => toggleEmployee(employee.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
                   />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">
-                      {employee.full_name}
-                    </p>
-                  </div>
+                  <span className="ml-2 text-sm text-slate-700 truncate">{employee.full_name}</span>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Related Passengers Section */}
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center">
-            <Users className="mr-2 h-5 w-5" />
+        {/* Related Passengers Section */}
+        <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center">
+            <Users className="mr-2 h-4 w-4" />
             Related Passengers ({selectedPassengers.length} selected)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-2 mb-4">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-gray-600">
-                Select all passengers involved in or affected by this incident.
-              </p>
-            </div>
-          </div>
-
+          </h2>
+        </div>
+        <div className="p-4">
           {passengers.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">No passengers available</p>
+            <p className="text-sm text-slate-500 italic">No passengers available</p>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+            <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4 max-h-48 overflow-y-auto">
               {passengers.map((passenger: any) => (
                 <div
                   key={passenger.id}
-                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedPassengers.includes(passenger.id)
-                      ? 'border-navy bg-blue-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
+                  className={`flex items-center p-2 border rounded-lg cursor-pointer transition-colors ${selectedPassengers.includes(passenger.id)
+                    ? 'border-[#023E8A] bg-blue-50'
+                    : 'border-slate-200 hover:bg-slate-50'
+                    }`}
                   onClick={() => togglePassenger(passenger.id)}
                 >
                   <input
                     type="checkbox"
                     checked={selectedPassengers.includes(passenger.id)}
                     onChange={() => togglePassenger(passenger.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
                   />
-                  <div className="ml-3 flex-1">
-                    <p className="text-sm font-medium text-gray-900">
-                      {passenger.full_name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {passenger.schools?.name || 'No school assigned'}
-                    </p>
+                  <div className="ml-2 flex-1 min-w-0">
+                    <p className="text-sm text-slate-700 truncate">{passenger.full_name}</p>
+                    <p className="text-xs text-slate-400 truncate">{passenger.schools?.name || 'No school'}</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Submit Buttons */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-end space-x-4">
-            <Link href="/dashboard/incidents">
-              <Button type="button" variant="secondary">Cancel</Button>
-            </Link>
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Submitting...' : 'Submit Report'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Bottom Actions */}
+      <div className="flex justify-end gap-3 pt-3 border-t border-slate-200">
+        <Link href="/dashboard/incidents">
+          <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
+            Cancel
+          </Button>
+        </Link>
+        <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
+          {loading ? 'Submitting...' : 'Submit Report'}
+        </Button>
+      </div>
     </div>
   )
 }
-

@@ -99,7 +99,7 @@ export default function AddParentContactButton({ passengerId }: AddParentContact
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-navy text-white p-6 flex items-center justify-between">
+            <div className="bg-primary text-white p-6 flex items-center justify-between">
               <h2 className="text-xl font-bold">Add Parent Contact</h2>
               <button onClick={() => setShowModal(false)}>
                 <X className="h-6 w-6" />

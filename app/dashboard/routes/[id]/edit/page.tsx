@@ -80,7 +80,7 @@ function EditRoutePageClient({ id }: { id: string }) {
     if (typeof pointId === 'number') {
       setDeletedPointIds([...deletedPointIds, pointId])
     }
-    
+
     const newPoints = routePoints.filter((point) => point.id !== pointId)
     // Re-order remaining points
     const reorderedPoints = newPoints.map((point, index) => ({
@@ -101,7 +101,7 @@ function EditRoutePageClient({ id }: { id: string }) {
   const movePointUp = (index: number) => {
     if (index === 0) return
     const newPoints = [...routePoints]
-    ;[newPoints[index - 1], newPoints[index]] = [newPoints[index], newPoints[index - 1]]
+      ;[newPoints[index - 1], newPoints[index]] = [newPoints[index], newPoints[index - 1]]
     const reorderedPoints = newPoints.map((point, idx) => ({
       ...point,
       stop_order: idx + 1,
@@ -112,7 +112,7 @@ function EditRoutePageClient({ id }: { id: string }) {
   const movePointDown = (index: number) => {
     if (index === routePoints.length - 1) return
     const newPoints = [...routePoints]
-    ;[newPoints[index], newPoints[index + 1]] = [newPoints[index + 1], newPoints[index]]
+      ;[newPoints[index], newPoints[index + 1]] = [newPoints[index + 1], newPoints[index]]
     const reorderedPoints = newPoints.map((point, idx) => ({
       ...point,
       stop_order: idx + 1,
@@ -174,8 +174,8 @@ function EditRoutePageClient({ id }: { id: string }) {
           am_start_time: formatTime(routeResult.data.am_start_time),
           pm_start_time: formatTime(routeResult.data.pm_start_time),
           pm_start_time_friday: formatTime(routeResult.data.pm_start_time_friday),
-          days_of_week: Array.isArray(routeResult.data.days_of_week) 
-            ? routeResult.data.days_of_week 
+          days_of_week: Array.isArray(routeResult.data.days_of_week)
+            ? routeResult.data.days_of_week
             : [],
         })
       }
@@ -203,7 +203,7 @@ function EditRoutePageClient({ id }: { id: string }) {
             name: pa.employees?.full_name || 'Unknown',
           }))
         setPassengerAssistants(pas)
-        
+
         // Store PA addresses for later use
         const addresses: Record<number, string> = {}
         pasResult.data.forEach((pa: any) => {
@@ -283,8 +283,8 @@ function EditRoutePageClient({ id }: { id: string }) {
       const updatedPoints = currentPoints.filter(
         point => {
           const nameLower = point.point_name.toLowerCase()
-          const isApaPoint = (nameLower.includes('apa') && nameLower.includes('home')) || 
-                            allPaAddresses.includes(point.address || '')
+          const isApaPoint = (nameLower.includes('apa') && nameLower.includes('home')) ||
+            allPaAddresses.includes(point.address || '')
           return !isApaPoint
         }
       )
@@ -309,8 +309,8 @@ function EditRoutePageClient({ id }: { id: string }) {
       const updatedPoints = currentPoints.filter(
         point => {
           const nameLower = point.point_name.toLowerCase()
-          const isApaPoint = (nameLower.includes('apa') && nameLower.includes('home')) || 
-                            allPaAddresses.includes(point.address || '')
+          const isApaPoint = (nameLower.includes('apa') && nameLower.includes('home')) ||
+            allPaAddresses.includes(point.address || '')
           return !isApaPoint
         }
       )
@@ -405,8 +405,8 @@ function EditRoutePageClient({ id }: { id: string }) {
         )
 
         // Add APA as last point
-        const nextOrder = updatedPoints.length > 0 
-          ? Math.max(...updatedPoints.map(p => p.stop_order)) + 1 
+        const nextOrder = updatedPoints.length > 0
+          ? Math.max(...updatedPoints.map(p => p.stop_order)) + 1
           : 1
         const apaPoint: RoutePoint = {
           id: generateUUID(),
@@ -459,7 +459,7 @@ function EditRoutePageClient({ id }: { id: string }) {
   const checkAuthorization = async (employeeId: string, type: 'driver' | 'pa'): Promise<{ authorized: boolean; reason?: string }> => {
     if (!employeeId) return { authorized: true }
 
-    const selectQuery = type === 'driver' 
+    const selectQuery = type === 'driver'
       ? 'id, full_name, can_work, employment_status, drivers(tas_badge_expiry_date, taxi_badge_expiry_date, dbs_expiry_date, driving_license_expiry_date, cpc_expiry_date)'
       : 'id, full_name, can_work, employment_status, passenger_assistants(tas_badge_expiry_date, dbs_expiry_date, first_aid_certificate_expiry_date, passport_expiry_date)'
 
@@ -562,7 +562,7 @@ function EditRoutePageClient({ id }: { id: string }) {
         pm_start_time: formData.pm_start_time || null,
         days_of_week: formData.days_of_week.length > 0 ? formData.days_of_week : null,
       }
-      
+
       const { error: routeError } = await supabase
         .from('routes')
         .update(routeDataToUpdate)
@@ -691,477 +691,408 @@ function EditRoutePageClient({ id }: { id: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link href={`/dashboard/routes/${id}`}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-navy">Edit Route</h1>
-            <p className="mt-2 text-sm text-gray-600">Update route information and stops</p>
-          </div>
+    <div className="space-y-4">
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4">
+        <Link href={`/dashboard/routes/${id}`}>
+          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Edit Route</h1>
+          <p className="text-sm text-slate-500">Update route details and stops</p>
         </div>
-        <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          {deleting ? 'Deleting...' : 'Delete'}
-        </Button>
       </div>
 
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle>Route Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-md bg-red-50 border border-red-200 p-4">
-                <div className="flex items-start">
-                  <AlertCircle className="h-5 w-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-red-800 mb-1">Assignment Blocked</div>
-                    <div className="text-sm text-red-700">{error}</div>
-                  </div>
-                </div>
-              </div>
-            )}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
 
-            <div className="space-y-2">
-              <Label htmlFor="route_number">Route Number</Label>
-              <Input
-                id="route_number"
-                value={formData.route_number}
-                onChange={(e) =>
-                  setFormData({ ...formData, route_number: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="school_id">School</Label>
-              <Select
-                id="school_id"
-                value={formData.school_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, school_id: e.target.value })
-                }
-              >
-                <option value="">Select a school</option>
-                {schools.map((school) => (
-                  <option key={school.id} value={school.id}>
-                    {school.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
+      {/* Main Form Card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Route Details Section */}
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+          <h2 className="text-sm font-semibold text-slate-700">Route Details</h2>
+        </div>
+        <div className="p-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Row 1: Route Number + School */}
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="driver_id">Driver</Label>
+              <div className="space-y-1">
+                <Label htmlFor="route_number" className="text-xs font-medium text-slate-600">Route Number</Label>
+                <Input
+                  id="route_number"
+                  value={formData.route_number}
+                  onChange={(e) => setFormData({ ...formData, route_number: e.target.value })}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="school_id" className="text-xs font-medium text-slate-600">School</Label>
+                <Select
+                  id="school_id"
+                  value={formData.school_id}
+                  onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                  className="h-9"
+                >
+                  <option value="">Select a school</option>
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>{school.name}</option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            {/* Row 2: Driver + Vehicle */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="driver_id" className="text-xs font-medium text-slate-600">Driver (Optional)</Label>
                 <Select
                   id="driver_id"
                   value={formData.driver_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, driver_id: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, driver_id: e.target.value })}
+                  className="h-9"
                 >
-                  <option value="">Select a driver (optional)</option>
+                  <option value="">Select driver</option>
                   {drivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.name}
+                    <option key={driver.id} value={driver.id}>{driver.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="vehicle_id" className="text-xs font-medium text-slate-600">Vehicle (Optional)</Label>
+                <Select
+                  id="vehicle_id"
+                  value={formData.vehicle_id}
+                  onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
+                  className="h-9"
+                >
+                  <option value="">Select vehicle</option>
+                  {vehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicle.vehicle_identifier || vehicle.registration || `#${vehicle.id}`}
+                      {vehicle.make && vehicle.model ? ` - ${vehicle.make} ${vehicle.model}` : ''}
                     </option>
                   ))}
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Passenger Assistant(s)</Label>
-                <p className="text-xs text-gray-500 mb-2">You can assign one or more PAs to this route. The first selected is used for APA pickup logic.</p>
-                <div className="grid gap-2 md:grid-cols-2 max-h-48 overflow-y-auto border rounded-md p-3 bg-gray-50">
-                  {passengerAssistants.map((pa) => (
-                    <label
-                      key={pa.id}
-                      className="flex items-center gap-2 p-2 rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedPaIds.includes(pa.id)}
-                        onChange={() => {
-                          setSelectedPaIds(prev =>
-                            prev.includes(pa.id)
-                              ? prev.filter((id) => id !== pa.id)
-                              : [...prev, pa.id]
-                          )
-                        }}
-                        className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-navy"
-                      />
-                      <span className="text-sm font-medium">{pa.name}</span>
-                    </label>
-                  ))}
-                </div>
-                {selectedPaIds.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">{selectedPaIds.length} PA(s) selected</p>
-                )}
-              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="vehicle_id">Vehicle</Label>
-              <Select
-                id="vehicle_id"
-                value={formData.vehicle_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, vehicle_id: e.target.value })
-                }
-              >
-                <option value="">Select a vehicle (optional)</option>
-                {vehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.vehicle_identifier || vehicle.registration || vehicle.plate_number || `Vehicle ${vehicle.id}`}
-                    {vehicle.make && vehicle.model ? ` - ${vehicle.make} ${vehicle.model}` : ''}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="border-t pt-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">Route Schedule</h3>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="am_start_time">AM Start Time</Label>
-                  <Input
-                    id="am_start_time"
-                    type="time"
-                    value={formData.am_start_time}
-                    onChange={(e) =>
-                      setFormData({ ...formData, am_start_time: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pm_start_time">PM Start Time</Label>
-                  <Input
-                    id="pm_start_time"
-                    type="time"
-                    value={formData.pm_start_time}
-                    onChange={(e) =>
-                      setFormData({ ...formData, pm_start_time: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Friday PM Start Time - Only show if Friday is selected */}
-              {formData.days_of_week.includes('Friday') && (
-                <div className="mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pm_start_time_friday">
-                      PM Start Time (Friday) <span className="text-gray-500 text-sm">(Optional - different from regular PM time)</span>
-                    </Label>
-                    <Input
-                      id="pm_start_time_friday"
-                      type="time"
-                      value={formData.pm_start_time_friday}
-                      onChange={(e) =>
-                        setFormData({ ...formData, pm_start_time_friday: e.target.value })
-                      }
-                      placeholder="Leave empty to use regular PM time"
+            {/* Passenger Assistants */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Passenger Assistant(s)</Label>
+              <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4 max-h-32 overflow-y-auto border rounded-md p-2 bg-slate-50">
+                {passengerAssistants.map((pa) => (
+                  <label
+                    key={pa.id}
+                    className="flex items-center gap-2 p-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPaIds.includes(pa.id)}
+                      onChange={() => {
+                        setSelectedPaIds(prev =>
+                          prev.includes(pa.id)
+                            ? prev.filter((pid) => pid !== pa.id)
+                            : [...prev, pa.id]
+                        )
+                      }}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      If Friday has a different PM start time, enter it here. Otherwise, leave empty to use the regular PM time above.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4">
-                <Label className="mb-2 block">Days of Week</Label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-                    <label key={day} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.days_of_week.includes(day)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              days_of_week: [...formData.days_of_week, day],
-                            })
-                          } else {
-                            setFormData({
-                              ...formData,
-                              days_of_week: formData.days_of_week.filter((d) => d !== day),
-                            })
-                          }
-                        }}
-                        className="rounded border-gray-300 text-navy focus:ring-navy"
-                      />
-                      <span className="text-sm text-gray-700">{day}</span>
-                    </label>
-                  ))}
-                </div>
+                    <span className="text-xs truncate">{pa.name}</span>
+                  </label>
+                ))}
               </div>
+              {selectedPaIds.length > 0 && (
+                <p className="text-xs text-slate-500">{selectedPaIds.length} PA(s) selected</p>
+              )}
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Pick-up Points Section */}
-      <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              <MapPin className="mr-2 h-5 w-5" />
-              Pickup Points ({routePoints.length})
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={addRoutePoint}
-              className="bg-white text-navy hover:bg-gray-100"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Stop
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-2 mb-4">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-gray-600">
-                Manage pickup/dropoff points for this route. Use ↑↓ to reorder. Changes will be saved when you click "Save Changes".
-              </p>
+        {/* Schedule Section */}
+        <div className="border-t border-slate-100">
+          <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+            <h2 className="text-sm font-semibold text-slate-700">Schedule</h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-1">
+                <Label htmlFor="am_start_time" className="text-xs font-medium text-slate-600">AM Start Time</Label>
+                <Input
+                  id="am_start_time"
+                  type="time"
+                  value={formData.am_start_time}
+                  onChange={(e) => setFormData({ ...formData, am_start_time: e.target.value })}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="pm_start_time" className="text-xs font-medium text-slate-600">PM Start Time</Label>
+                <Input
+                  id="pm_start_time"
+                  type="time"
+                  value={formData.pm_start_time}
+                  onChange={(e) => setFormData({ ...formData, pm_start_time: e.target.value })}
+                  className="h-9"
+                />
+              </div>
+              {formData.days_of_week.includes('Friday') && (
+                <div className="space-y-1">
+                  <Label htmlFor="pm_start_time_friday" className="text-xs font-medium text-slate-600">PM (Friday)</Label>
+                  <Input
+                    id="pm_start_time_friday"
+                    type="time"
+                    value={formData.pm_start_time_friday}
+                    onChange={(e) => setFormData({ ...formData, pm_start_time_friday: e.target.value })}
+                    className="h-9"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Days of Week</Label>
+              <div className="flex flex-wrap gap-2">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((shortDay, idx) => {
+                  const fullDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][idx]
+                  const isSelected = formData.days_of_week.includes(fullDay)
+                  return (
+                    <button
+                      key={fullDay}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setFormData({ ...formData, days_of_week: formData.days_of_week.filter(d => d !== fullDay) })
+                        } else {
+                          setFormData({ ...formData, days_of_week: [...formData.days_of_week, fullDay] })
+                        }
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${isSelected
+                        ? 'bg-[#023E8A] text-white border-[#023E8A]'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-[#023E8A] hover:text-[#023E8A]'
+                        }`}
+                    >
+                      {shortDay}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {routePoints.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-              <p className="text-sm">No stops added yet. Click "Add Stop" to create the first stop.</p>
+      {/* Pickup Points Section */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-700">Pickup Points ({routePoints.length})</h2>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addRoutePoint}
+            className="h-7 text-xs bg-[#023E8A] text-white hover:bg-[#023E8A]/90"
+          >
+            <Plus className="mr-1 h-3 w-3" />
+            Add Stop
+          </Button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {routePoints.map((point, index) => (
+            <div key={point.id} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+              {/* Stop Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#023E8A] text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                    {point.stop_order}
+                  </span>
+                  {point.isNew && (
+                    <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">New</span>
+                  )}
+                  {point.stop_order === 1 && (
+                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">PA Pickup</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => movePointUp(index)}
+                    disabled={index === 0}
+                    className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600"
+                  >
+                    ▲
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => movePointDown(index)}
+                    disabled={index === routePoints.length - 1}
+                    className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600"
+                  >
+                    ▼
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeRoutePoint(point.id)}
+                    className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Compact Form Grid */}
+              <div className="grid gap-3 md:grid-cols-4">
+                {/* Stop Name */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Stop Name</Label>
+                  <Input
+                    value={point.point_name}
+                    onChange={(e) => updateRoutePoint(point.id, 'point_name', e.target.value)}
+                    placeholder="School Gate, etc."
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                {/* Passenger (only for stops > 1) */}
+                {point.stop_order > 1 ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Passenger</Label>
+                    <Select
+                      value={point.passenger_id ? String(point.passenger_id) : ''}
+                      onChange={(e) => {
+                        const selectedPassengerId = e.target.value || null
+                        updateRoutePoint(point.id, 'passenger_id', selectedPassengerId)
+                        if (selectedPassengerId) {
+                          const selectedPassenger = passengers.find((p) => p.id.toString() === selectedPassengerId)
+                          if (selectedPassenger?.address) {
+                            updateRoutePoint(point.id, 'address', selectedPassenger.address)
+                          }
+                        }
+                      }}
+                      className="h-8 text-sm"
+                    >
+                      <option value="">Select passenger</option>
+                      {passengers.map((passenger) => (
+                        <option key={passenger.id} value={passenger.id.toString()}>
+                          {passenger.full_name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Type</Label>
+                    <div className="h-8 flex items-center text-xs text-slate-500 bg-slate-100 rounded px-2">PA Pickup Point</div>
+                  </div>
+                )}
+
+                {/* AM Time */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">AM Time</Label>
+                  <Input
+                    type="time"
+                    value={point.pickup_time_am}
+                    onChange={(e) => updateRoutePoint(point.id, 'pickup_time_am', e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                {/* PM Time */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">PM Time</Label>
+                  <Input
+                    type="time"
+                    value={point.pickup_time_pm}
+                    onChange={(e) => updateRoutePoint(point.id, 'pickup_time_pm', e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Address Row */}
+              <div className="mt-3 space-y-1">
+                <Label className="text-xs text-slate-500">Address</Label>
+                <Input
+                  value={point.address}
+                  onChange={(e) => updateRoutePoint(point.id, 'address', e.target.value)}
+                  placeholder="Full address..."
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              {/* Optional Coordinates (collapsed by default) */}
+              <details className="mt-2">
+                <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">
+                  + Coordinates (optional)
+                </summary>
+                <div className="grid gap-3 md:grid-cols-2 mt-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Latitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      value={point.latitude}
+                      onChange={(e) => updateRoutePoint(point.id, 'latitude', e.target.value)}
+                      placeholder="e.g., 51.5074"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Longitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      value={point.longitude}
+                      onChange={(e) => updateRoutePoint(point.id, 'longitude', e.target.value)}
+                      placeholder="e.g., -0.1278"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </details>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {routePoints.map((point, index) => (
-                <Card key={point.id} className="border-2 border-gray-200">
-                  <CardHeader className="bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-navy">
-                        Stop {point.stop_order}
-                        {point.isNew && <span className="ml-2 text-xs text-green-600">(New)</span>}
-                      </h3>
-                      <div className="flex items-center space-x-2">
-                        {/* Reorder buttons */}
-                        <div className="flex flex-col space-y-0.5">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => movePointUp(index)}
-                            disabled={index === 0}
-                            className="h-5 px-2 text-gray-600 hover:text-navy"
-                            title="Move up"
-                          >
-                            ▲
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => movePointDown(index)}
-                            disabled={index === routePoints.length - 1}
-                            className="h-5 px-2 text-gray-600 hover:text-navy"
-                            title="Move down"
-                          >
-                            ▼
-                          </Button>
-                        </div>
-                        {/* Remove button */}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeRoutePoint(point.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor={`point_name_${point.id}`}>
-                          Stop Name
-                        </Label>
-                        <Input
-                          id={`point_name_${point.id}`}
-                          value={point.point_name}
-                          onChange={(e) =>
-                            updateRoutePoint(point.id, 'point_name', e.target.value)
-                          }
-                          placeholder="e.g., School Main Gate, Home Pickup"
-                        />
-                      </div>
+          ))}
 
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor={`address_${point.id}`}>Address</Label>
-                        <Input
-                          id={`address_${point.id}`}
-                          value={point.address}
-                          onChange={(e) =>
-                            updateRoutePoint(point.id, 'address', e.target.value)
-                          }
-                          placeholder="Full address..."
-                        />
-                      </div>
-
-                      {point.stop_order > 1 && (
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor={`passenger_${point.id}`}>
-                            Passenger <span className="text-gray-500 text-xs">(Required for pickup points)</span>
-                          </Label>
-                          <Select
-                            id={`passenger_${point.id}`}
-                            value={point.passenger_id ? String(point.passenger_id) : ''}
-                            onChange={(e) => {
-                              const selectedPassengerId = e.target.value || null
-                              updateRoutePoint(point.id, 'passenger_id', selectedPassengerId)
-                              
-                              // Auto-fill address if passenger is selected
-                              if (selectedPassengerId) {
-                                const selectedPassenger = passengers.find(
-                                  (p) => p.id.toString() === selectedPassengerId
-                                )
-                                if (selectedPassenger?.address) {
-                                  updateRoutePoint(point.id, 'address', selectedPassenger.address)
-                                }
-                              }
-                            }}
-                          >
-                            <option value="">Select a passenger</option>
-                            {passengers.map((passenger) => (
-                              <option key={passenger.id} value={passenger.id.toString()}>
-                                {passenger.full_name}
-                              </option>
-                            ))}
-                          </Select>
-                          {passengers.length === 0 && formData.school_id && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              No passengers found for this school. Add passengers first.
-                            </p>
-                          )}
-                          {!formData.school_id && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Select a school first to load passengers.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {point.stop_order === 1 && (
-                        <div className="space-y-2 md:col-span-2">
-                          <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
-                            <p className="text-sm text-blue-800">
-                              <strong>Note:</strong> This is the first pickup point for the Passenger Assistant (PA).
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor={`pickup_time_am_${point.id}`}>
-                            AM Pickup Time
-                          </Label>
-                          <Input
-                            id={`pickup_time_am_${point.id}`}
-                            type="time"
-                            value={point.pickup_time_am}
-                            onChange={(e) =>
-                              updateRoutePoint(point.id, 'pickup_time_am', e.target.value)
-                            }
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`pickup_time_pm_${point.id}`}>
-                            PM Drop Off Time
-                          </Label>
-                          <Input
-                            id={`pickup_time_pm_${point.id}`}
-                            type="time"
-                            value={point.pickup_time_pm}
-                            onChange={(e) =>
-                              updateRoutePoint(point.id, 'pickup_time_pm', e.target.value)
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`latitude_${point.id}`}>
-                          Latitude (Optional)
-                        </Label>
-                        <Input
-                          id={`latitude_${point.id}`}
-                          type="number"
-                          step="any"
-                          value={point.latitude}
-                          onChange={(e) =>
-                            updateRoutePoint(point.id, 'latitude', e.target.value)
-                          }
-                          placeholder="e.g., 51.5074"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`longitude_${point.id}`}>
-                          Longitude (Optional)
-                        </Label>
-                        <Input
-                          id={`longitude_${point.id}`}
-                          type="number"
-                          step="any"
-                          value={point.longitude}
-                          onChange={(e) =>
-                            updateRoutePoint(point.id, 'longitude', e.target.value)
-                          }
-                          placeholder="e.g., -0.1278"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {routePoints.length === 0 && (
+            <div className="text-center py-8 text-slate-400">
+              <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No pickup points yet. Click "Add Stop" to begin.</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Submit Buttons */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-end space-x-4">
-            <Link href={`/dashboard/routes/${id}`}>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </Link>
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Bottom Actions */}
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 mt-4">
+        <Link href={`/dashboard/routes/${id}`}>
+          <Button variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50">
+            Cancel
+          </Button>
+        </Link>
+        <Button onClick={handleDelete} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
+          <Trash2 className="mr-2 h-4 w-4" />
+          {deleting ? 'Deleting...' : 'Delete Route'}
+        </Button>
+        <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
+          {loading ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
     </div>
   )
 }
