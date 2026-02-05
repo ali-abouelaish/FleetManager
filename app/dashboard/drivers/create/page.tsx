@@ -344,18 +344,16 @@ export default function CreateDriverPage() {
         }).catch(err => console.error('Audit log error:', err))
       }
 
-      // Create document records in the documents table
+      // Create document records in the documents table (match working employee/vehicle document inserts)
       if (uploadedDocuments.length > 0) {
         const documentRecords = uploadedDocuments.map(doc => ({
           employee_id: parseInt(formData.employee_id),
-          owner_type: 'employee',
-          owner_id: parseInt(formData.employee_id),
-          file_url: JSON.stringify([doc.fileUrl]), // Store as JSON array for consistency
           file_name: doc.fileName,
           file_type: doc.fileType,
-          file_path: doc.fileUrl, // Store URL for backward compatibility
+          file_path: doc.filePath,
+          file_url: doc.fileUrl,
           doc_type: doc.docType,
-          uploaded_at: new Date().toISOString(),
+          uploaded_by: null,
         }))
 
         const { error: documentsError } = await supabase
@@ -364,7 +362,7 @@ export default function CreateDriverPage() {
 
         if (documentsError) {
           console.error('Error creating document records:', documentsError)
-          // Don't throw - driver was created successfully, documents just won't show up
+          setError(`Driver created but failed to save documents: ${documentsError.message}`)
         }
       }
 

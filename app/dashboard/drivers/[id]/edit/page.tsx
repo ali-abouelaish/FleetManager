@@ -214,14 +214,14 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
           const fileName = `drivers/${driver.employee_id}/${key}_${Date.now()}.${fileExt}`
           
           const { data, error } = await supabase.storage
-            .from('ROUTE_DOCUMENTS')
+            .from('DRIVER_DOCUMENTS')
             .upload(fileName, file)
 
           if (error) {
             console.error(`Error uploading file ${file.name}:`, error)
             // Provide helpful error message for bucket not found
             if (error.message.includes('Bucket not found') || error.message.includes('not found')) {
-              setError('Storage bucket "ROUTE_DOCUMENTS" not found. Please create a public bucket named "ROUTE_DOCUMENTS" in your Supabase Storage settings.')
+              setError('Storage bucket "DRIVER_DOCUMENTS" not found. Please create a public bucket named "DRIVER_DOCUMENTS" in your Supabase Storage settings.')
             } else {
               setError(`Failed to upload ${file.name}: ${error.message}`)
             }
@@ -230,7 +230,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
 
           if (data) {
             const { data: { publicUrl } } = supabase.storage
-              .from('ROUTE_DOCUMENTS')
+              .from('DRIVER_DOCUMENTS')
               .getPublicUrl(fileName)
             
             const docType = fileKeyToDocType[key] || 'Certificate'
@@ -292,23 +292,17 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         }),
       }).catch(err => console.error('Audit log error:', err))
 
-      // Create document records in the documents table
+      // Create document records in the documents table (match working employee/vehicle document inserts)
       if (uploadedDocuments.length > 0 && driver) {
-        const documentRecords = uploadedDocuments.map(doc => {
-          const record = {
-            employee_id: driver.employee_id,
-            owner_type: 'employee',
-            owner_id: driver.employee_id,
-            file_url: JSON.stringify([doc.fileUrl]), // Store as JSON array for consistency
-            file_name: doc.fileName,
-            file_type: doc.fileType,
-            file_path: doc.fileUrl, // Store URL for backward compatibility
-            doc_type: doc.docType,
-            uploaded_at: new Date().toISOString(),
-          }
-          console.log(`Creating document record for ${doc.docType}:`, record)
-          return record
-        })
+        const documentRecords = uploadedDocuments.map(doc => ({
+          employee_id: driver.employee_id,
+          file_name: doc.fileName,
+          file_type: doc.fileType,
+          file_path: doc.filePath,
+          file_url: doc.fileUrl,
+          doc_type: doc.docType,
+          uploaded_by: null,
+        }))
 
         const { data: insertedDocs, error: documentsError } = await supabase
           .from('documents')
