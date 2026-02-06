@@ -620,7 +620,7 @@ export default function CreateEmployeePage() {
                         </label>
                         {(() => {
                           const done = (driverForm as Record<string, unknown>)[completed] === true;
-                          if (!done) return null;
+                          if (!done) return null as React.ReactNode;
                           const val = (driverForm as Record<string, unknown>)[date];
                           return <Input type="date" name={date} value={String(val ?? '')} onChange={handleDriverInput} className="w-40" />;
                         })()}
@@ -731,7 +731,7 @@ export default function CreateEmployeePage() {
                         </label>
                         {(() => {
                           const done = (paForm as Record<string, unknown>)[completed] === true;
-                          if (!done) return null;
+                          if (!done) return null as React.ReactNode;
                           const val = (paForm as Record<string, unknown>)[date];
                           return <Input type="date" name={date} value={String(val ?? '')} onChange={handlePAInput} className="w-40" />;
                         })()}
