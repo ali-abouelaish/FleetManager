@@ -40,6 +40,13 @@ CREATE INDEX IF NOT EXISTS idx_compliance_case_updates_created_at ON compliance_
 ALTER TABLE compliance_cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE compliance_case_updates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated can read compliance_cases" ON compliance_cases;
+DROP POLICY IF EXISTS "Authenticated can insert compliance_cases" ON compliance_cases;
+DROP POLICY IF EXISTS "Authenticated can update compliance_cases" ON compliance_cases;
+DROP POLICY IF EXISTS "Authenticated can read compliance_case_updates" ON compliance_case_updates;
+DROP POLICY IF EXISTS "Authenticated can insert compliance_case_updates" ON compliance_case_updates;
+DROP POLICY IF EXISTS "Authenticated can update compliance_case_updates" ON compliance_case_updates;
+
 CREATE POLICY "Authenticated can read compliance_cases"
   ON compliance_cases FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Authenticated can insert compliance_cases"

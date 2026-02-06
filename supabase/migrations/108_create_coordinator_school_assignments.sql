@@ -20,6 +20,11 @@ COMMENT ON TABLE coordinator_school_assignments IS 'Links coordinators (employee
 -- RLS
 ALTER TABLE coordinator_school_assignments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow authenticated to read coordinator school assignments" ON coordinator_school_assignments;
+DROP POLICY IF EXISTS "Allow authenticated to insert coordinator school assignments" ON coordinator_school_assignments;
+DROP POLICY IF EXISTS "Allow authenticated to update coordinator school assignments" ON coordinator_school_assignments;
+DROP POLICY IF EXISTS "Allow authenticated to delete coordinator school assignments" ON coordinator_school_assignments;
+
 CREATE POLICY "Allow authenticated to read coordinator school assignments"
   ON coordinator_school_assignments FOR SELECT TO authenticated USING (true);
 

@@ -182,21 +182,13 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
           const fileName = `drivers/${driver.employee_id}/${key}_${Date.now()}.${fileExt}`
 
           const { data, error } = await supabase.storage
-<<<<<<< HEAD
             .from('DRIVER_DOCUMENTS')
-=======
-            .from('DRIVER_DOCUMENTS') // Use correct bucket
->>>>>>> MergUI
             .upload(fileName, file)
 
           if (error) {
             console.error(`Error uploading file ${file.name}:`, error)
             if (error.message.includes('Bucket not found') || error.message.includes('not found')) {
-<<<<<<< HEAD
               setError('Storage bucket "DRIVER_DOCUMENTS" not found. Please create a public bucket named "DRIVER_DOCUMENTS" in your Supabase Storage settings.')
-=======
-              setError('Storage bucket issue. Please contact support.')
->>>>>>> MergUI
             } else {
               setError(`Failed to upload ${file.name}: ${error.message}`)
             }

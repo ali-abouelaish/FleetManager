@@ -284,7 +284,7 @@ export default function PassengerDetailClientFull({ passenger, incidents, parent
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-[10px] text-slate-500">{i.incident_type}</span>
                                                             <Link href={`/dashboard/incidents/${i.id}`}>
-                                                                <Button size="sm" variant="link" className="h-auto p-0 text-[10px]">View</Button>
+                                                                <Button size="sm" variant="ghost" className="h-auto p-0 text-[10px] text-primary hover:text-primary/90">View</Button>
                                                             </Link>
                                                         </div>
                                                     </div>

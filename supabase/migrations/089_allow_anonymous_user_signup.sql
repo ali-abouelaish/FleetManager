@@ -16,7 +16,9 @@ CREATE POLICY "Allow authenticated users to insert users"
   WITH CHECK (true);
 
 -- Allow anonymous users to insert users during signup
--- This allows the signup flow to create user records
+-- This allows the signup flow to create user records (drop first for idempotency)
+DROP POLICY IF EXISTS "Allow anonymous users to insert users during signup" ON users;
+
 CREATE POLICY "Allow anonymous users to insert users during signup"
   ON users
   FOR INSERT

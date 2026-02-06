@@ -32,20 +32,24 @@ CREATE INDEX IF NOT EXISTS idx_tardiness_reports_created_at ON tardiness_reports
 -- Enable Row Level Security
 ALTER TABLE tardiness_reports ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-CREATE POLICY "Allow authenticated users to read tardiness reports" 
-  ON tardiness_reports FOR SELECT 
-  TO authenticated 
+-- RLS Policies (drop first so migration is idempotent if policies already exist)
+DROP POLICY IF EXISTS "Allow authenticated users to read tardiness reports" ON tardiness_reports;
+DROP POLICY IF EXISTS "Allow authenticated users to insert tardiness reports" ON tardiness_reports;
+DROP POLICY IF EXISTS "Allow authenticated users to update tardiness reports" ON tardiness_reports;
+
+CREATE POLICY "Allow authenticated users to read tardiness reports"
+  ON tardiness_reports FOR SELECT
+  TO authenticated
   USING (true);
 
-CREATE POLICY "Allow authenticated users to insert tardiness reports" 
-  ON tardiness_reports FOR INSERT 
-  TO authenticated 
+CREATE POLICY "Allow authenticated users to insert tardiness reports"
+  ON tardiness_reports FOR INSERT
+  TO authenticated
   WITH CHECK (true);
 
-CREATE POLICY "Allow authenticated users to update tardiness reports" 
-  ON tardiness_reports FOR UPDATE 
-  TO authenticated 
+CREATE POLICY "Allow authenticated users to update tardiness reports"
+  ON tardiness_reports FOR UPDATE
+  TO authenticated
   USING (true);
 
 -- Add comments

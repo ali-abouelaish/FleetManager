@@ -18,6 +18,7 @@ import {
   MapPin,
   Phone,
   Calendar,
+  CalendarDays,
   BarChart3,
   Bell,
   ChevronDown,
@@ -56,6 +57,7 @@ interface NavGroup {
 
 const topLevelItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarDays },
   { name: 'Compliance', href: '/dashboard/compliance', icon: ClipboardCheck },
   { name: 'Route Activity', href: '/dashboard/route-activity', icon: Activity },
   { name: 'School Overview', href: '/dashboard/school-overview', icon: GraduationCap },

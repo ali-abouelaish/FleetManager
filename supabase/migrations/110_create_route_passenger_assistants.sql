@@ -29,6 +29,11 @@ INSERT INTO route_passenger_assistants (route_id, employee_id, sort_order)
 -- RLS
 ALTER TABLE route_passenger_assistants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow authenticated to read route passenger assistants" ON route_passenger_assistants;
+DROP POLICY IF EXISTS "Allow authenticated to insert route passenger assistants" ON route_passenger_assistants;
+DROP POLICY IF EXISTS "Allow authenticated to update route passenger assistants" ON route_passenger_assistants;
+DROP POLICY IF EXISTS "Allow authenticated to delete route passenger assistants" ON route_passenger_assistants;
+
 CREATE POLICY "Allow authenticated to read route passenger assistants"
   ON route_passenger_assistants FOR SELECT TO authenticated USING (true);
 
