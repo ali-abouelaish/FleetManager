@@ -618,7 +618,7 @@ export default function CreateEmployeePage() {
                           <input type="checkbox" name={completed} checked={(driverForm as Record<string, unknown>)[completed] as boolean} onChange={handleDriverInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
                           <span className="text-sm font-medium">{label} completed</span>
                         </label>
-                        {(driverForm as Record<string, unknown>)[completed] ? (
+                        {Boolean((driverForm as Record<string, unknown>)[completed]) ? (
                           <Input type="date" name={date} value={String((driverForm as Record<string, unknown>)[date] ?? '')} onChange={handleDriverInput} className="w-40" />
                         ) : null}
                       </div>
@@ -726,7 +726,7 @@ export default function CreateEmployeePage() {
                           <input type="checkbox" name={completed} checked={(paForm as Record<string, unknown>)[completed] as boolean} onChange={handlePAInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
                           <span className="text-sm font-medium">{label} completed</span>
                         </label>
-                        {(paForm as Record<string, unknown>)[completed] ? (
+                        {Boolean((paForm as Record<string, unknown>)[completed]) ? (
                           <Input type="date" name={date} value={String((paForm as Record<string, unknown>)[date] ?? '')} onChange={handlePAInput} className="w-40" />
                         ) : null}
                       </div>
