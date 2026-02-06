@@ -10,17 +10,19 @@ export function SchoolSearchFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
-  
-  const [search, setSearch] = useState(searchParams.get('search') || '')
+  const get = (k: string) => searchParams?.get(k) ?? ''
+  const paramStr = searchParams?.toString() ?? ''
+
+  const [search, setSearch] = useState(get('search') || '')
 
   // Sync state with URL params when they change
   useEffect(() => {
-    setSearch(searchParams.get('search') || '')
+    setSearch(get('search') || '')
   }, [searchParams])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(paramStr)
     
     if (value.trim()) {
       params.set('search', value.trim())

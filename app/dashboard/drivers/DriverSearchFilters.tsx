@@ -11,14 +11,16 @@ export function DriverSearchFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
-  
-  const [search, setSearch] = useState(searchParams.get('search') || '')
-  const [status, setStatus] = useState(searchParams.get('status') || 'all')
-  const [canWork, setCanWork] = useState(searchParams.get('can_work') || 'all')
+  const get = (k: string) => searchParams?.get(k) ?? ''
+  const paramStr = searchParams?.toString() ?? ''
+
+  const [search, setSearch] = useState(get('search') || '')
+  const [status, setStatus] = useState(get('status') || 'all')
+  const [canWork, setCanWork] = useState(get('can_work') || 'all')
 
   const updateFilters = (updates: Record<string, string>) => {
     startTransition(() => {
-      const params = new URLSearchParams(searchParams.toString())
+      const params = new URLSearchParams(paramStr)
       
       Object.entries(updates).forEach(([key, value]) => {
         if (value && value !== 'all') {
@@ -34,7 +36,7 @@ export function DriverSearchFilters() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(paramStr)
     
     if (value.trim()) {
       params.set('search', value.trim())

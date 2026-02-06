@@ -11,21 +11,23 @@ export function AssistantSearchFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
-  
-  const [search, setSearch] = useState(searchParams.get('search') || '')
-  const [status, setStatus] = useState(searchParams.get('status') || 'all')
-  const [canWork, setCanWork] = useState(searchParams.get('can_work') || 'all')
+  const get = (k: string) => searchParams?.get(k) ?? ''
+  const paramStr = searchParams?.toString() ?? ''
+
+  const [search, setSearch] = useState(get('search') || '')
+  const [status, setStatus] = useState(get('status') || 'all')
+  const [canWork, setCanWork] = useState(get('can_work') || 'all')
 
   // Sync state with URL params when they change
   useEffect(() => {
-    setSearch(searchParams.get('search') || '')
-    setStatus(searchParams.get('status') || 'all')
-    setCanWork(searchParams.get('can_work') || 'all')
+    setSearch(get('search') || '')
+    setStatus(get('status') || 'all')
+    setCanWork(get('can_work') || 'all')
   }, [searchParams])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(paramStr)
     
     if (value.trim()) {
       params.set('search', value.trim())
@@ -39,7 +41,7 @@ export function AssistantSearchFilters() {
   }
 
   const updateFilters = (updates: Record<string, string>) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(paramStr)
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value && value !== 'all') {

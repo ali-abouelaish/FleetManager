@@ -37,7 +37,7 @@ export default function CreatePassengerPage() {
     address: '',
     important_notes: '',
     sen_requirements: '',
-    school_id: searchParams.get('school_id') || '',
+    school_id: searchParams?.get('school_id') || '',
     mobility_type: '',
     route_id: '',
     seat_number: '',

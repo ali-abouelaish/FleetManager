@@ -40,7 +40,7 @@ interface CertificateExpiryFilterProps {
 }
 
 export function CertificateExpiryFilter({ currentPeriod, counts }: CertificateExpiryFilterProps) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
 
   return (
     <div className="border-b border-gray-200 bg-white">

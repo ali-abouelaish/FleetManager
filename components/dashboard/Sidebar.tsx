@@ -141,7 +141,7 @@ export function Sidebar() {
     if (href === '/dashboard') {
       return pathname === '/dashboard'
     }
-    return pathname === href || pathname.startsWith(href + '/')
+    return pathname === href || (pathname ?? '').startsWith(href + '/')
   }
 
   const isGroupActive = (items: NavItem[]) => {
@@ -168,7 +168,7 @@ export function Sidebar() {
         if (item.href === '/dashboard') {
           return pathname === '/dashboard'
         }
-        return pathname === item.href || pathname.startsWith(item.href + '/')
+        return pathname === item.href || (pathname ?? '').startsWith(item.href + '/')
       })
       if (hasActive) {
         groupsToExpand.add(group.name)

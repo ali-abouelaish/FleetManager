@@ -20,7 +20,7 @@ interface AppointmentSlot {
 export default function BookAppointmentPage() {
   const params = useParams<{ token: string }>()
   const router = useRouter()
-  const token = params.token
+  const token = params?.token ?? null
   const supabase = createClient()
   const [slots, setSlots] = useState<AppointmentSlot[]>([])
   const [slotId, setSlotId] = useState<number | null>(null)

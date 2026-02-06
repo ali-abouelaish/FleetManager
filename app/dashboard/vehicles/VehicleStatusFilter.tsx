@@ -25,7 +25,7 @@ interface VehicleStatusFilterProps {
 }
 
 export function VehicleStatusFilter({ currentStatus, counts }: VehicleStatusFilterProps) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
 
   return (
     <div className="border-b border-gray-200">

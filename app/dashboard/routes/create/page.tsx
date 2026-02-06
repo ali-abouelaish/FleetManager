@@ -39,7 +39,7 @@ export default function CreateRoutePage() {
 
   const [formData, setFormData] = useState({
     route_number: '',
-    school_id: searchParams.get('school_id') || '',
+    school_id: searchParams?.get('school_id') || '',
     driver_id: '',
     passenger_assistant_id: '', // primary/first PA (for APA logic)
     vehicle_id: '',

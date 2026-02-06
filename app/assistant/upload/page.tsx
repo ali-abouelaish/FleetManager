@@ -14,7 +14,7 @@ import { formatDate, formatDateTime } from '@/lib/utils'
 
 function AssistantUploadContent() {
   const searchParams = useSearchParams()
-  const token = searchParams.get('token')
+  const token = searchParams?.get('token') ?? null
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(true)

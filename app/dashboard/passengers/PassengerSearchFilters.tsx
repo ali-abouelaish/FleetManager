@@ -11,19 +11,21 @@ export function PassengerSearchFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
-  
-  const [search, setSearch] = useState(searchParams.get('search') || '')
-  const [mobilityType, setMobilityType] = useState(searchParams.get('mobility_type') || 'all')
+  const get = (k: string) => searchParams?.get(k) ?? ''
+  const paramStr = searchParams?.toString() ?? ''
+
+  const [search, setSearch] = useState(get('search') || '')
+  const [mobilityType, setMobilityType] = useState(get('mobility_type') || 'all')
 
   // Sync state with URL params when they change
   useEffect(() => {
-    setSearch(searchParams.get('search') || '')
-    setMobilityType(searchParams.get('mobility_type') || 'all')
+    setSearch(get('search') || '')
+    setMobilityType(get('mobility_type') || 'all')
   }, [searchParams])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(paramStr)
     
     if (value.trim()) {
       params.set('search', value.trim())
@@ -37,7 +39,7 @@ export function PassengerSearchFilters() {
   }
 
   const updateFilters = (updates: Record<string, string>) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(paramStr)
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value && value !== 'all') {

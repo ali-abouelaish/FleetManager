@@ -50,7 +50,7 @@ export default function DailySummariesClient({
     setLoading(true)
     
     // Update URL with new date
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
     params.set('date', date)
     router.push(`/dashboard/summaries?${params.toString()}`, { scroll: false })
     

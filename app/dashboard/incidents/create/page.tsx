@@ -70,7 +70,7 @@ export default function CreateIncidentPage() {
   }, [supabase])
 
   useEffect(() => {
-    const sessionId = searchParams.get('route_session_id')
+    const sessionId = searchParams?.get('route_session_id')
     if (sessionId) {
       setFormData(prev => ({ ...prev, route_session_id: sessionId }))
       loadRouteSessions()
