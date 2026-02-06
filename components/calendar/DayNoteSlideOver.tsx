@@ -145,12 +145,15 @@ export function DayNoteSlideOver({
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs font-medium text-slate-600 mb-2">
-                        {n.updated_at && n.updated_by_name
-                          ? `Updated by ${n.updated_by_name} at ${formatDateTime(n.updated_at)}`
-                          : n.created_by_name
-                            ? `Posted by ${n.created_by_name} at ${formatDateTime(n.created_at)}`
-                            : formatDateTime(n.created_at)}
+                      <p className="text-xs font-medium text-slate-600 mb-2 space-y-0.5">
+                        <span className="block">
+                          Posted by {n.created_by_name ?? 'Unknown'} at {formatDateTime(n.created_at)}
+                        </span>
+                        {n.updated_at && (n.updated_by_name || n.created_by_name) && (
+                          <span className="block text-slate-500">
+                            Last updated by {n.updated_by_name ?? n.created_by_name} at {formatDateTime(n.updated_at)}
+                          </span>
+                        )}
                       </p>
                       <p className="text-slate-900 whitespace-pre-wrap">{n.note_text}</p>
                       <div className="mt-2 flex gap-2">
