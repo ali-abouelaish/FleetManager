@@ -41,8 +41,13 @@ export async function GET(request: NextRequest) {
       }, {})
     }
 
-    const { data: userRow } = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
-    const userId = userRow?.id ?? null
+    let userId: number | null = null
+    const byAuthId = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
+    if (byAuthId.data?.id) userId = byAuthId.data.id
+    if (userId == null && user.email) {
+      const byEmail = await supabase.from('users').select('id').ilike('email', user.email).maybeSingle()
+      if (byEmail.data?.id) userId = byEmail.data.id
+    }
     let seenDates: string[] = []
     if (userId) {
       const { data: views } = await supabase

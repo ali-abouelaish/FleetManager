@@ -16,8 +16,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'note_date required' }, { status: 400 })
     }
 
-    const { data: userRow } = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
-    const userId = userRow?.id
+    let userId: number | null = null
+    const byAuthId = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
+    if (byAuthId.data?.id) userId = byAuthId.data.id
+    if (userId == null && user.email) {
+      const byEmail = await supabase.from('users').select('id').ilike('email', user.email).maybeSingle()
+      if (byEmail.data?.id) userId = byEmail.data.id
+    }
     if (!userId) {
       return NextResponse.json({ error: 'User record not found' }, { status: 400 })
     }

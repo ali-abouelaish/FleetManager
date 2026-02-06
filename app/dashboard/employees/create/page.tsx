@@ -618,9 +618,12 @@ export default function CreateEmployeePage() {
                           <input type="checkbox" name={completed} checked={(driverForm as Record<string, unknown>)[completed] as boolean} onChange={handleDriverInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
                           <span className="text-sm font-medium">{label} completed</span>
                         </label>
-                        {(driverForm as Record<string, unknown>)[completed] === true ? (
-                          <Input type="date" name={date} value={String((driverForm as Record<string, unknown>)[date] ?? '')} onChange={handleDriverInput} className="w-40" />
-                        ) : null}
+                        {(() => {
+                          const done = (driverForm as Record<string, unknown>)[completed] === true;
+                          if (!done) return null;
+                          const val = (driverForm as Record<string, unknown>)[date];
+                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handleDriverInput} className="w-40" />;
+                        })()}
                       </div>
                     ))}
                   </div>
@@ -726,9 +729,12 @@ export default function CreateEmployeePage() {
                           <input type="checkbox" name={completed} checked={(paForm as Record<string, unknown>)[completed] as boolean} onChange={handlePAInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
                           <span className="text-sm font-medium">{label} completed</span>
                         </label>
-                        {(paForm as Record<string, unknown>)[completed] === true ? (
-                          <Input type="date" name={date} value={String((paForm as Record<string, unknown>)[date] ?? '')} onChange={handlePAInput} className="w-40" />
-                        ) : null}
+                        {(() => {
+                          const done = (paForm as Record<string, unknown>)[completed] === true;
+                          if (!done) return null;
+                          const val = (paForm as Record<string, unknown>)[date];
+                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handlePAInput} className="w-40" />;
+                        })()}
                       </div>
                     ))}
                   </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { MonthCalendar } from '@/components/calendar/MonthCalendar'
 import type { CalendarDayNote } from '@/lib/calendarNotes'
 import { addMonths, subMonths } from 'date-fns'
+import { createClient } from '@/lib/supabase/client'
 
 export default function CalendarPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
@@ -38,11 +39,30 @@ export default function CalendarPage() {
     loadMonth()
   }, [loadMonth])
 
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('calendar-day-notes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'calendar_day_notes' },
+        () => { loadMonth() }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadMonth])
+
   const notesForSelectedDay = selectedDate
     ? notes
         .filter((n) => n.note_date === selectedDate)
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     : []
+
+  useEffect(() => {
+    if (selectedDate && notesForSelectedDay.length > 0) onMarkSeen(selectedDate)
+  }, [selectedDate, notesForSelectedDay.length])
 
   const onDayClick = (date: string) => {
     setSelectedDate(date)
@@ -112,15 +132,15 @@ export default function CalendarPage() {
 
   const onMarkSeen = async (date: string) => {
     if (seenDates.includes(date)) return
+    setSeenDates((prev) => (prev.includes(date) ? prev : [...prev, date]))
     try {
       await fetch('/api/calendar/notes/seen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note_date: date }),
       })
-      setSeenDates((prev) => (prev.includes(date) ? prev : [...prev, date]))
     } catch {
-      // best-effort
+      // best-effort; dot already cleared optimistically
     }
   }
 
