@@ -120,7 +120,7 @@ export function MonthCalendar({
               const dateStr = format(day, 'yyyy-MM-dd')
               const hasNote = hasNoteOnDate(dateStr)
               const isSeen = seenDates.includes(dateStr)
-              const showDot = hasNote && !isSeen
+              const showDot = hasNote
               const isCurrentMonth = isSameMonth(day, monthStart)
               const isSelected = selectedDate && isSameDay(parseISO(selectedDate), day)
 
@@ -143,8 +143,8 @@ export function MonthCalendar({
                   </span>
                   {showDot && (
                     <span
-                      className="mt-1 h-2 w-2 rounded-full bg-rose-500 shrink-0"
-                      aria-label="Has update"
+                      className={`mt-1 h-2 w-2 rounded-full shrink-0 ${isSeen ? 'bg-blue-500' : 'bg-rose-500'}`}
+                      aria-label={isSeen ? 'Note read' : 'Has update'}
                     />
                   )}
                 </button>
