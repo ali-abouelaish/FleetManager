@@ -48,6 +48,11 @@ export default function CalendarPage() {
         { event: '*', schema: 'public', table: 'calendar_day_notes' },
         () => { loadMonth() }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'calendar_day_note_views' },
+        () => { loadMonth() }
+      )
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
