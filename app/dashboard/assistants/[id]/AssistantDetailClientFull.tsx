@@ -13,6 +13,7 @@ import {
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
 
 const PassengerAssistantQRCodeWrapper = dynamic(
   () => import('@/components/dashboard/PassengerAssistantQRCode'),
@@ -31,10 +32,8 @@ interface PassengerAssistant {
   birth_certificate: boolean
   marriage_certificate: boolean
   photo_taken: boolean
-  private_hire_badge: boolean
   paper_licence: boolean
   taxi_plate_photo: boolean
-  logbook: boolean
   safeguarding_training_completed: boolean
   safeguarding_training_date: string | null
   tas_pats_training_completed: boolean
@@ -112,6 +111,7 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
   const [loading, setLoading] = useState(true)
   const [documents, setDocuments] = useState<Document[]>([])
   const [idBadgePhotoUrl, setIdBadgePhotoUrl] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents'>('overview')
 
   useEffect(() => {
     async function fetchAssistant() {
@@ -149,16 +149,20 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
   const loadDocuments = async (employeeId: number) => {
     const supabase = createClient()
     const { data } = await supabase
-      .from('documents')
-      .select('id, file_name, file_url, file_type, doc_type, uploaded_at, file_path')
-      .eq('employee_id', employeeId)
-      .order('uploaded_at', { ascending: false })
+      .from('document_pa_links')
+      .select('documents (id, file_name, file_url, file_type, doc_type, uploaded_at, file_path)')
+      .eq('pa_employee_id', employeeId)
 
-    if (data) {
-      setDocuments(data || [])
+    const docs = (data || [])
+      .map((row: any) => row.documents)
+      .filter(Boolean)
+      .sort((a: any, b: any) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+
+    if (docs) {
+      setDocuments(docs || [])
 
       // Find ID Badge photo
-      const idBadgeDoc = data.find(doc => {
+      const idBadgeDoc = docs.find(doc => {
         const type = (doc.doc_type || '').toLowerCase()
         return type === 'id badge' || type.includes('photo') || (type.includes('badge') && type.includes('id'))
       })
@@ -185,7 +189,8 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
   if (loading) return <div className="p-8 text-center animate-pulse">Loading assistant profile...</div>
   if (!assistant) return notFound()
 
-  const employee = assistant.employees
+  const employee = Array.isArray(assistant.employees) ? assistant.employees[0] : assistant.employees
+  if (!employee) return notFound()
 
   const certificates = [
     { label: 'TAS Badge', date: assistant.tas_badge_expiry_date, ref: assistant.tas_badge_number, important: true },
@@ -201,7 +206,12 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
   ]
 
   // Status Colors
-  const statusColor = employee.can_work === false ? 'bg-red-100 text-red-800' : employee.employment_status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'
+  const statusColor =
+    employee.can_work === false
+      ? 'bg-red-100 text-red-800'
+      : employee.employment_status === 'Active'
+        ? 'bg-green-100 text-green-800'
+        : 'bg-slate-100 text-slate-800';
 
   return (
     <div className="max-w-[1600px] mx-auto p-4 space-y-6">
@@ -250,6 +260,10 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
         </div>
       </div>
 
+      {activeTab === 'documents' && (
+        <SubjectDocumentsChecklist subjectType="pa" subjectId={assistant.employee_id} />
+      )}
+
       {assistant.additional_notes && (
         <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
           <FileText className="h-4 w-4 mt-0.5 shrink-0" />
@@ -257,7 +271,27 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
         </div>
       )}
 
-      {/* Main Grid Layout */}
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <div className="flex items-center gap-6 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`pb-3 ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('documents')}
+            className={`pb-3 ${activeTab === 'documents' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Documents & Certificates
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'overview' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Left Column: Stats & Quick Info (4 cols) */}
@@ -299,10 +333,8 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Requirements</h3>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Private Hire', active: assistant.private_hire_badge },
                   { label: 'Photo Taken', active: assistant.photo_taken },
                   { label: 'Birth Cert', active: assistant.birth_certificate },
-                  { label: 'Logbook', active: assistant.logbook },
                 ].map((item, i) => (
                   <div key={i} className={`flex items-center gap-2 text-xs p-2 rounded border ${item.active ? 'bg-green-50 border-green-100 text-green-800' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                     {item.active ? <CheckCircle className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-slate-300" />}
@@ -429,6 +461,7 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
 
         </div>
       </div>
+    )}
     </div>
   )
 }

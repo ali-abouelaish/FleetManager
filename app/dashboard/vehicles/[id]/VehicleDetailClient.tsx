@@ -2,17 +2,33 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { formatDate } from '@/lib/utils'
+import {
+  ArrowLeft,
+  Pencil,
+  Car,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Clock,
+  Shield,
+  FileText,
+  LayoutGrid,
+  Wrench,
+} from 'lucide-react'
 import VehicleUpdates from './VehicleUpdates'
 import VehicleDocuments from './VehicleDocuments'
+import VehicleLogbook from './VehicleLogbook'
 import VehicleComplianceDocuments from './VehicleComplianceDocuments'
 import VehicleQRCode from './VehicleQRCode'
 import VehiclePreChecks from './VehiclePreChecks'
+import VORToggleButton from './VORToggleButton'
 import { VehicleSeatingPlan } from '@/lib/types'
+import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
 
-type TabType = 'overview' | 'compliance' | 'documents' | 'daily-checks'
+type TabType = 'overview' | 'compliance' | 'certificates' | 'documents' | 'daily-checks'
 
 interface VehicleDetailClientProps {
   vehicle: any
@@ -25,6 +41,46 @@ interface FieldAuditInfo {
   action: string
   changed_by: string
   changed_by_name: string
+}
+
+function getDaysRemaining(expiryDate: string | null): number | null {
+  if (!expiryDate) return null
+  const today = new Date()
+  const expiry = new Date(expiryDate)
+  const diffTime = expiry.getTime() - today.getTime()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+
+function getExpiryBadge(daysRemaining: number | null) {
+  if (daysRemaining === null) {
+    return { icon: null, label: 'Not Set', color: 'bg-slate-100 text-slate-600' }
+  }
+  if (daysRemaining < 0) {
+    return {
+      icon: XCircle,
+      label: `Expired (${Math.abs(daysRemaining)} days)`,
+      color: 'bg-red-50 text-red-700 border-red-200',
+    }
+  }
+  if (daysRemaining <= 14) {
+    return {
+      icon: AlertTriangle,
+      label: `${daysRemaining} days left`,
+      color: 'bg-amber-50 text-amber-700 border-amber-200',
+    }
+  }
+  if (daysRemaining <= 30) {
+    return {
+      icon: Clock,
+      label: `${daysRemaining} days left`,
+      color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    }
+  }
+  return {
+    icon: CheckCircle,
+    label: `${daysRemaining} days left`,
+    color: 'bg-green-50 text-green-700 border-green-200',
+  }
 }
 
 export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetailClientProps) {
@@ -113,331 +169,343 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
     formatValue?: (val: any) => string
   }) => {
     const auditInfo = getFieldAuditInfo(fieldName)
-    const displayValue = formatValue ? formatValue(value) : (value || 'N/A')
+    const displayValue = formatValue ? formatValue(value) : (value ?? 'N/A')
 
     return (
       <div>
-        <dt className="text-sm font-medium text-gray-500">{label}</dt>
-        <dd className="mt-1 text-sm text-gray-900">{displayValue}</dd>
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="mt-0.5 text-sm font-medium text-slate-900">{String(displayValue)}</p>
         {auditInfo && (
-          <dd className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-[10px] text-slate-400">
             {auditInfo.action === 'CREATE' ? 'Created' : 'Updated'} by {auditInfo.changed_by_name} on {formatDateTime(auditInfo.change_time)}
-          </dd>
+          </p>
         )}
       </div>
     )
   }
 
+  const statusColor = vehicle.off_the_road
+    ? 'bg-red-100 text-red-800'
+    : vehicle.spare_vehicle
+      ? 'bg-amber-100 text-amber-800'
+      : 'bg-green-100 text-green-800'
+  const statusLabel = vehicle.off_the_road ? 'Off the Road' : vehicle.spare_vehicle ? 'Spare' : 'Active'
+
+  const nextPmiDue =
+    vehicle.vehicle_type === 'PSV' && vehicle.pmi_weeks && vehicle.last_pmi_date
+      ? (() => {
+          const d = new Date(vehicle.last_pmi_date)
+          d.setDate(d.getDate() + vehicle.pmi_weeks * 7)
+          return d.toISOString().slice(0, 10)
+        })()
+      : null
+
+  const vehicleCertificates = [
+    { label: 'Insurance', date: vehicle.insurance_expiry_date, important: true },
+    { label: 'MOT', date: vehicle.mot_date, important: true },
+    { label: 'Tax', date: vehicle.tax_date },
+    { label: 'Taxi Badge', date: vehicle.taxi_badge_expiry_date, ref: vehicle.taxi_badge_number },
+    { label: 'LOLER', date: vehicle.loler_expiry_date },
+    ...(nextPmiDue ? [{ label: 'PMI Due', date: nextPmiDue, important: true }] : []),
+    { label: 'Plate Expiry', date: vehicle.plate_expiry_date },
+    { label: 'Registration Expiry', date: vehicle.registration_expiry_date },
+    { label: 'First Aid', date: vehicle.first_aid_expiry },
+    { label: 'Fire Extinguisher', date: vehicle.fire_extinguisher_expiry },
+  ]
+
   return (
     <div className="space-y-6">
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Vehicle sections">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'overview'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
-            `}
-          >
-            📋 Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('compliance')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'compliance'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
-            `}
-          >
-            📜 Compliance Documents
-          </button>
-          <button
-            onClick={() => setActiveTab('documents')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'documents'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
-            `}
-          >
-            📄 All Documents
-          </button>
-          <button
-            onClick={() => setActiveTab('daily-checks')}
-            className={`
-              border-b-2 px-1 py-4 text-sm font-medium transition-colors
-              ${activeTab === 'daily-checks'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
-            `}
-          >
-            ✅ Daily Checks
-          </button>
-        </nav>
+      {/* Header Row - match driver layout */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/vehicles">
+            <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 border-2 border-white shadow-sm">
+              <Car className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                {vehicle.vehicle_identifier || vehicle.registration || `Vehicle ${vehicle.id}`}
+              </h1>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span>{vehicle.registration || '—'}</span>
+                <span>•</span>
+                <span>{[vehicle.make, vehicle.model].filter(Boolean).join(' ') || '—'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1.5 text-xs font-medium rounded-full flex items-center gap-1.5 ${statusColor}`}>
+            {vehicle.off_the_road ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+            {statusLabel}
+          </div>
+          <VORToggleButton vehicleId={vehicleId} currentVORStatus={vehicle.off_the_road || false} />
+          <Link href={`/dashboard/vehicles/${vehicleId}/seating`}>
+            <Button variant="outline" size="sm" className="h-8 text-xs border-slate-300">
+              <LayoutGrid className="h-3 w-3 mr-1.5" /> Seating
+            </Button>
+          </Link>
+          <Link href={`/dashboard/vehicles/${vehicleId}/edit`}>
+            <Button size="sm" variant="outline" className="h-8 text-xs">
+              <Pencil className="h-3 w-3 mr-1.5" /> Edit
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Overview Tab */}
+      {vehicle.notes && (
+        <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
+          <FileText className="h-4 w-4 mt-0.5 shrink-0" />
+          <p><span className="font-semibold">Note:</span> {vehicle.notes}</p>
+        </div>
+      )}
+
+      {/* Tabs - above content so Daily Checks and others are visible below */}
+      <div className="border-b border-slate-200">
+        <div className="flex items-center gap-6 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`pb-3 ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('compliance')}
+            className={`pb-3 ${activeTab === 'compliance' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Compliance
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('certificates')}
+            className={`pb-3 ${activeTab === 'certificates' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Documents & Certificates
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('documents')}
+            className={`pb-3 ${activeTab === 'documents' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Documents
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('daily-checks')}
+            className={`pb-3 ${activeTab === 'daily-checks' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Daily Checks
+          </button>
+        </div>
+      </div>
+
+      {/* Tab content below tabs */}
       {activeTab === 'overview' && (
-        <>
-          <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left column (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            {/* Basic info */}
             <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Vehicle ID</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{vehicle.id}</dd>
+              <CardContent className="p-0">
+                <div className="p-3 border-b bg-slate-50/50">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Basic Information</h3>
                 </div>
-                <FieldWithAudit fieldName="vehicle_identifier" label="Vehicle Identifier" value={vehicle.vehicle_identifier} />
-                <FieldWithAudit fieldName="registration" label="Registration" value={vehicle.registration} />
-                <FieldWithAudit fieldName="registration_expiry_date" label="Plate Expiry Date" value={vehicle.registration_expiry_date} formatValue={formatDate} />
-                <FieldWithAudit fieldName="plate_number" label="Plate Number" value={vehicle.plate_number} />
-                <FieldWithAudit fieldName="make" label="Make" value={vehicle.make} />
-                <FieldWithAudit fieldName="model" label="Model" value={vehicle.model} />
-                <FieldWithAudit fieldName="colour" label="Colour" value={vehicle.colour} />
-                <FieldWithAudit fieldName="vehicle_type" label="Vehicle Type" value={vehicle.vehicle_type} />
-                <FieldWithAudit fieldName="ownership_type" label="Ownership Type" value={vehicle.ownership_type} />
-                <FieldWithAudit fieldName="council_assignment" label="Council Assignment" value={vehicle.council_assignment} />
+                <div className="p-4 space-y-3">
+                  <div><p className="text-xs text-slate-500">Vehicle ID</p><p className="text-sm font-medium text-slate-900">{vehicle.id}</p></div>
+                  <FieldWithAudit fieldName="vehicle_identifier" label="Vehicle Identifier" value={vehicle.vehicle_identifier} />
+                  <FieldWithAudit fieldName="registration" label="Registration" value={vehicle.registration} />
+                  <FieldWithAudit fieldName="plate_number" label="Plate Number" value={vehicle.plate_number} />
+                  <FieldWithAudit fieldName="make" label="Make" value={vehicle.make} />
+                  <FieldWithAudit fieldName="model" label="Model" value={vehicle.model} />
+                  <FieldWithAudit fieldName="colour" label="Colour" value={vehicle.colour} />
+                  <FieldWithAudit fieldName="vehicle_type" label="Vehicle Type" value={vehicle.vehicle_type} />
+                  <FieldWithAudit fieldName="ownership_type" label="Ownership" value={vehicle.ownership_type} />
+                  <FieldWithAudit fieldName="council_assignment" label="Council" value={vehicle.council_assignment} />
+                </div>
               </CardContent>
             </Card>
 
+            {/* Status & features */}
             <Card>
-              <CardHeader>
-                <CardTitle>Status & Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Status</dt>
-                  <dd className="mt-1">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${vehicle.off_the_road
-                        ? 'bg-rose-100 text-rose-700'
-                        : vehicle.spare_vehicle
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-emerald-100 text-emerald-700'
-                        }`}
-                    >
-                      {vehicle.off_the_road ? 'VOR' : vehicle.spare_vehicle ? 'Spare' : 'Active'}
-                    </span>
-                  </dd>
+              <CardContent className="p-0">
+                <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status & Features</h3>
                 </div>
-                <FieldWithAudit fieldName="tail_lift" label="Tail Lift" value={vehicle.tail_lift} formatValue={(val) => val ? 'Yes' : 'No'} />
-                <FieldWithAudit fieldName="spare_vehicle" label="Spare Vehicle" value={vehicle.spare_vehicle} formatValue={(val) => val ? 'Yes' : 'No'} />
-                <FieldWithAudit fieldName="off_the_road" label="Off the Road" value={vehicle.off_the_road} formatValue={(val) => val ? 'Yes' : 'No'} />
-                {(() => {
-                  const assignedEmployee = Array.isArray(vehicle.assigned_employee)
-                    ? vehicle.assigned_employee[0]
-                    : vehicle.assigned_employee
-                  const assignedName = assignedEmployee?.full_name || (vehicle.assigned_to ? 'Unknown' : 'N/A')
+                <div className="p-4 space-y-3">
+                  <FieldWithAudit fieldName="tail_lift" label="Tail Lift" value={vehicle.tail_lift} formatValue={(val) => val ? 'Yes' : 'No'} />
+                  <FieldWithAudit fieldName="spare_vehicle" label="Spare Vehicle" value={vehicle.spare_vehicle} formatValue={(val) => val ? 'Yes' : 'No'} />
+                  {(() => {
+                    const assignedEmployee = Array.isArray(vehicle.assigned_employee) ? vehicle.assigned_employee[0] : vehicle.assigned_employee
+                    const assignedName = assignedEmployee?.full_name || (vehicle.assigned_to ? 'Unknown' : 'N/A')
+                    return <FieldWithAudit fieldName="assigned_to" label="Assigned To (MOT & Service)" value={assignedName} />
+                  })()}
+                  {(() => {
+                    const taxiHolder = Array.isArray(vehicle.taxi_licence_holder_employee) ? vehicle.taxi_licence_holder_employee[0] : vehicle.taxi_licence_holder_employee
+                    const taxiHolderName = taxiHolder?.full_name || (vehicle.taxi_licence_holder_id ? 'Unknown' : 'N/A')
+                    return <FieldWithAudit fieldName="taxi_licence_holder_id" label="Taxi Licence Holder" value={taxiHolderName} />
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* QR Code */}
+            <div className="pt-2">
+              <VehicleQRCode vehicleId={vehicleId} />
+            </div>
+          </div>
+
+          {/* Right column (8 cols) */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Compliance & expiry - driver-style list with badges */}
+            <Card className="overflow-hidden">
+              <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Shield className="h-4 w-4" /> Compliance & Expiry
+                </h3>
+                <Link href={`/dashboard/vehicles/${vehicleId}/edit`}>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 hover:text-blue-700">Manage</Button>
+                </Link>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {vehicleCertificates.map((cert, i) => {
+                  const days = getDaysRemaining(cert.date)
+                  const status = getExpiryBadge(days)
+                  if (!cert.date && !cert.ref) return null
                   return (
-                    <FieldWithAudit
-                      fieldName="assigned_to"
-                      label="Assigned To (MOT & Service Follow-up)"
-                      value={assignedName}
-                    />
+                    <div key={i} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-700">{cert.label}</span>
+                        {cert.ref && <span className="text-xs text-slate-500 font-mono">{cert.ref}</span>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {cert.date && (
+                          <div className="text-right">
+                            <p className="text-xs font-medium text-slate-900">{formatDate(cert.date)}</p>
+                            <p className="text-[10px] text-slate-400">Expiry</p>
+                          </div>
+                        )}
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                          {status.icon && <status.icon className="h-3 w-3" />}
+                          {status.label}
+                        </div>
+                      </div>
+                    </div>
                   )
-                })()}
+                })}
+              </div>
+            </Card>
+
+            {/* Maintenance & safety - compact grid */}
+            <Card>
+              <CardContent className="p-0">
+                <div className="p-3 border-b bg-slate-50/50">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                    <Wrench className="h-4 w-4" /> Maintenance & Safety
+                  </h3>
+                </div>
+                <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <FieldWithAudit fieldName="last_serviced" label="Last Serviced" value={vehicle.last_serviced} formatValue={formatDate} />
+                  <FieldWithAudit fieldName="service_booked_day" label="Service Booked" value={vehicle.service_booked_day} formatValue={formatDate} />
+                  <FieldWithAudit fieldName="first_aid_expiry" label="First Aid Expiry" value={vehicle.first_aid_expiry} formatValue={formatDate} />
+                  <FieldWithAudit fieldName="fire_extinguisher_expiry" label="Fire Extinguisher" value={vehicle.fire_extinguisher_expiry} formatValue={formatDate} />
+                  <FieldWithAudit fieldName="taxi_license" label="Taxi License" value={vehicle.taxi_license} />
+                </div>
               </CardContent>
             </Card>
 
+            {/* Seating plan */}
             <Card>
-              <CardHeader>
-                <CardTitle>Compliance & Expiry Dates</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FieldWithAudit fieldName="insurance_expiry_date" label="Vehicle Insurance - Expiry Date" value={vehicle.insurance_expiry_date} formatValue={formatDate} />
-                <FieldWithAudit fieldName="mot_date" label="MOT - Expiry Date" value={vehicle.mot_date} formatValue={formatDate} />
-                <FieldWithAudit fieldName="tax_date" label="Tax Date" value={vehicle.tax_date} formatValue={formatDate} />
-                <FieldWithAudit fieldName="taxi_badge_number" label="Taxi Badge - Badge Number" value={vehicle.taxi_badge_number} />
-                <FieldWithAudit fieldName="taxi_badge_expiry_date" label="Taxi Badge - Expiry Date" value={vehicle.taxi_badge_expiry_date} formatValue={formatDate} />
-                <FieldWithAudit fieldName="loler_expiry_date" label="LOLER Expiry" value={vehicle.loler_expiry_date} formatValue={formatDate} />
-                <FieldWithAudit fieldName="plate_expiry_date" label="Plate Expiry" value={vehicle.plate_expiry_date} formatValue={formatDate} />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Maintenance & Safety</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FieldWithAudit fieldName="last_serviced" label="Last Serviced" value={vehicle.last_serviced} formatValue={formatDate} />
-                <FieldWithAudit fieldName="service_booked_day" label="Service Booked" value={vehicle.service_booked_day} formatValue={formatDate} />
-                <FieldWithAudit fieldName="first_aid_expiry" label="First Aid Expiry" value={vehicle.first_aid_expiry} formatValue={formatDate} />
-                <FieldWithAudit fieldName="fire_extinguisher_expiry" label="Fire Extinguisher Expiry" value={vehicle.fire_extinguisher_expiry} formatValue={formatDate} />
-                <FieldWithAudit fieldName="taxi_license" label="Taxi License" value={vehicle.taxi_license} />
-                <FieldWithAudit fieldName="taxi_registration_driver" label="Taxi Registration Driver" value={vehicle.taxi_registration_driver} />
-              </CardContent>
-            </Card>
-
-            {/* Vehicle QR Code */}
-            <VehicleQRCode vehicleId={vehicleId} />
-
-            {/* Seating Plan Card */}
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Seating Plan</CardTitle>
+              <CardContent className="p-0">
+                <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Seating Plan</h3>
                   <Link href={`/dashboard/vehicles/${vehicleId}/seating`}>
-                    <Button variant="secondary" size="sm">
+                    <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 hover:text-blue-700">
                       {seatingPlan ? 'View/Edit' : 'Configure'}
                     </Button>
                   </Link>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {loadingSeating ? (
-                  <div className="text-sm text-gray-500">Loading seating plan...</div>
-                ) : seatingPlan ? (
-                  <div className="space-y-3">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Plan Name</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{seatingPlan.name}</dd>
+                <div className="p-4">
+                  {loadingSeating ? (
+                    <p className="text-sm text-slate-500">Loading...</p>
+                  ) : seatingPlan ? (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div><p className="text-xs text-slate-500">Plan</p><p className="font-medium text-slate-900">{seatingPlan.name}</p></div>
+                      <div><p className="text-xs text-slate-500">Capacity</p><p className="font-medium text-slate-900">{seatingPlan.total_capacity} passengers</p></div>
+                      <div><p className="text-xs text-slate-500">Wheelchair</p><p className="font-medium text-slate-900">{seatingPlan.wheelchair_spaces}</p></div>
+                      <div><p className="text-xs text-slate-500">Rows × Seats</p><p className="font-medium text-slate-900">{seatingPlan.rows} × {seatingPlan.seats_per_row}</p></div>
+                      {seatingPlan.notes && <div className="col-span-2"><p className="text-xs text-slate-500">Notes</p><p className="text-slate-700">{seatingPlan.notes}</p></div>}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Total Capacity</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.total_capacity} passengers</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Wheelchair Spaces</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.wheelchair_spaces}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Rows</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.rows}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Seats per Row</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.seats_per_row}</dd>
-                      </div>
+                  ) : (
+                    <div className="text-center py-4 text-slate-500 text-sm">
+                      No seating plan. <Link href={`/dashboard/vehicles/${vehicleId}/seating`} className="text-blue-600 hover:underline">Configure</Link>
                     </div>
-                    {seatingPlan.notes && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{seatingPlan.notes}</dd>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <div className="text-4xl mb-2">🪑</div>
-                    <p className="text-sm text-gray-500 mb-3">No seating plan configured</p>
-                    <Link href={`/dashboard/vehicles/${vehicleId}/seating`}>
-                      <Button variant="secondary" size="sm">
-                        Configure Seating Plan
-                      </Button>
-                    </Link>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            {vehicle.notes && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                    <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{vehicle.notes}</dd>
-                    {getFieldAuditInfo('notes') && (
-                      <dd className="mt-0.5 text-xs text-gray-500">
-                        {getFieldAuditInfo('notes')!.action === 'CREATE' ? 'Created' : 'Updated'} by {getFieldAuditInfo('notes')!.changed_by_name} on {formatDateTime(getFieldAuditInfo('notes')!.change_time)}
-                      </dd>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Assigned Routes */}
+            {/* Assigned routes */}
             <Card>
-              <CardHeader>
-                <CardTitle>Assigned Routes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingRoutes ? (
-                  <div className="text-sm text-gray-500">Loading routes...</div>
-                ) : routes.length > 0 ? (
-                  <div className="space-y-4">
-                    {routes.map((route) => (
-                      <div key={route.id} className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <Link
-                              href={`/dashboard/routes/${route.id}`}
-                              className="font-semibold text-primary hover:text-blue-800 transition-colors"
-                            >
-                              {route.route_number || `Route ${route.id}`}
-                            </Link>
-                            {route.schools && (
-                              <div className="text-sm text-gray-600 mt-1">
-                                {route.schools.name}
-                              </div>
+              <CardContent className="p-0">
+                <div className="p-3 border-b bg-slate-50/50">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned Routes</h3>
+                </div>
+                <div className="p-4">
+                  {loadingRoutes ? (
+                    <p className="text-sm text-slate-500">Loading...</p>
+                  ) : routes.length > 0 ? (
+                    <div className="space-y-3">
+                      {routes.map((route) => (
+                        <div key={route.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                          <Link href={`/dashboard/routes/${route.id}`} className="text-sm font-semibold text-slate-900 hover:text-primary">
+                            {route.route_number || `Route ${route.id}`}
+                          </Link>
+                          {route.schools && <p className="text-xs text-slate-500 mt-0.5">{route.schools.name}</p>}
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
+                            <span>AM {formatTime(route.am_start_time)}</span>
+                            <span>PM {formatTime(route.pm_start_time)}</span>
+                            {route.pm_start_time_friday && route.pm_start_time_friday !== route.pm_start_time && (
+                              <span className="font-medium">Fri PM {formatTime(route.pm_start_time_friday)}</span>
+                            )}
+                            {route.days_of_week && Array.isArray(route.days_of_week) && route.days_of_week.length > 0 && (
+                              <span>{route.days_of_week.join(', ')}</span>
                             )}
                           </div>
                         </div>
-                        <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <dt className="text-xs font-medium text-gray-500">AM Start Time</dt>
-                            <dd className="mt-1 text-gray-900">{formatTime(route.am_start_time)}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs font-medium text-gray-500">PM Start Time</dt>
-                            <dd className="mt-1 text-gray-900">{formatTime(route.pm_start_time)}</dd>
-                          </div>
-                          {route.pm_start_time_friday && route.pm_start_time_friday !== route.pm_start_time && (
-                            <div className="col-span-2">
-                              <dt className="text-xs font-medium text-gray-500">PM Start Time (Friday)</dt>
-                              <dd className="mt-1 text-gray-900 font-semibold text-navy">
-                                {formatTime(route.pm_start_time_friday)}
-                              </dd>
-                            </div>
-                          )}
-                          {route.days_of_week && Array.isArray(route.days_of_week) && route.days_of_week.length > 0 && (
-                            <div className="col-span-2">
-                              <dt className="text-xs font-medium text-gray-500">Days</dt>
-                              <dd className="mt-1 text-gray-900">{route.days_of_week.join(', ')}</dd>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-500">No routes assigned to this vehicle</p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 text-center py-4">No routes assigned</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
+
+            {/* Vehicle updates */}
+            <VehicleUpdates vehicleId={vehicleId} />
           </div>
-
-          {/* Vehicle Updates */}
-          <VehicleUpdates vehicleId={vehicleId} />
-        </>
+        </div>
       )}
 
-      {/* Compliance Documents Tab */}
-      {activeTab === 'compliance' && (
-        <VehicleComplianceDocuments vehicleId={vehicleId} />
+      {activeTab === 'compliance' && <VehicleComplianceDocuments vehicleId={vehicleId} />}
+      {activeTab === 'certificates' && (
+        <SubjectDocumentsChecklist subjectType="vehicle" subjectId={vehicleId} />
       )}
-
-      {/* All Documents Tab */}
       {activeTab === 'documents' && (
-        <VehicleDocuments vehicleId={vehicleId} />
+        <div className="space-y-6">
+          <VehicleLogbook vehicleId={vehicleId} />
+          <VehicleDocuments vehicleId={vehicleId} />
+        </div>
       )}
-
-      {/* Daily Checks Tab */}
-      {activeTab === 'daily-checks' && (
-        <VehiclePreChecks vehicleId={vehicleId} />
-      )}
+      {activeTab === 'daily-checks' && <VehiclePreChecks vehicleId={vehicleId} />}
     </div>
   )
 }

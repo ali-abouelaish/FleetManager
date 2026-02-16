@@ -34,27 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Slot already booked' }, { status: 409 })
     }
 
-    const { data: booking, error: bookingError } = await supabase
-      .from('appointment_bookings')
-      .insert({
-        appointment_slot_id: slotId,
-        notification_id: notification.id,
-        booked_by_email: email || notification.recipient_email,
-        booked_by_name: name || null,
-      })
-      .select()
-      .single()
-
-    if (bookingError) throw bookingError
-
-    // Get slot details for admin summary
-    const { data: slot } = await supabase
-      .from('appointment_slots')
-      .select('slot_start, slot_end')
-      .eq('id', slotId)
-      .single()
-
-    // Get entity name for admin summary
+    // Build notes from sent appointment link context (certificate + entity)
     let entityName = ''
     if (notification.entity_type === 'vehicle') {
       const { data: vehicle } = await supabase
@@ -71,6 +51,29 @@ export async function POST(request: Request) {
         .single()
       entityName = employee?.full_name || `${notification.entity_type} #${notification.entity_id}`
     }
+    const certName = notification.certificate_name || 'Appointment'
+    const bookingNotes = [certName, entityName].filter(Boolean).join(' – ') || 'Booked via appointment link'
+
+    const { data: booking, error: bookingError } = await supabase
+      .from('appointment_bookings')
+      .insert({
+        appointment_slot_id: slotId,
+        notification_id: notification.id,
+        booked_by_email: email || notification.recipient_email,
+        booked_by_name: name || null,
+        notes: bookingNotes,
+      })
+      .select()
+      .single()
+
+    if (bookingError) throw bookingError
+
+    // Get slot details for admin summary
+    const { data: slot } = await supabase
+      .from('appointment_slots')
+      .select('slot_start, slot_end')
+      .eq('id', slotId)
+      .single()
 
     // Create system activity instead of sending email
     try {

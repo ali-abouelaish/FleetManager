@@ -253,7 +253,7 @@ async function SchoolOverviewCard({ school }: { school: any }) {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/dashboard/routes/${route.route_id}`} prefetch={true}>
+                        <Link href={`/dashboard/routes/${route.route_id}?from=school-overview`} prefetch={true}>
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-primary hover:bg-primary/10">
                             <Eye className="h-4 w-4" />
                           </Button>

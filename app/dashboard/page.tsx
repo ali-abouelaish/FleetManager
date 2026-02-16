@@ -174,8 +174,8 @@ async function DashboardContent() {
     <div className="flex flex-col gap-4 min-h-[calc(100vh-120px)]">
       {/* Row 1: Stats Grid - 4 cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {/* Employees */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-blue-600 to-blue-500 p-5 text-white shadow-lg shadow-primary/20 hover:shadow-xl transition-all">
+        {/* Employees - deep navy */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-900 via-blue-700 to-blue-600 p-5 text-white shadow-lg shadow-blue-900/30 hover:shadow-xl transition-all">
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full" />
           <div className="relative flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -183,13 +183,13 @@ async function DashboardContent() {
             </div>
             <div>
               <p className="text-3xl font-bold">{stats.employees}</p>
-              <p className="text-blue-100 text-sm">Employees</p>
+              <p className="text-blue-200/90 text-sm">Employees</p>
             </div>
           </div>
         </div>
 
-        {/* Vehicles */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-5 text-white shadow-lg shadow-emerald-500/20 hover:shadow-xl transition-all">
+        {/* Vehicles - cyan / teal blue */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-600 via-sky-500 to-blue-400 p-5 text-white shadow-lg shadow-cyan-500/25 hover:shadow-xl transition-all">
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full" />
           <div className="relative flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -197,13 +197,13 @@ async function DashboardContent() {
             </div>
             <div>
               <p className="text-3xl font-bold">{stats.vehicles}</p>
-              <p className="text-emerald-100 text-sm">Vehicles</p>
+              <p className="text-cyan-100 text-sm">Vehicles</p>
             </div>
           </div>
         </div>
 
-        {/* Routes */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 p-5 text-white shadow-lg shadow-amber-500/20 hover:shadow-xl transition-all">
+        {/* Routes - indigo / violet blue */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-500 to-blue-500 p-5 text-white shadow-lg shadow-indigo-600/25 hover:shadow-xl transition-all">
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full" />
           <div className="relative flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -211,13 +211,13 @@ async function DashboardContent() {
             </div>
             <div>
               <p className="text-3xl font-bold">{stats.routes}</p>
-              <p className="text-amber-100 text-sm">Routes</p>
+              <p className="text-indigo-200/90 text-sm">Routes</p>
             </div>
           </div>
         </div>
 
-        {/* Passengers */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 p-5 text-white shadow-lg shadow-sky-500/20 hover:shadow-xl transition-all">
+        {/* Passengers - light sky blue */}
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-400 to-cyan-300 p-5 text-white shadow-lg shadow-sky-500/25 hover:shadow-xl transition-all">
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full" />
           <div className="relative flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -384,26 +384,26 @@ async function DashboardContent() {
             Quick Stats
           </h3>
           <div className="grid grid-cols-4 gap-3">
-            <div className="text-center p-4 bg-slate-50 rounded-xl">
+            <Link href="/dashboard/schools" className="text-center p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
               <School className="h-6 w-6 mx-auto text-emerald-500 mb-2" />
               <p className="text-2xl font-bold text-slate-800">{stats.schools}</p>
               <p className="text-xs text-slate-500">Schools</p>
-            </div>
-            <div className="text-center p-4 bg-slate-50 rounded-xl">
+            </Link>
+            <Link href="/dashboard/spares" className="text-center p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
               <ParkingCircle className="h-6 w-6 mx-auto text-amber-500 mb-2" />
               <p className="text-2xl font-bold text-slate-800">{stats.spareVehicles}</p>
               <p className="text-xs text-slate-500">Spare</p>
-            </div>
-            <div className="text-center p-4 bg-slate-50 rounded-xl">
+            </Link>
+            <Link href="/dashboard/vehicle-locations" className="text-center p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
               <MapPinned className="h-6 w-6 mx-auto text-sky-500 mb-2" />
               <p className="text-2xl font-bold text-slate-800">{stats.spareWithLocation}</p>
               <p className="text-xs text-slate-500">Tracked</p>
-            </div>
-            <div className="text-center p-4 bg-slate-50 rounded-xl">
+            </Link>
+            <Link href="/dashboard/incidents" className="text-center p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
               <Calendar className="h-6 w-6 mx-auto text-blue-500 mb-2" />
               <p className="text-2xl font-bold text-slate-800">{stats.incidentsThisMonth}</p>
               <p className="text-xs text-slate-500">Month</p>
-            </div>
+            </Link>
           </div>
         </div>
       </div>

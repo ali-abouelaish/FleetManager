@@ -258,9 +258,9 @@ export default function TR7Form({ incident, driverInfo, paInfo }: TR7FormProps) 
   if (loading) {
     return (
       <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center">
-            <FileText className="mr-2 h-5 w-5" />
+        <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4">
+          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center">
+            <FileText className="mr-2 h-4 w-4" />
             TR7 Form - Passenger Exit Report
           </CardTitle>
         </CardHeader>
@@ -273,9 +273,9 @@ export default function TR7Form({ incident, driverInfo, paInfo }: TR7FormProps) 
 
   return (
     <Card>
-      <CardHeader className="bg-navy text-white">
-        <CardTitle className="flex items-center">
-          <FileText className="mr-2 h-5 w-5" />
+      <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4">
+        <CardTitle className="text-sm font-semibold text-slate-700 flex items-center">
+          <FileText className="mr-2 h-4 w-4" />
           TR7 Form - Passenger Exit Report
         </CardTitle>
       </CardHeader>

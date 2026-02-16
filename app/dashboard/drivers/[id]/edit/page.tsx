@@ -29,6 +29,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
 
   const [formData, setFormData] = useState({
     spare_driver: false,
+    self_employed: false,
     tas_badge_number: '',
     tas_badge_expiry_date: '',
     dbs_number: '',
@@ -101,6 +102,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
     setDriver(data as Driver)
     setFormData({
       spare_driver: (data as any).spare_driver || false,
+      self_employed: (data as any).self_employed || false,
       tas_badge_number: data.tas_badge_number || '',
       tas_badge_expiry_date: data.tas_badge_expiry_date ? data.tas_badge_expiry_date.split('T')[0] : '',
       dbs_number: data.dbs_number || '',
@@ -215,6 +217,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         .from('drivers')
         .update({
           spare_driver: formData.spare_driver,
+          self_employed: formData.self_employed,
           tas_badge_number: formData.tas_badge_number || null,
           tas_badge_expiry_date: formData.tas_badge_expiry_date || null,
           // Removed Taxi Badge as per previous file logic (tracked on vehicle)
@@ -255,29 +258,31 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         }),
       }).catch(err => console.error('Audit log error:', err))
 
-      // Create document records in the documents table (match working employee/vehicle document inserts)
+      // Create document records and link to driver
       if (uploadedDocuments.length > 0 && driver) {
         const documentRecords = uploadedDocuments.map(doc => ({
-          employee_id: driver.employee_id,
-
-          owner_type: 'employee',
-          owner_id: driver.employee_id,
           file_url: JSON.stringify([doc.fileUrl]),
           file_name: doc.fileName,
           file_type: doc.fileType,
           file_path: doc.fileUrl,
           doc_type: doc.docType,
           uploaded_at: new Date().toISOString(),
-
         }))
 
-        const { error: documentsError } = await supabase
+        const { data: insertedDocs, error: documentsError } = await supabase
           .from('documents')
           .insert(documentRecords)
+          .select('id')
 
         if (documentsError) {
           console.error('Error saving document records:', documentsError)
           setError(`Driver saved but document records failed: ${documentsError.message}`)
+        } else if (insertedDocs?.length) {
+          const links = insertedDocs.map((doc: any) => ({
+            document_id: doc.id,
+            driver_employee_id: driver.employee_id,
+          }))
+          await supabase.from('document_driver_links').insert(links)
         }
       }
 
@@ -460,6 +465,20 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                     <p className="text-[10px] text-amber-700 leading-tight mt-0.5">Not assigned to specific route, available for cover.</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <input
+                    type="checkbox"
+                    id="self_employed"
+                    name="self_employed"
+                    checked={formData.self_employed}
+                    onChange={(e) => setFormData({ ...formData, self_employed: e.target.checked })}
+                    className="rounded border-slate-300 text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="self_employed" className="text-sm font-semibold text-slate-900 cursor-pointer">Self Employed</Label>
+                    <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Driver is self-employed (yes/no).</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -470,6 +489,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
               <div className="space-y-2">
                 {[
                   { id: 'psv_license', label: 'PSV License' },
+                  { id: 'self_employed', label: 'Self Employed' },
                   { id: 'private_hire_badge', label: 'Private Hire Badge' },
                   { id: 'dbs_check', label: 'DBS Checked', warning: 'Requires valid number' }, // Logic check not exact prop but visual
                   // Since dbs_check isn't a prop in formData, map logic if needed or skip.

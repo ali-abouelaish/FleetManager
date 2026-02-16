@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
-import { FileText, Download, Eye, Save, CheckCircle, AlertCircle, FileDown } from 'lucide-react'
+import { FileText, Save, CheckCircle, AlertCircle, FileDown } from 'lucide-react'
 import { exportHTMLToPDF } from '@/lib/utils/pdfExport'
 
 interface TR5FormProps {
@@ -91,8 +91,6 @@ export default function TR5Form({ incident, driverInfo, paInfo }: TR5FormProps) 
     witnessSignature: '',
   })
 
-  const [showPDF, setShowPDF] = useState(true)
-
   // Load saved TR5 form data if it exists
   useEffect(() => {
     loadSavedFormData()
@@ -146,16 +144,6 @@ export default function TR5Form({ incident, driverInfo, paInfo }: TR5FormProps) 
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleDownloadPDF = () => {
-    // Create a link to download the TR5.pdf file
-    const link = document.createElement('a')
-    link.href = '/TR5.pdf'
-    link.download = 'TR5.pdf'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
   }
 
   const handleExportWord = async () => {
@@ -485,45 +473,13 @@ export default function TR5Form({ incident, driverInfo, paInfo }: TR5FormProps) 
 
   return (
     <Card>
-      <CardHeader className="bg-navy text-white">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <FileText className="mr-2 h-5 w-5" />
-            TR5 Incident Report Form
-          </CardTitle>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setShowPDF(!showPDF)}
-              className="bg-white text-navy hover:bg-gray-100"
-            >
-              {showPDF ? <Eye className="mr-1 h-4 w-4" /> : <Eye className="mr-1 h-4 w-4" />}
-              {showPDF ? 'Hide' : 'Show'} PDF
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleDownloadPDF}
-              className="bg-white text-navy hover:bg-gray-100"
-            >
-              <Download className="mr-1 h-4 w-4" />
-              Download PDF
-            </Button>
-          </div>
-        </div>
+      <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4">
+        <CardTitle className="text-sm font-semibold text-slate-700 flex items-center">
+          <FileText className="mr-2 h-4 w-4" />
+          TR5 Incident Report Form
+        </CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
-        {showPDF && (
-          <div className="mb-6 border rounded-lg overflow-hidden">
-            <iframe
-              src="/TR5.pdf"
-              className="w-full h-[600px]"
-              title="TR5 Incident Report Form"
-            />
-          </div>
-        )}
-
         <div className="space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">

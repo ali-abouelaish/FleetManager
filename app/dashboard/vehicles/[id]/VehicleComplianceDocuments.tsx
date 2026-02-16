@@ -70,16 +70,19 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
   const loadDocuments = async () => {
     setLoading(true)
     const { data, error } = await supabase
-      .from('documents')
-      .select('id, file_name, file_type, file_path, file_url, doc_type, uploaded_at, uploaded_by')
+      .from('document_vehicle_links')
+      .select('documents (id, file_name, file_type, file_path, file_url, doc_type, uploaded_at, uploaded_by)')
       .eq('vehicle_id', vehicleId)
-      .order('uploaded_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching vehicle documents', error)
       setDocuments([])
     } else {
-      setDocuments(data || [])
+      const docs = (data || [])
+        .map((row: any) => row.documents)
+        .filter(Boolean)
+        .sort((a: any, b: any) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+      setDocuments(docs || [])
     }
     setLoading(false)
   }
@@ -132,16 +135,15 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
           .from('VEHICLE_DOCUMENTS')
           .getPublicUrl(storagePath)
 
-        // Insert document record
-        const { error: docErr } = await supabase.from('documents').insert({
-          vehicle_id: vehicleId,
+        // Insert document record and link
+        const { data: docRow, error: docErr } = await supabase.from('documents').insert({
           file_name: file.name,
           file_type: file.type,
           file_path: storagePath,
           file_url: publicUrl,
           doc_type: selectedCertificateType,
           uploaded_by: null, // Can be updated later to track user
-        })
+        }).select('id').single()
         if (docErr) {
           console.error('Document insert error:', docErr)
           console.error('Error details:', {
@@ -151,7 +153,6 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
             code: docErr.code
           })
           console.error('Insert data:', {
-            vehicle_id: vehicleId,
             file_name: file.name,
             file_type: file.type,
             file_path: storagePath,
@@ -159,6 +160,13 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
             doc_type: selectedCertificateType,
           })
           throw new Error(`Failed to save document record: ${docErr.message}. ${docErr.hint || ''}`)
+        }
+        if (docRow?.id) {
+          const { error: linkErr } = await supabase.from('document_vehicle_links').insert({
+            document_id: docRow.id,
+            vehicle_id: vehicleId,
+          })
+          if (linkErr) throw linkErr
         }
       }
       setFiles(null)

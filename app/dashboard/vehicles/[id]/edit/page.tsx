@@ -43,11 +43,13 @@ function EditVehiclePageClient({ id }: { id: string }) {
     first_aid_expiry: '',
     fire_extinguisher_expiry: '',
     taxi_license: '',
-    taxi_registration_driver: '',
+    taxi_licence_holder_id: '',
     spare_vehicle: false,
     off_the_road: false,
     assigned_to: '',
     notes: '',
+    pmi_weeks: '',
+    last_pmi_date: '',
   })
 
   useEffect(() => {
@@ -109,11 +111,13 @@ function EditVehiclePageClient({ id }: { id: string }) {
           first_aid_expiry: data.first_aid_expiry || '',
           fire_extinguisher_expiry: data.fire_extinguisher_expiry || '',
           taxi_license: data.taxi_license || '',
-          taxi_registration_driver: data.taxi_registration_driver || '',
+          taxi_licence_holder_id: data.taxi_licence_holder_id ? String(data.taxi_licence_holder_id) : '',
           spare_vehicle: data.spare_vehicle || false,
           off_the_road: data.off_the_road || false,
           assigned_to: data.assigned_to ? String(data.assigned_to) : '',
           notes: data.notes || '',
+          pmi_weeks: data.pmi_weeks != null ? String(data.pmi_weeks) : '',
+          last_pmi_date: data.last_pmi_date || '',
         })
       }
     }
@@ -144,6 +148,9 @@ function EditVehiclePageClient({ id }: { id: string }) {
         ownership_type: formData.ownership_type || null,
         council_assignment: formData.council_assignment || null,
         assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
+        taxi_licence_holder_id: formData.taxi_licence_holder_id ? parseInt(formData.taxi_licence_holder_id) : null,
+        pmi_weeks: formData.vehicle_type === 'PSV' && formData.pmi_weeks ? parseInt(formData.pmi_weeks, 10) : null,
+        last_pmi_date: formData.vehicle_type === 'PSV' && formData.last_pmi_date ? formData.last_pmi_date : null,
       }
 
       const { error } = await supabase
@@ -327,6 +334,8 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   }
                 >
                   <option value="">Select type</option>
+                  <option value="PHV">PHV (Private Hire / Taxi)</option>
+                  <option value="PSV">PSV (Public Service Vehicle)</option>
                   <option value="Minibus">Minibus</option>
                   <option value="Van">Van</option>
                   <option value="Car">Car</option>
@@ -375,6 +384,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                 />
               </div>
 
+              {formData.vehicle_type === 'PHV' && (
               <div className="space-y-2">
                 <Label htmlFor="mot_date">MOT - Expiry Date</Label>
                 <Input
@@ -386,6 +396,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   }
                 />
               </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="tax_date">Tax Date</Label>
@@ -399,6 +410,8 @@ function EditVehiclePageClient({ id }: { id: string }) {
                 />
               </div>
 
+              {formData.vehicle_type === 'PHV' && (
+              <>
               <div className="space-y-2">
                 <Label htmlFor="taxi_badge_number">
                   Taxi Badge - Badge Number
@@ -424,9 +437,41 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   onChange={(e) =>
                     setFormData({ ...formData, taxi_badge_expiry_date: e.target.value })
                   }
-                  required
+                  required={formData.vehicle_type === 'PHV'}
                 />
               </div>
+              </>
+              )}
+
+              {formData.vehicle_type === 'PSV' && (
+              <>
+              <div className="space-y-2">
+                <Label htmlFor="pmi_weeks">PMI interval (weeks between checks)</Label>
+                <Input
+                  id="pmi_weeks"
+                  type="number"
+                  min={1}
+                  max={52}
+                  value={formData.pmi_weeks}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pmi_weeks: e.target.value })
+                  }
+                  placeholder="e.g. 4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_pmi_date">Last PMI date</Label>
+                <Input
+                  id="last_pmi_date"
+                  type="date"
+                  value={formData.last_pmi_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, last_pmi_date: e.target.value })
+                  }
+                />
+              </div>
+              </>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="last_serviced">Last Serviced</Label>
@@ -453,7 +498,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                 <Label htmlFor="tail_lift">Tail Lift</Label>
               </div>
 
-              {formData.tail_lift && (
+              {(formData.vehicle_type === 'PHV' || formData.tail_lift) && (
                 <div className="space-y-2">
                   <Label htmlFor="loler_expiry_date">
                     LOLER Certificate - Expiry Date
@@ -502,12 +547,28 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   value={formData.assigned_to}
                   onChange={(value) => setFormData({ ...formData, assigned_to: value })}
                   options={drivers.map(driver => ({
-                    value: driver.id,
+                    value: driver.id.toString(),
                     label: driver.name,
                   }))}
                   placeholder="Select driver for MOT & service follow-up..."
                 />
               </div>
+
+              {formData.vehicle_type === 'PHV' && (
+              <div className="space-y-2">
+                <SearchableSelect
+                  id="taxi_licence_holder_id"
+                  label="Taxi Licence Holder"
+                  value={formData.taxi_licence_holder_id}
+                  onChange={(value) => setFormData({ ...formData, taxi_licence_holder_id: value })}
+                  options={drivers.map(driver => ({
+                    value: driver.id.toString(),
+                    label: driver.name,
+                  }))}
+                  placeholder="Search and select driver..."
+                />
+              </div>
+              )}
             </div>
 
             {/* Seating Plan Note */}

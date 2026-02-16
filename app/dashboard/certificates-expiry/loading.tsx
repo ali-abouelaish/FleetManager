@@ -1,19 +1,19 @@
-import { TableSkeleton } from '@/components/ui/Skeleton'
+import { TableSkeleton, Skeleton } from '@/components/ui/Skeleton'
 
 export default function Loading() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <div className="h-9 w-64 animate-pulse rounded-md bg-gray-200" />
-        <div className="h-5 w-96 animate-pulse rounded-md bg-gray-200" />
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-5 w-96" />
       </div>
 
       {/* Filter tabs skeleton */}
-      <div className="border-b border-gray-200 bg-white rounded-t-lg">
+      <div className="border-b border-slate-200 bg-white rounded-t-xl">
         <div className="flex space-x-8 px-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="py-4">
-              <div className="h-10 w-32 animate-pulse rounded-md bg-gray-200" />
+              <Skeleton className="h-10 w-32 rounded-lg" />
             </div>
           ))}
         </div>

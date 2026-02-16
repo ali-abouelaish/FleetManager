@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { ArrowLeft, AlertCircle, UserCog, Users, FileText, Car } from 'lucide-react'
 import Link from 'next/link'
+import IncidentReportForms from '../IncidentReportForms'
 
 export default function EditIncidentPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -36,6 +37,7 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
 
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([])
   const [selectedPassengers, setSelectedPassengers] = useState<number[]>([])
+  const [formIncident, setFormIncident] = useState<any>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -109,6 +111,73 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
 
     loadData()
   }, [params, supabase])
+
+  // Load enriched incident for TR5/TR6/TR7 forms (same shape as view page)
+  useEffect(() => {
+    if (!incident?.id) {
+      setFormIncident(null)
+      return
+    }
+    const id = incident.id.toString()
+    let cancelled = false
+    async function loadFormIncident() {
+      const { data: inc, error: incErr } = await supabase
+        .from('incidents')
+        .select(`
+          *,
+          vehicles(id, vehicle_identifier, make, model, registration, plate_number),
+          routes(id, route_number),
+          route_sessions(id, session_date, session_type, driver_id, passenger_assistant_id, routes(route_number))
+        `)
+        .eq('id', id)
+        .single()
+      if (incErr || !inc || cancelled) return
+
+      const { data: relatedEmployees } = await supabase
+        .from('incident_employees')
+        .select('*, employees(id, full_name, role)')
+        .eq('incident_id', id)
+      const { data: relatedPassengers } = await supabase
+        .from('incident_passengers')
+        .select('*, passengers(id, full_name, schools(name))')
+        .eq('incident_id', id)
+
+      let driverInfo: { name: string | null; tasNumber: string | null } | null = null
+      let paInfo: { name: string | null; tasNumber: string | null } | null = null
+      const session = Array.isArray(inc.route_sessions) ? inc.route_sessions[0] : inc.route_sessions
+      if (session?.driver_id) {
+        const { data: d } = await supabase.from('drivers').select('tas_badge_number, employees(full_name)').eq('employee_id', session.driver_id).maybeSingle()
+        if (d) driverInfo = { name: (d as any).employees?.full_name ?? null, tasNumber: (d as any).tas_badge_number ?? null }
+      }
+      if (session?.passenger_assistant_id) {
+        const { data: p } = await supabase.from('passenger_assistants').select('tas_badge_number, employees(full_name)').eq('employee_id', session.passenger_assistant_id).maybeSingle()
+        if (p) paInfo = { name: (p as any).employees?.full_name ?? null, tasNumber: (p as any).tas_badge_number ?? null }
+      }
+      if (!driverInfo || !paInfo) {
+        const route = Array.isArray(inc.routes) ? inc.routes[0] : inc.routes
+        if (route?.id) {
+          const { data: r } = await supabase.from('routes').select('driver_id, passenger_assistant_id, driver:driver_id(drivers(tas_badge_number), employees(full_name)), pa:passenger_assistant_id(passenger_assistants(tas_badge_number), employees(full_name))').eq('id', route.id).maybeSingle()
+          if (r) {
+            const dr = (r as any).driver
+            const pa = (r as any).pa
+            if (!driverInfo && dr) driverInfo = { name: dr.employees?.full_name ?? null, tasNumber: dr.drivers?.tas_badge_number ?? null }
+            if (!paInfo && pa) paInfo = { name: pa.employees?.full_name ?? null, tasNumber: pa.passenger_assistants?.tas_badge_number ?? null }
+          }
+        }
+      }
+
+      if (cancelled) return
+      setFormIncident({
+        ...inc,
+        incident_employees: relatedEmployees ?? [],
+        incident_passengers: relatedPassengers ?? [],
+        driverInfo: driverInfo ?? null,
+        paInfo: paInfo ?? null,
+      })
+    }
+    loadFormIncident()
+    return () => { cancelled = true }
+  }, [incident?.id, supabase])
 
   const loadRouteSessions = async (routeId: number) => {
     setLoadingSessions(true)
@@ -399,6 +468,15 @@ export default function EditIncidentPage({ params }: { params: Promise<{ id: str
           )}
         </div>
       </div>
+
+      {/* Incident Report Forms (TR5, TR6, TR7) */}
+      {formIncident && (
+        <IncidentReportForms
+          incident={formIncident}
+          driverInfo={formIncident.driverInfo ?? undefined}
+          paInfo={formIncident.paInfo ?? undefined}
+        />
+      )}
 
       {/* Bottom Actions */}
       <div className="flex justify-end gap-3 pt-3 border-t border-slate-200">

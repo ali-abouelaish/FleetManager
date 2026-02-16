@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import IncidentToggleButton from './IncidentToggleButton'
 import IncidentDocuments from './IncidentDocuments'
 import IncidentReportForms from './IncidentReportForms'
+import IncidentPartyEntries from './IncidentPartyEntries'
 
 async function getIncident(id: string) {
   const supabase = await createClient()
@@ -44,6 +45,12 @@ async function getIncident(id: string) {
   const { data: relatedPassengers } = await supabase
     .from('incident_passengers')
     .select('*, passengers(id, full_name, schools(name))')
+    .eq('incident_id', id)
+
+  // Fetch party entries (each related employee's detailed view)
+  const { data: partyEntries } = await supabase
+    .from('incident_party_entries')
+    .select('*, employees(id, full_name, role)')
     .eq('incident_id', id)
 
   // Get driver and PA TAS numbers from route session or route
@@ -153,6 +160,7 @@ async function getIncident(id: string) {
     ...incident,
     incident_employees: relatedEmployees || [],
     incident_passengers: relatedPassengers || [],
+    incident_party_entries: partyEntries || [],
     driverInfo,
     paInfo,
   }
@@ -362,12 +370,23 @@ export default async function ViewIncidentPage({ params }: { params: { id: strin
         </Card>
       </div>
 
+      {/* Party accounts: each related employee (driver, PA) can have a detailed view */}
+      {incident.incident_employees?.length > 0 && (
+        <IncidentPartyEntries
+          incidentId={incident.id}
+          relatedEmployees={incident.incident_employees}
+          initialEntries={incident.incident_party_entries ?? []}
+        />
+      )}
+
       {/* Incident Report Forms (TR5, TR6, TR7) */}
-      <IncidentReportForms
-        incident={incident}
-        driverInfo={incident.driverInfo}
-        paInfo={incident.paInfo}
-      />
+      <div id="incident-report-forms">
+        <IncidentReportForms
+          incident={incident}
+          driverInfo={incident.driverInfo}
+          paInfo={incident.paInfo}
+        />
+      </div>
 
       {/* Incident Documents */}
       <IncidentDocuments incidentId={incident.id} />

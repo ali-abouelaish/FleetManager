@@ -13,6 +13,7 @@ import Link from 'next/link'
 
 const defaultDriverForm = {
   spare_driver: false,
+  self_employed: false,
   tas_badge_number: '',
   tas_badge_expiry_date: '',
   dbs_number: '',
@@ -49,10 +50,8 @@ const defaultPAForm = {
   birth_certificate: false,
   marriage_certificate: false,
   photo_taken: false,
-  private_hire_badge: false,
   paper_licence: false,
   taxi_plate_photo: false,
-  logbook: false,
   safeguarding_training_completed: false,
   safeguarding_training_date: '',
   tas_pats_training_completed: false,
@@ -63,7 +62,7 @@ const defaultPAForm = {
 }
 
 const driverFileKeys = ['tas_badge_file', 'dbs_file', 'first_aid_file', 'passport_file', 'driving_license_file', 'cpc_file', 'utility_bill_file', 'birth_cert_file', 'marriage_cert_file', 'photo_file', 'private_hire_badge_file', 'paper_licence_file', 'taxi_plate_photo_file', 'logbook_file', 'badge_photo_file'] as const
-const paFileKeys = ['tas_badge_file', 'dbs_file', 'first_aid_file', 'passport_file', 'utility_bill_file', 'birth_cert_file', 'marriage_cert_file', 'photo_file', 'private_hire_badge_file', 'paper_licence_file', 'taxi_plate_photo_file', 'logbook_file', 'badge_photo_file'] as const
+const paFileKeys = ['tas_badge_file', 'dbs_file', 'first_aid_file', 'passport_file', 'utility_bill_file', 'birth_cert_file', 'marriage_cert_file', 'photo_file', 'paper_licence_file', 'taxi_plate_photo_file', 'badge_photo_file'] as const
 
 export default function CreateEmployeePage() {
   const router = useRouter()
@@ -212,6 +211,7 @@ export default function CreateEmployeePage() {
           psa_training_date: driverForm.psa_training_date || null,
           additional_notes: driverForm.additional_notes || null,
           spare_driver: driverForm.spare_driver,
+          self_employed: driverForm.self_employed,
         }
         const { error: driverErr } = await supabase.from('drivers').insert([driverData])
         if (driverErr) throw driverErr
@@ -227,8 +227,8 @@ export default function CreateEmployeePage() {
         const fileKeyToDocType: Record<string, string> = {
           tas_badge_file: 'TAS Badge', dbs_file: 'DBS Certificate', first_aid_file: 'First Aid Certificate',
           passport_file: 'Passport', utility_bill_file: 'Utility Bill', birth_cert_file: 'Birth Certificate', marriage_cert_file: 'Marriage Certificate',
-          photo_file: 'Photo', private_hire_badge_file: 'Private Hire Badge', paper_licence_file: 'Paper Licence',
-          taxi_plate_photo_file: 'Taxi Plate Photo', logbook_file: 'Logbook', badge_photo_file: 'ID Badge Photo',
+          photo_file: 'Photo', paper_licence_file: 'Paper Licence',
+          taxi_plate_photo_file: 'Taxi Plate Photo', badge_photo_file: 'ID Badge Photo',
         }
         const uploadedDocs: Array<{ fileUrl: string; fileName: string; fileType: string; docType: string; filePath: string }> = []
         for (const [key, file] of Object.entries(paFiles)) {
@@ -252,10 +252,8 @@ export default function CreateEmployeePage() {
           birth_certificate: paForm.birth_certificate,
           marriage_certificate: paForm.marriage_certificate,
           photo_taken: paForm.photo_taken,
-          private_hire_badge: paForm.private_hire_badge,
           paper_licence: paForm.paper_licence,
           taxi_plate_photo: paForm.taxi_plate_photo,
-          logbook: paForm.logbook,
           safeguarding_training_completed: paForm.safeguarding_training_completed,
           safeguarding_training_date: paForm.safeguarding_training_date || null,
           tas_pats_training_completed: paForm.tas_pats_training_completed,
@@ -537,6 +535,10 @@ export default function CreateEmployeePage() {
                       <input type="checkbox" id="psv_license" name="psv_license" checked={driverForm.psv_license} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
                       <Label htmlFor="psv_license" className="text-xs text-slate-600">PSV License</Label>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="self_employed" name="self_employed" checked={driverForm.self_employed} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                      <Label htmlFor="self_employed" className="text-xs text-slate-600">Self Employed</Label>
+                    </div>
                     <div className="md:col-span-2 space-y-1">
                       <Label htmlFor="driver_additional_notes" className="text-xs font-medium text-slate-600">Additional notes</Label>
                       <textarea id="driver_additional_notes" name="additional_notes" value={driverForm.additional_notes} onChange={handleDriverInput} rows={2} className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
@@ -701,10 +703,8 @@ export default function CreateEmployeePage() {
                       { name: 'birth_certificate', label: 'Birth Certificate' },
                       { name: 'marriage_certificate', label: 'Marriage Certificate' },
                       { name: 'photo_taken', label: 'Photo Taken' },
-                      { name: 'private_hire_badge', label: 'Private Hire Badge' },
                       { name: 'paper_licence', label: 'Paper Licence' },
                       { name: 'taxi_plate_photo', label: 'Taxi Plate Photo' },
-                      { name: 'logbook', label: 'Logbook' },
                     ].map(({ name, label }) => (
                       <label key={name} className="flex items-center gap-2">
                         <input type="checkbox" name={name} checked={(paForm as Record<string, unknown>)[name] as boolean} onChange={handlePAInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />

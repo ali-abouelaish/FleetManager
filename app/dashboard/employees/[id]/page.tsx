@@ -38,6 +38,7 @@ async function getEmployee(id: string) {
         taxi_badge_expiry_date,
         dbs_expiry_date,
         psv_license,
+        self_employed,
         first_aid_certificate_expiry_date,
         passport_expiry_date,
         driving_license_expiry_date,
@@ -373,14 +374,23 @@ export default async function ViewEmployeePage({
                     </table>
                   </div>
 
-                  {/* PSV License */}
-                  <div className="mt-4 p-4 rounded-lg border bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">PSV License</span>
-                      <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                        {driver.psv_license ? 'Yes' : 'No'}
-                      </span>
+                  {/* PSV License & Self Employed */}
+                  <div className="mt-4 space-y-3">
+                    <div className="p-4 rounded-lg border bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">PSV License</span>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                          {driver.psv_license ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Self Employed</span>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${driver.self_employed ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                          {driver.self_employed ? 'Yes' : 'No'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

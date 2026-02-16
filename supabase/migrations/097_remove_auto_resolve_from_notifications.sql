@@ -396,6 +396,151 @@ BEGIN
     );
   END LOOP;
 
+  -- ====================================================
+  -- DYNAMIC SUBJECT DOCUMENTS
+  -- ====================================================
+  FOR v_record IN (
+    SELECT
+      'driver' AS entity_type,
+      sd.id AS subject_document_id,
+      sd.driver_employee_id AS entity_id,
+      e.personal_email AS recipient_email,
+      sd.driver_employee_id AS recipient_employee_id,
+      COALESCE(NULLIF(r.code, ''), r.name) AS cert_type,
+      r.name AS cert_name,
+      sd.expiry_date AS expiry_date,
+      (sd.expiry_date - CURRENT_DATE)::INTEGER AS days_until
+    FROM subject_documents sd
+    JOIN document_requirements r ON r.id = sd.requirement_id
+    JOIN employees e ON e.id = sd.driver_employee_id
+    WHERE sd.subject_type = 'driver'
+      AND r.requires_expiry = TRUE
+      AND sd.expiry_date IS NOT NULL
+      AND sd.status IN ('valid', 'pending')
+      AND sd.expiry_date <= CURRENT_DATE + (COALESCE(NULLIF(r.renewal_notice_days, 0), 30) || ' days')::INTERVAL
+      AND sd.expiry_date >= CURRENT_DATE - INTERVAL '7 days'
+
+    UNION ALL
+
+    SELECT
+      'assistant' AS entity_type,
+      sd.id AS subject_document_id,
+      sd.pa_employee_id AS entity_id,
+      e.personal_email AS recipient_email,
+      sd.pa_employee_id AS recipient_employee_id,
+      COALESCE(NULLIF(r.code, ''), r.name) AS cert_type,
+      r.name AS cert_name,
+      sd.expiry_date AS expiry_date,
+      (sd.expiry_date - CURRENT_DATE)::INTEGER AS days_until
+    FROM subject_documents sd
+    JOIN document_requirements r ON r.id = sd.requirement_id
+    JOIN employees e ON e.id = sd.pa_employee_id
+    WHERE sd.subject_type = 'pa'
+      AND r.requires_expiry = TRUE
+      AND sd.expiry_date IS NOT NULL
+      AND sd.status IN ('valid', 'pending')
+      AND sd.expiry_date <= CURRENT_DATE + (COALESCE(NULLIF(r.renewal_notice_days, 0), 30) || ' days')::INTERVAL
+      AND sd.expiry_date >= CURRENT_DATE - INTERVAL '7 days'
+
+    UNION ALL
+
+    SELECT
+      'vehicle' AS entity_type,
+      sd.id AS subject_document_id,
+      sd.vehicle_id AS entity_id,
+      NULL::VARCHAR AS recipient_email,
+      NULL::INTEGER AS recipient_employee_id,
+      COALESCE(NULLIF(r.code, ''), r.name) AS cert_type,
+      r.name AS cert_name,
+      sd.expiry_date AS expiry_date,
+      (sd.expiry_date - CURRENT_DATE)::INTEGER AS days_until
+    FROM subject_documents sd
+    JOIN document_requirements r ON r.id = sd.requirement_id
+    WHERE sd.subject_type = 'vehicle'
+      AND r.requires_expiry = TRUE
+      AND sd.expiry_date IS NOT NULL
+      AND sd.status IN ('valid', 'pending')
+      AND sd.expiry_date <= CURRENT_DATE + (COALESCE(NULLIF(r.renewal_notice_days, 0), 30) || ' days')::INTERVAL
+      AND sd.expiry_date >= CURRENT_DATE - INTERVAL '7 days'
+
+    UNION ALL
+
+    SELECT
+      'employee' AS entity_type,
+      sd.id AS subject_document_id,
+      sd.employee_id AS entity_id,
+      e.personal_email AS recipient_email,
+      sd.employee_id AS recipient_employee_id,
+      COALESCE(NULLIF(r.code, ''), r.name) AS cert_type,
+      r.name AS cert_name,
+      sd.expiry_date AS expiry_date,
+      (sd.expiry_date - CURRENT_DATE)::INTEGER AS days_until
+    FROM subject_documents sd
+    JOIN document_requirements r ON r.id = sd.requirement_id
+    JOIN employees e ON e.id = sd.employee_id
+    WHERE sd.subject_type = 'employee'
+      AND r.requires_expiry = TRUE
+      AND sd.expiry_date IS NOT NULL
+      AND sd.status IN ('valid', 'pending')
+      AND sd.expiry_date <= CURRENT_DATE + (COALESCE(NULLIF(r.renewal_notice_days, 0), 30) || ' days')::INTERVAL
+      AND sd.expiry_date >= CURRENT_DATE - INTERVAL '7 days'
+  ) LOOP
+    IF v_record.entity_type = 'vehicle' THEN
+      SELECT va.employee_id, e.personal_email
+      INTO v_vehicle_assigned_employee_id, v_vehicle_assigned_email
+      FROM vehicle_assignments va
+      LEFT JOIN employees e ON e.id = va.employee_id
+      WHERE va.vehicle_id = v_record.entity_id
+        AND va.active = TRUE
+      ORDER BY va.assigned_from DESC
+      LIMIT 1;
+
+      v_employee_id := v_vehicle_assigned_employee_id;
+      v_employee_email := v_vehicle_assigned_email;
+    ELSE
+      v_employee_id := v_record.recipient_employee_id;
+      v_employee_email := v_record.recipient_email;
+    END IF;
+
+    BEGIN
+      v_token := encode(gen_random_bytes(32), 'hex');
+    EXCEPTION WHEN OTHERS THEN
+      v_token := md5(v_record.entity_id::text || v_record.cert_type || CURRENT_TIMESTAMP::text || random()::text);
+    END;
+
+    INSERT INTO notifications (
+      notification_type,
+      entity_type,
+      entity_id,
+      certificate_type,
+      certificate_name,
+      expiry_date,
+      days_until_expiry,
+      recipient_employee_id,
+      recipient_email,
+      email_token,
+      subject_document_id
+    )
+    SELECT
+      'certificate_expiry',
+      v_record.entity_type,
+      v_record.entity_id,
+      v_record.cert_type,
+      v_record.cert_name,
+      v_record.expiry_date,
+      v_record.days_until,
+      v_employee_id,
+      v_employee_email,
+      v_token,
+      v_record.subject_document_id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM notifications n
+      WHERE n.subject_document_id = v_record.subject_document_id
+        AND n.status IN ('pending', 'sent')
+        AND n.expiry_date = v_record.expiry_date
+    );
+  END LOOP;
+
   -- NOTE: Auto-resolve removed - notifications will stay pending/sent until manually resolved or dismissed
   -- This gives admins full control over when to mark notifications as resolved
   -- Notifications can be manually resolved via the UI or will be auto-resolved when documents are uploaded

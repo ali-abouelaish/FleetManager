@@ -6,7 +6,7 @@ export async function GET() {
     const supabase = await createClient()
     const { data: slots, error } = await supabase
       .from('appointment_slots')
-      .select('*, appointment_bookings(id, notification_id, booked_by_email, booked_by_name, status, booked_at)')
+      .select('*, appointment_bookings(id, notification_id, booked_by_email, booked_by_name, status, booked_at, notes)')
       .order('slot_start', { ascending: true })
 
     if (error) throw error

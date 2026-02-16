@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
 import { ArrowLeft, Upload, Save, AlertCircle, FileText, CheckCircle, GraduationCap } from 'lucide-react'
 import Link from 'next/link'
+import { DynamicCertificatesForm } from '@/components/dashboard/DynamicCertificatesForm'
 
 interface Employee {
   id: number
@@ -25,10 +26,15 @@ export default function CreateDriverPage() {
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
   const [employees, setEmployees] = useState<Employee[]>([])
+  const minYear = 1900
+  const maxYear = new Date().getFullYear() + 20
+  const minDate = `${minYear}-01-01`
+  const maxDate = `${maxYear}-12-31`
 
   const [formData, setFormData] = useState({
     employee_id: '',
     spare_driver: false,
+    self_employed: false,
     tas_badge_number: '',
     tas_badge_expiry_date: '',
     dbs_number: '',
@@ -72,6 +78,15 @@ export default function CreateDriverPage() {
     logbook_file: null,
     badge_photo_file: null,
   })
+
+  // Dynamic certificates state
+  const [certificatesFormData, setCertificatesFormData] = useState<Record<string, {
+    certificate_number: string
+    expiry_date: string
+    issue_date: string
+    file: File | null
+  }>>({})
+  const [certificatesFileUploads, setCertificatesFileUploads] = useState<Record<string, File | null>>({})
 
   useEffect(() => {
     async function loadEmployees() {
@@ -120,6 +135,24 @@ export default function CreateDriverPage() {
     }))
   }
 
+  const handleCertificateFormDataChange = (requirementId: string, field: string, value: string | File | null) => {
+    setCertificatesFormData(prev => ({
+      ...prev,
+      [requirementId]: {
+        ...(prev[requirementId] || { certificate_number: '', expiry_date: '', issue_date: '', file: null }),
+        [field]: value,
+      }
+    }))
+  }
+
+  const handleCertificateFileChange = (requirementId: string, file: File | null) => {
+    setCertificatesFileUploads(prev => ({
+      ...prev,
+      [requirementId]: file
+    }))
+    handleCertificateFormDataChange(requirementId, 'file', file)
+  }
+
   const validateForm = (): { isValid: boolean; errors: { [key: string]: string } } => {
     const errors: { [key: string]: string } = {}
 
@@ -127,9 +160,20 @@ export default function CreateDriverPage() {
       errors.employee_id = 'Please select an employee'
     }
 
-    if (!formData.tas_badge_expiry_date || formData.tas_badge_expiry_date.trim() === '') {
-      errors.tas_badge_expiry_date = 'TAS Badge expiry date is required'
-    }
+    // Dynamic certificate validation will be handled separately
+    const dateFields: Array<{ key: keyof typeof formData; label: string }> = [
+      // Dynamic certificate date validation handled separately
+      { key: 'utility_bill_date', label: 'Utility Bill date' },
+      { key: 'safeguarding_training_date', label: 'Safeguarding training date' },
+      { key: 'tas_pats_training_date', label: 'TAS PATS training date' },
+      { key: 'psa_training_date', label: 'PSA training date' },
+    ]
+    dateFields.forEach(({ key, label }) => {
+      const value = formData[key]
+      if (value && (value < minDate || value > maxDate)) {
+        errors[key] = `${label} must be between ${minYear} and ${maxYear}`
+      }
+    })
 
     return {
       isValid: Object.keys(errors).length === 0,
@@ -243,6 +287,7 @@ export default function CreateDriverPage() {
         psa_training_date: formData.psa_training_date || null,
         additional_notes: formData.additional_notes || null,
         spare_driver: formData.spare_driver,
+        self_employed: formData.self_employed,
       }
 
       // Verify employee exists before insert
@@ -287,10 +332,9 @@ export default function CreateDriverPage() {
         }).catch(err => console.error('Audit log error:', err))
       }
 
-      // Create document records in the documents table (match working employee/vehicle document inserts)
+      // Create document records and link to driver
       if (uploadedDocuments.length > 0) {
         const documentRecords = uploadedDocuments.map(doc => ({
-          employee_id: parseInt(formData.employee_id),
           file_name: doc.fileName,
           file_type: doc.fileType,
           file_path: doc.filePath,
@@ -299,15 +343,99 @@ export default function CreateDriverPage() {
           uploaded_by: null,
         }))
 
-        const { error: documentsError } = await supabase
+        const { data: insertedDocs, error: documentsError } = await supabase
           .from('documents')
           .insert(documentRecords)
+          .select('id')
 
         if (documentsError) {
           console.error('Error creating document records:', documentsError)
-
           setError(`Driver created but failed to save documents: ${documentsError.message}`)
+        } else if (insertedDocs?.length) {
+          const links = insertedDocs.map((doc: any) => ({
+            document_id: doc.id,
+            driver_employee_id: parseInt(formData.employee_id),
+          }))
+          await supabase.from('document_driver_links').insert(links)
+        }
+      }
 
+      // Handle dynamic certificates
+      // The trigger will auto-create subject_documents, so we need to update them
+      if (Object.keys(certificatesFormData).length > 0 || Object.keys(certificatesFileUploads).length > 0) {
+        // Fetch auto-created subject_documents
+        const { data: autoCreatedDocs, error: fetchError } = await supabase
+          .from('subject_documents')
+          .select('id, requirement_id')
+          .eq('subject_type', 'driver')
+          .eq('driver_employee_id', parseInt(formData.employee_id))
+
+        if (!fetchError && autoCreatedDocs) {
+          // Update subject_documents with form data
+          for (const [requirementId, certData] of Object.entries(certificatesFormData)) {
+            const existingDoc = autoCreatedDocs.find(doc => doc.requirement_id === requirementId)
+            if (existingDoc) {
+              const updateData: any = {}
+              if (certData.certificate_number) updateData.certificate_number = certData.certificate_number
+              if (certData.expiry_date) updateData.expiry_date = certData.expiry_date
+              if (certData.issue_date) updateData.issue_date = certData.issue_date
+              if (certData.expiry_date || certData.certificate_number) {
+                updateData.status = 'valid'
+              }
+
+              await supabase
+                .from('subject_documents')
+                .update(updateData)
+                .eq('id', existingDoc.id)
+            }
+          }
+
+          // Upload certificate files
+          for (const [requirementId, file] of Object.entries(certificatesFileUploads)) {
+            if (file) {
+              const fileExt = file.name.split('.').pop()
+              const fileName = `drivers/${formData.employee_id}/certificates/${requirementId}_${Date.now()}.${fileExt}`
+
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('DRIVER_DOCUMENTS')
+                .upload(fileName, file)
+
+              if (!uploadError && uploadData) {
+                const { data: { publicUrl } } = supabase.storage
+                  .from('DRIVER_DOCUMENTS')
+                  .getPublicUrl(fileName)
+
+                // Create document record
+                const { data: docRecord, error: docError } = await supabase
+                  .from('documents')
+                  .insert({
+                    file_name: file.name,
+                    file_type: file.type || 'application/octet-stream',
+                    file_path: fileName,
+                    file_url: publicUrl,
+                    doc_type: 'Certificate',
+                    uploaded_by: null,
+                  })
+                  .select('id')
+                  .single()
+
+                if (!docError && docRecord) {
+                  // Link document to driver and subject_document
+                  const existingDoc = autoCreatedDocs.find(doc => doc.requirement_id === requirementId)
+                  if (existingDoc) {
+                    await supabase.from('document_driver_links').insert({
+                      document_id: docRecord.id,
+                      driver_employee_id: parseInt(formData.employee_id),
+                    })
+                    await supabase.from('document_subject_document_links').insert({
+                      document_id: docRecord.id,
+                      subject_document_id: existingDoc.id,
+                    })
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
@@ -332,6 +460,8 @@ export default function CreateDriverPage() {
         value={value}
         onChange={onChange}
         required={required}
+        min={minDate}
+        max={maxDate}
         className={`h-8 text-sm ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {error && <span className="text-[10px] text-red-500">{error}</span>}
@@ -367,29 +497,6 @@ export default function CreateDriverPage() {
     </div>
   )
 
-  // Component for certificate card
-  const CertificateCard = ({ title, dateId, dateVal, fileId, fileVal, required = false, error }: any) => (
-    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-semibold text-slate-700">{title}</span>
-        {required && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">REQUIRED</span>}
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        <CompactDateInput
-          id={dateId}
-          label="Expiry Date"
-          value={dateVal}
-          onChange={handleInputChange}
-          required={required}
-          error={error}
-        />
-        <div>
-          <Label htmlFor={fileId} className="text-xs text-slate-500">Upload Certificate</Label>
-          <CompactFileUpload id={fileId} onChange={handleFileChange} file={fileVal} />
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <div className="max-w-[1600px] mx-auto p-4 space-y-6">
@@ -495,6 +602,20 @@ export default function CreateDriverPage() {
                     <p className="text--[10px] text-amber-700 leading-tight mt-0.5">Not assigned to specific route, available for cover.</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <input
+                    type="checkbox"
+                    id="self_employed"
+                    name="self_employed"
+                    checked={formData.self_employed}
+                    onChange={(e) => setFormData({ ...formData, self_employed: e.target.checked })}
+                    className="rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="self_employed" className="text-sm font-semibold text-slate-900 cursor-pointer">Self Employed</Label>
+                    <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Driver is self-employed (yes/no).</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -537,82 +658,16 @@ export default function CreateDriverPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                  <div className="mb-2">
-                    <Label htmlFor="tas_badge_number" className="text-xs font-semibold text-blue-900">TAS Badge Number</Label>
-                    <Input
-                      id="tas_badge_number"
-                      name="tas_badge_number"
-                      value={formData.tas_badge_number}
-                      onChange={handleInputChange}
-                      placeholder="e.g. TAS12345"
-                      className="h-8 text-sm mt-1"
-                    />
-                  </div>
-                  <CertificateCard
-                    title="TAS Badge Expiry"
-                    dateId="tas_badge_expiry_date"
-                    dateVal={formData.tas_badge_expiry_date}
-                    fileId="tas_badge_file"
-                    fileVal={fileUploads.tas_badge_file}
-                    required
-                    error={fieldErrors.tas_badge_expiry_date}
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <Label htmlFor="dbs_number" className="text-xs text-slate-500">DBS Number</Label>
-                  <Input
-                    id="dbs_number"
-                    name="dbs_number"
-                    value={formData.dbs_number}
-                    onChange={handleInputChange}
-                    placeholder="e.g. 001234567890"
-                    className="h-8 text-sm mb-2"
-                  />
-                  <CertificateCard
-                    title="DBS Certificate"
-                    dateId="dbs_date_placeholder" // Just showing file upload mainly
-                    dateVal="" // DBS usually doesn't have expiry same way
-                    fileId="dbs_file"
-                    fileVal={fileUploads.dbs_file}
-                  />
-                  {/* Hide date input visually for DBS as strict expiry varies, but using card for consistency if needed or custom */}
-                </div>
-
-                <CertificateCard
-                  title="Driving License"
-                  dateId="driving_license_expiry_date"
-                  dateVal={formData.driving_license_expiry_date}
-                  fileId="driving_license_file"
-                  fileVal={fileUploads.driving_license_file}
-                />
-
-                <CertificateCard
-                  title="CPC Certificate"
-                  dateId="cpc_expiry_date"
-                  dateVal={formData.cpc_expiry_date}
-                  fileId="cpc_file"
-                  fileVal={fileUploads.cpc_file}
-                />
-
-                <CertificateCard
-                  title="First Aid"
-                  dateId="first_aid_certificate_expiry_date"
-                  dateVal={formData.first_aid_certificate_expiry_date}
-                  fileId="first_aid_file"
-                  fileVal={fileUploads.first_aid_file}
-                />
-
-                <CertificateCard
-                  title="Passport"
-                  dateId="passport_expiry_date"
-                  dateVal={formData.passport_expiry_date}
-                  fileId="passport_file"
-                  fileVal={fileUploads.passport_file}
-                />
-              </div>
+              <DynamicCertificatesForm
+                subjectType="driver"
+                formData={certificatesFormData}
+                fileUploads={certificatesFileUploads}
+                fieldErrors={fieldErrors}
+                onFormDataChange={handleCertificateFormDataChange}
+                onFileChange={handleCertificateFileChange}
+                minDate={minDate}
+                maxDate={maxDate}
+              />
             </CardContent>
           </Card>
         </div>
@@ -661,6 +716,8 @@ export default function CreateDriverPage() {
                         name={`${t.id}_date`}
                         value={t.date}
                         onChange={handleInputChange}
+                        min={minDate}
+                        max={maxDate}
                         className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
                       />
                     )}
@@ -678,7 +735,15 @@ export default function CreateDriverPage() {
                 <div className="space-y-1">
                   <Label className="text-xs">Utility Bill</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="date" name="utility_bill_date" value={formData.utility_bill_date} onChange={handleInputChange} className="h-7 text-xs" />
+                    <Input
+                      type="date"
+                      name="utility_bill_date"
+                      value={formData.utility_bill_date}
+                      onChange={handleInputChange}
+                      min={minDate}
+                      max={maxDate}
+                      className="h-7 text-xs"
+                    />
                     <CompactFileUpload id="utility_bill_file" onChange={handleFileChange} file={fileUploads.utility_bill_file} />
                   </div>
                 </div>

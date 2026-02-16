@@ -1,9 +1,12 @@
+import { notFound } from 'next/navigation'
 import { DriverDetailClient } from './DriverDetailClient'
 
 export default async function DriverDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
-  return <DriverDetailClient id={params.id} />
+  const { id } = await params
+  if (!id) notFound()
+  return <DriverDetailClient id={id} />
 }

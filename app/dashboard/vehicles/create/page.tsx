@@ -61,7 +61,7 @@ export default function CreateVehiclePage() {
     first_aid_expiry: '',
     fire_extinguisher_expiry: '',
     taxi_license: '',
-    taxi_registration_driver: '',
+    taxi_licence_holder_id: '',
     spare_vehicle: false,
     off_the_road: false,
     assigned_to: '',
@@ -73,6 +73,8 @@ export default function CreateVehiclePage() {
     seats_per_row: '',
     wheelchair_spaces: '',
     seating_notes: '',
+    pmi_weeks: '',
+    last_pmi_date: '',
   })
 
   useEffect(() => {
@@ -153,6 +155,9 @@ export default function CreateVehiclePage() {
         ownership_type: formData.ownership_type || null,
         council_assignment: formData.council_assignment || null,
         assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
+        taxi_licence_holder_id: formData.taxi_licence_holder_id ? parseInt(formData.taxi_licence_holder_id) : null,
+        pmi_weeks: formData.vehicle_type === 'PSV' && formData.pmi_weeks ? parseInt(formData.pmi_weeks, 10) : null,
+        last_pmi_date: formData.vehicle_type === 'PSV' && formData.last_pmi_date ? formData.last_pmi_date : null,
       }
 
       const { data, error } = await supabase
@@ -220,25 +225,31 @@ export default function CreateVehiclePage() {
           }
         }
 
-        // Create document records in the documents table
+        // Create document records and link to vehicle via document_vehicle_links
         if (uploadedDocuments.length > 0) {
-          const documentRecords = uploadedDocuments.map(doc => ({
-            vehicle_id: vehicleId,
-            file_url: JSON.stringify([doc.fileUrl]),
-            file_name: doc.fileName,
-            file_type: doc.fileType,
-            file_path: doc.filePath,
-            doc_type: doc.docType,
-            uploaded_at: new Date().toISOString(),
-          }))
-
-          const { error: documentsError } = await supabase
-            .from('documents')
-            .insert(documentRecords)
-
-          if (documentsError) {
-            console.error('Error creating document records:', documentsError)
-            // Don't throw - vehicle was created successfully, documents just won't show up
+          for (const doc of uploadedDocuments) {
+            const { data: docRow, error: docErr } = await supabase
+              .from('documents')
+              .insert({
+                file_url: JSON.stringify([doc.fileUrl]),
+                file_name: doc.fileName,
+                file_type: doc.fileType,
+                file_path: doc.filePath,
+                doc_type: doc.docType,
+                uploaded_at: new Date().toISOString(),
+              })
+              .select('id')
+              .single()
+            if (docErr) {
+              console.error('Error creating document record:', docErr)
+              continue
+            }
+            if (docRow?.id) {
+              await supabase.from('document_vehicle_links').insert({
+                document_id: docRow.id,
+                vehicle_id: vehicleId,
+              })
+            }
           }
         }
 
@@ -432,11 +443,14 @@ export default function CreateVehiclePage() {
                     }
                   >
                     <option value="">Select type</option>
+                    <option value="PHV">PHV (Private Hire / Taxi)</option>
+                    <option value="PSV">PSV (Public Service Vehicle)</option>
                     <option value="Minibus">Minibus</option>
                     <option value="Van">Van</option>
                     <option value="Car">Car</option>
                     <option value="Coach">Coach</option>
                   </Select>
+                  <p className="text-xs text-slate-500">PHV: taxi licence, MOT, LOLER. PSV: PMI interim checks.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -551,7 +565,8 @@ export default function CreateVehiclePage() {
                   </div>
                 </div>
 
-                {/* MOT */}
+                {/* PHV: MOT */}
+                {formData.vehicle_type === 'PHV' && (
                 <div className="space-y-3 p-3 border rounded-lg">
                   <h3 className="font-semibold text-slate-700 text-sm">MOT Certificate</h3>
                   <div>
@@ -576,6 +591,7 @@ export default function CreateVehiclePage() {
                     />
                   </div>
                 </div>
+                )}
 
                 {/* Tax */}
                 <div className="space-y-3 p-3 border rounded-lg">
@@ -629,7 +645,8 @@ export default function CreateVehiclePage() {
                   </div>
                 </div>
 
-                {/* Taxi Badge */}
+                {/* PHV: Taxi Badge */}
+                {formData.vehicle_type === 'PHV' && (
                 <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
                   <h3 className="font-semibold text-navy flex items-center">
                     Taxi Badge
@@ -670,7 +687,82 @@ export default function CreateVehiclePage() {
                       className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
+                  <div className="pt-2">
+                    <SearchableSelect
+                      id="taxi_licence_holder_id"
+                      label="Taxi Licence Holder"
+                      value={formData.taxi_licence_holder_id}
+                      onChange={(value) => setFormData({ ...formData, taxi_licence_holder_id: value })}
+                      options={drivers.map(driver => ({
+                        value: driver.id.toString(),
+                        label: driver.name,
+                      }))}
+                      placeholder="Search and select driver..."
+                    />
+                  </div>
                 </div>
+                )}
+
+                {/* PHV: LOLER */}
+                {formData.vehicle_type === 'PHV' && (
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">LOLER Certificate</h3>
+                  <div>
+                    <Label htmlFor="loler_expiry_date">Expiry Date</Label>
+                    <Input
+                      id="loler_expiry_date"
+                      type="date"
+                      value={formData.loler_expiry_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, loler_expiry_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="loler_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="loler_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('loler_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* PSV: PMI interim check */}
+                {formData.vehicle_type === 'PSV' && (
+                <div className="space-y-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                  <h3 className="font-semibold text-slate-800 text-sm">PSV – PMI interim check</h3>
+                  <p className="text-xs text-slate-600">Next due is calculated from last PMI date + interval (weeks).</p>
+                  <div>
+                    <Label htmlFor="pmi_weeks">Interval (weeks between checks)</Label>
+                    <Input
+                      id="pmi_weeks"
+                      type="number"
+                      min={1}
+                      max={52}
+                      value={formData.pmi_weeks}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pmi_weeks: e.target.value })
+                      }
+                      placeholder="e.g. 4"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="last_pmi_date">Last PMI date</Label>
+                    <Input
+                      id="last_pmi_date"
+                      type="date"
+                      value={formData.last_pmi_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, last_pmi_date: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                )}
 
                 {/* First Aid */}
                 <div className="space-y-3 p-3 border rounded-lg">
@@ -766,15 +858,15 @@ export default function CreateVehiclePage() {
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="logbook_file">Logbook</Label>
+                  <Label htmlFor="logbook_file">Vehicle logbook</Label>
                   <input
                     type="file"
                     id="logbook_file"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf,application/pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileChange('logbook_file', e.target.files?.[0] || null)}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                   />
-                  <p className="text-xs text-gray-500">Upload vehicle logbook (PDF, JPG, PNG)</p>
+                  <p className="text-xs text-gray-500">Upload vehicle logbook (usually a PDF)</p>
                 </div>
 
                 <div className="space-y-2">

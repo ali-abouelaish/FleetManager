@@ -7,7 +7,7 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%]',
+        'animate-pulse rounded-lg bg-slate-200',
         className
       )}
       role="status"
@@ -27,20 +27,19 @@ export function TableSkeleton({
   headers?: string[]
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden" role="status" aria-label="Loading table...">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" role="status" aria-label="Loading table...">
       <div className="w-full overflow-auto">
         <table className="w-full caption-bottom text-sm">
-          {/* Static headers - NEVER animated, always visible */}
-          <thead className="bg-gradient-to-r from-navy to-blue-700">
+          <thead className="bg-slate-100 border-b border-slate-200">
             <tr>
               {headers ? (
                 headers.map((header, i) => (
                   <th
                     key={i}
                     className={cn(
-                      'h-12 px-4 text-left align-middle font-semibold text-white',
-                      i === 0 && 'rounded-tl-lg',
-                      i === headers.length - 1 && 'rounded-tr-lg'
+                      'h-12 px-4 text-left align-middle font-semibold text-slate-700',
+                      i === 0 && 'rounded-tl-xl',
+                      i === headers.length - 1 && 'rounded-tr-xl'
                     )}
                   >
                     {header}
@@ -51,25 +50,24 @@ export function TableSkeleton({
                   <th
                     key={i}
                     className={cn(
-                      'h-12 px-4 text-left align-middle font-semibold text-white',
-                      i === 0 && 'rounded-tl-lg',
-                      i === columns - 1 && 'rounded-tr-lg'
+                      'h-12 px-4 text-left align-middle font-semibold text-slate-700',
+                      i === 0 && 'rounded-tl-xl',
+                      i === columns - 1 && 'rounded-tr-xl'
                     )}
                   >
-                    <div className="h-4 w-24 rounded bg-white/20" />
+                    <div className="h-4 w-24 rounded-md bg-slate-200" />
                   </th>
                 ))
               )}
             </tr>
           </thead>
-          {/* Animated body rows only */}
           <tbody>
             {Array.from({ length: rows }).map((_, rowIndex) => (
               <tr
                 key={rowIndex}
                 className={cn(
-                  'border-b border-gray-100',
-                  rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                  'border-b border-slate-100',
+                  rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                 )}
               >
                 {Array.from({ length: columns }).map((_, colIndex) => (
@@ -88,8 +86,10 @@ export function TableSkeleton({
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-xl border bg-white p-6 shadow-sm" role="status" aria-label="Loading card...">
-      <Skeleton className="mb-4 h-6 w-1/3" />
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" role="status" aria-label="Loading card...">
+      <div className="bg-slate-50 border-b border-slate-200 -mx-6 -mt-6 px-6 py-4 mb-4">
+        <Skeleton className="h-5 w-1/3" />
+      </div>
       <div className="space-y-3">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
@@ -101,8 +101,8 @@ export function CardSkeleton() {
 
 export function FormSkeleton({ fields = 5 }: { fields?: number }) {
   return (
-    <div className="rounded-xl border bg-white p-6 shadow-sm" role="status" aria-label="Loading form...">
-      <Skeleton className="mb-6 h-8 w-1/4" />
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" role="status" aria-label="Loading form...">
+      <Skeleton className="mb-6 h-7 w-1/4" />
       <div className="space-y-6">
         {Array.from({ length: fields }).map((_, i) => (
           <div key={i} className="space-y-2">
@@ -123,7 +123,7 @@ export function StatsSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-xl border bg-white p-6 shadow-sm">
+        <div key={i} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-10 w-10 rounded-full" />

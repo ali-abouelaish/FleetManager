@@ -16,6 +16,7 @@ interface AppointmentBooking {
   booked_by_name: string | null
   status: string | null
   booked_at: string | null
+  notes: string | null
 }
 
 interface AppointmentSlot {
@@ -173,20 +174,21 @@ export default function AppointmentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Slot</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead>Slot notes</TableHead>
                 <TableHead>Booking</TableHead>
+                <TableHead>Booking context</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-6">
+                  <TableCell colSpan={4} className="text-center py-6">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : slots.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-12">
+                  <TableCell colSpan={4} className="text-center py-12">
                     <Clock className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500 font-medium">No slots yet</p>
                     <p className="text-sm text-slate-400">Create one above to get started</p>
@@ -217,6 +219,13 @@ export default function AppointmentsPage() {
                           </div>
                         ) : (
                           <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">Available</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600 max-w-[200px]">
+                        {booking?.notes ? (
+                          <span className="text-sm" title={booking.notes}>{booking.notes}</span>
+                        ) : (
+                          '-'
                         )}
                       </TableCell>
                     </TableRow>

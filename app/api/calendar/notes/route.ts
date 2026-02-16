@@ -34,9 +34,23 @@ export async function GET(request: NextRequest) {
     const userIds = Array.from(new Set((notes || []).flatMap((n: any) => [n.created_by, n.updated_by].filter(Boolean))))
     let nameMap: Record<number, string> = {}
     if (userIds.length > 0) {
-      const { data: users } = await supabase.from('users').select('id, full_name').in('id', userIds)
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, employee_id')
+        .in('id', userIds)
+      const employeeIds = Array.from(
+        new Set((users || []).map((u: any) => u.employee_id).filter(Boolean))
+      )
+      const { data: employees } = employeeIds.length > 0
+        ? await supabase.from('employees').select('id, full_name').in('id', employeeIds)
+        : { data: [] as any[] }
+      const employeeNameMap = (employees || []).reduce((acc: Record<number, string>, e: any) => {
+        if (e.id != null && e.full_name) acc[e.id] = e.full_name
+        return acc
+      }, {})
       nameMap = (users || []).reduce((acc: Record<number, string>, u: any) => {
-        if (u.id != null && u.full_name) acc[u.id] = u.full_name
+        const name = u.employee_id ? employeeNameMap[u.employee_id] : null
+        if (u.id != null && name) acc[u.id] = name
         return acc
       }, {})
     }
@@ -99,8 +113,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'note_date and note_text required' }, { status: 400 })
     }
 
-    const { data: userRow } = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
-    const userId = userRow?.id ?? null
+    let userId: number | null = null
+    const byAuthId = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
+    if (byAuthId.data?.id) userId = byAuthId.data.id
+    if (userId == null && user.email) {
+      const byEmail = await supabase.from('users').select('id').ilike('email', user.email).maybeSingle()
+      if (byEmail.data?.id) userId = byEmail.data.id
+    }
 
     const { data, error } = await supabase
       .from('calendar_day_notes')
@@ -138,8 +157,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'id and note_text required' }, { status: 400 })
     }
 
-    const { data: userRow } = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
-    const userId = userRow?.id ?? null
+    let userId: number | null = null
+    const byAuthId = await supabase.from('users').select('id').eq('user_id', user.id).maybeSingle()
+    if (byAuthId.data?.id) userId = byAuthId.data.id
+    if (userId == null && user.email) {
+      const byEmail = await supabase.from('users').select('id').ilike('email', user.email).maybeSingle()
+      if (byEmail.data?.id) userId = byEmail.data.id
+    }
 
     const { data, error } = await supabase
       .from('calendar_day_notes')

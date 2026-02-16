@@ -31,16 +31,19 @@ export default function VehicleDocuments({ vehicleId }: { vehicleId: number }) {
   const loadDocuments = async () => {
     setLoading(true)
     const { data, error } = await supabase
-      .from('documents')
-      .select('id, file_name, file_type, file_path, file_url, doc_type, uploaded_at')
+      .from('document_vehicle_links')
+      .select('documents (id, file_name, file_type, file_path, file_url, doc_type, uploaded_at)')
       .eq('vehicle_id', vehicleId)
-      .order('uploaded_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching vehicle documents', error)
       setDocuments([])
     } else {
-      setDocuments(data || [])
+      const docs = (data || [])
+        .map((row: any) => row.documents)
+        .filter(Boolean)
+        .sort((a: any, b: any) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+      setDocuments(docs || [])
     }
     setLoading(false)
   }
@@ -81,16 +84,22 @@ export default function VehicleDocuments({ vehicleId }: { vehicleId: number }) {
           .from('VEHICLE_DOCUMENTS')
           .getPublicUrl(storagePath)
 
-        const { error: docErr } = await supabase.from('documents').insert({
-          vehicle_id: vehicleId,
+        const { data: docRow, error: docErr } = await supabase.from('documents').insert({
           file_name: file.name,
           file_type: file.type,
           file_path: storagePath,
           file_url: publicUrl,
           doc_type: docType || null,
           uploaded_by: null,
-        })
+        }).select('id').single()
         if (docErr) throw docErr
+        if (docRow?.id) {
+          const { error: linkErr } = await supabase.from('document_vehicle_links').insert({
+            document_id: docRow.id,
+            vehicle_id: vehicleId,
+          })
+          if (linkErr) throw linkErr
+        }
       }
       setFiles(null)
       setDocType('')

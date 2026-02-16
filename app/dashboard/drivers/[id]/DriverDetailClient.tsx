@@ -13,6 +13,8 @@ import {
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import DriverQRCode from './DriverQRCode'
+import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
+import DriverPreChecks from './DriverPreChecks'
 
 interface Driver {
   employee_id: number
@@ -42,6 +44,7 @@ interface Driver {
   psa_training_date: string | null
   additional_notes: string | null
   spare_driver?: boolean
+  self_employed?: boolean
   employees: {
     id: number
     full_name: string
@@ -130,6 +133,7 @@ export function DriverDetailClient({ id }: { id: string }) {
   const [vehicleAssignments, setVehicleAssignments] = useState<VehicleAssignment[]>([])
   const [idBadgePhotoUrl, setIdBadgePhotoUrl] = useState<string | null>(null)
   const [tardinessReports, setTardinessReports] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'daily-checks'>('overview')
 
   useEffect(() => {
     async function fetchDriver() {
@@ -198,16 +202,20 @@ export function DriverDetailClient({ id }: { id: string }) {
   const loadDocuments = async (employeeId: number) => {
     const supabase = createClient()
     const { data } = await supabase
-      .from('documents')
-      .select('id, file_name, file_url, file_type, doc_type, uploaded_at, file_path')
-      .eq('employee_id', employeeId)
-      .order('uploaded_at', { ascending: false })
+      .from('document_driver_links')
+      .select('documents (id, file_name, file_url, file_type, doc_type, uploaded_at, file_path)')
+      .eq('driver_employee_id', employeeId)
 
-    if (data) {
-      setDocuments(data || [])
+    const docs = (data || [])
+      .map((row: any) => row.documents)
+      .filter(Boolean)
+      .sort((a: any, b: any) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+
+    if (docs) {
+      setDocuments(docs || [])
 
       // Find ID Badge photo
-      const idBadgeDoc = data.find(doc => {
+      const idBadgeDoc = docs.find(doc => {
         const type = (doc.doc_type || '').toLowerCase()
         return type === 'id badge' || type.includes('photo') || (type.includes('badge') && type.includes('id'))
       })
@@ -321,6 +329,14 @@ export function DriverDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
+      {activeTab === 'documents' && (
+        <SubjectDocumentsChecklist subjectType="driver" subjectId={driver.employee_id} />
+      )}
+
+      {activeTab === 'daily-checks' && (
+        <DriverPreChecks driverId={driver.employee_id} />
+      )}
+
       {driver.additional_notes && (
         <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
           <FileText className="h-4 w-4 mt-0.5 shrink-0" />
@@ -328,7 +344,34 @@ export function DriverDetailClient({ id }: { id: string }) {
         </div>
       )}
 
-      {/* Main Grid Layout */}
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <div className="flex items-center gap-6 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`pb-3 ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('documents')}
+            className={`pb-3 ${activeTab === 'documents' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Documents & Certificates
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('daily-checks')}
+            className={`pb-3 ${activeTab === 'daily-checks' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Daily Checks
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'overview' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Left Column: Stats & Quick Info (4 cols) */}
@@ -404,6 +447,7 @@ export function DriverDetailClient({ id }: { id: string }) {
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'PSV License', active: driver.psv_license },
+                  { label: 'Self Employed', active: driver.self_employed === true },
                   { label: 'Photo Taken', active: driver.photo_taken },
                   { label: 'Private Badge', active: driver.private_hire_badge },
                   { label: 'Birth Cert', active: driver.birth_certificate },
@@ -536,6 +580,8 @@ export function DriverDetailClient({ id }: { id: string }) {
 
         </div>
       </div>
+      )}
+
     </div>
   )
 }

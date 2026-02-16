@@ -139,8 +139,8 @@ export default async function ViewSchoolPage({
   const { school, routes, crewCount, crewAssignments, passengers, coordinators } = data
 
   return (
-    <div className="space-y-4">
-      {/* Header with Back Button */}
+    <div className="space-y-3">
+      {/* Header with Back Button - match route screen */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/schools">
@@ -171,97 +171,113 @@ export default async function ViewSchoolPage({
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">School ID</dt>
-              <dd className="mt-1 text-sm text-gray-900">{school.id}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">School Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{school.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Ref Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{school.ref_number || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Address</dt>
-              <dd className="mt-1 text-sm text-gray-900">{school.address || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Created At</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDate(school.created_at)}</dd>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Statistics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Total Routes</span>
-              <span className="text-2xl font-bold text-gray-900">{routes.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Total Crew</span>
-              <span className="text-2xl font-bold text-gray-900">{crewCount}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Total Passengers</span>
-              <span className="text-2xl font-bold text-gray-900">{passengers.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserCog className="h-5 w-5 textshadow-primary/20" />
-              Coordinators
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {coordinators.length === 0 ? (
-              <p className="text-sm text-gray-500">No coordinators assigned. Assign from the employee edit page when role is Coordinator.</p>
-            ) : (
-              <ul className="space-y-2">
-                {coordinators.map((coord) => (
-                  <li key={coord.id}>
-                    <Link
-                      href={`/dashboard/employees/${coord.id}`}
-                      className="text-sm font-medium text-primary hover:underline"
-                    >
-                      {coord.full_name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Routes Section */}
+      {/* Basic Information - compact card like route */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Routes</CardTitle>
-          <Link href={`/dashboard/routes/create?school_id=${school.id}`}>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Route
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 space-y-1">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Basic Information</h2>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">School ID</span>
+            <span className="text-sm font-medium text-slate-900">{school.id}</span>
+          </div>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">School Name</span>
+            <span className="text-sm font-medium text-slate-900">{school.name}</span>
+          </div>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">Ref Number</span>
+            <span className="text-sm font-medium text-slate-900">{school.ref_number || 'N/A'}</span>
+          </div>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">Address</span>
+            <span className="text-sm font-medium text-slate-900 text-right max-w-[60%]">{school.address || 'N/A'}</span>
+          </div>
+          {school.phone_number && (
+            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+              <span className="text-xs text-slate-500">School Phone</span>
+              <a href={`tel:${school.phone_number}`} className="text-sm font-medium text-primary hover:underline">{school.phone_number}</a>
+            </div>
+          )}
+          {school.contact_name && (
+            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+              <span className="text-xs text-slate-500">Contact Name</span>
+              <span className="text-sm font-medium text-slate-900">{school.contact_name}</span>
+            </div>
+          )}
+          {school.contact_phone && (
+            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+              <span className="text-xs text-slate-500">Contact Phone</span>
+              <a href={`tel:${school.contact_phone}`} className="text-sm font-medium text-primary hover:underline">{school.contact_phone}</a>
+            </div>
+          )}
+          {school.contact_email && (
+            <div className="flex items-center justify-between py-1 border-b border-slate-100">
+              <span className="text-xs text-slate-500">Contact Email</span>
+              <a href={`mailto:${school.contact_email}`} className="text-sm font-medium text-primary hover:underline truncate max-w-[60%]">{school.contact_email}</a>
+            </div>
+          )}
+          <div className="flex items-center justify-between py-1">
+            <span className="text-xs text-slate-500">Created At</span>
+            <span className="text-sm font-medium text-slate-900">{formatDate(school.created_at)}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistics - match route stats card */}
+      <Card>
+        <CardContent className="p-3 space-y-1">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Statistics</h2>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">Total Routes</span>
+            <span className="text-base font-bold text-slate-900">{routes.length}</span>
+          </div>
+          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+            <span className="text-xs text-slate-500">Total Crew</span>
+            <span className="text-base font-bold text-slate-900">{crewCount}</span>
+          </div>
+          <div className="flex items-center justify-between py-1">
+            <span className="text-xs text-slate-500">Total Passengers</span>
+            <span className="text-base font-bold text-slate-900">{passengers.length}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Coordinators - compact card */}
+      <Card>
+        <CardContent className="p-3">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5 flex items-center gap-2">
+            <UserCog className="h-4 w-4" />
+            Coordinators
+          </h2>
+          {coordinators.length === 0 ? (
+            <p className="text-center text-gray-500 py-2 text-sm">No coordinators assigned. Assign from the employee edit page when role is Coordinator.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {coordinators.map((coord) => (
+                <li key={coord.id}>
+                  <Link href={`/dashboard/employees/${coord.id}`} className="text-sm font-medium text-blue-600 hover:underline">
+                    {coord.full_name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Routes Section - match route screen table card */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-2 border-b pb-1.5">
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Routes</h2>
+            <Link href={`/dashboard/routes/create?school_id=${school.id}`}>
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Route
+              </Button>
+            </Link>
+          </div>
           {routes.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No routes found for this school.</p>
+            <p className="text-center text-gray-500 py-2 text-sm">No routes found for this school.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -289,14 +305,12 @@ export default async function ViewSchoolPage({
         </CardContent>
       </Card>
 
-      {/* Crew Section */}
+      {/* Crew Assignments - compact card */}
       <Card>
-        <CardHeader>
-          <CardTitle>Crew Assignments</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Crew Assignments</h2>
           {crewAssignments.length === 0 || crewAssignments.every(c => !c.driver_id && c.pas.length === 0) ? (
-            <p className="text-center text-gray-500 py-4">No crew assignments found for this school.</p>
+            <p className="text-center text-gray-500 py-2 text-sm">No crew assignments found for this school.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -343,20 +357,20 @@ export default async function ViewSchoolPage({
         </CardContent>
       </Card>
 
-      {/* Passengers Section */}
+      {/* Passengers Section - match route screen */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Passengers</CardTitle>
-          <Link href={`/dashboard/passengers/create?school_id=${school.id}`}>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Passenger
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-2 border-b pb-1.5">
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Passengers</h2>
+            <Link href={`/dashboard/passengers/create?school_id=${school.id}`}>
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Passenger
+              </Button>
+            </Link>
+          </div>
           {passengers.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">No passengers found for this school.</p>
+            <p className="text-center text-gray-500 py-2 text-sm">No passengers found for this school.</p>
           ) : (
             <Table>
               <TableHeader>

@@ -6,9 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { ArrowLeft, Users, UserCog, AlertCircle, Calendar } from 'lucide-react'
+import { ArrowLeft, Users, UserCog, AlertCircle, Calendar, CheckCircle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
+import IncidentReportForms from '../[id]/IncidentReportForms'
 
 export default function CreateIncidentPage() {
   const router = useRouter()
@@ -34,6 +35,8 @@ export default function CreateIncidentPage() {
   const [selectedPassengers, setSelectedPassengers] = useState<number[]>([])
   const [routeSessions, setRouteSessions] = useState<any[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
+  const [createdIncidentId, setCreatedIncidentId] = useState<number | null>(null)
+  const [formIncident, setFormIncident] = useState<any>(null)
 
   const toggleEmployee = (employeeId: number) => {
     setSelectedEmployees(prev =>
@@ -51,23 +54,95 @@ export default function CreateIncidentPage() {
     )
   }
 
+  // Load vehicles and routes for dropdowns only
   useEffect(() => {
-    async function loadData() {
-      const [employeesResult, passengersResult, vehiclesResult, routesResult] = await Promise.all([
-        supabase.from('employees').select('id, full_name').order('full_name'),
-        supabase.from('passengers').select('id, full_name, schools(name)').order('full_name'),
+    async function loadDropdowns() {
+      const [vehiclesResult, routesResult] = await Promise.all([
         supabase.from('vehicles').select('id, vehicle_identifier').order('vehicle_identifier'),
         supabase.from('routes').select('id, route_number').order('route_number')
       ])
-
-      if (employeesResult.data) setEmployees(employeesResult.data)
-      if (passengersResult.data) setPassengers(passengersResult.data)
       if (vehiclesResult.data) setVehicles(vehiclesResult.data)
       if (routesResult.data) setRoutes(routesResult.data)
     }
-
-    loadData()
+    loadDropdowns()
   }, [supabase])
+
+  // When a route is selected (from session or dropdown), load crew + coordinators and passengers on this route only
+  useEffect(() => {
+    if (!formData.route_id) {
+      setEmployees([])
+      setPassengers([])
+      setSelectedEmployees([])
+      setSelectedPassengers([])
+      return
+    }
+
+    const routeId = parseInt(formData.route_id)
+    if (isNaN(routeId)) return
+
+    let cancelled = false
+    async function loadRouteCrewAndPassengers() {
+      const { data: route, error: routeErr } = await supabase
+        .from('routes')
+        .select('id, school_id, driver_id, passenger_assistant_id')
+        .eq('id', routeId)
+        .single()
+
+      if (routeErr || !route || cancelled) return
+
+      const crewIds = new Set<number>()
+      if (route.driver_id) crewIds.add(route.driver_id)
+      if (route.passenger_assistant_id) crewIds.add(route.passenger_assistant_id)
+
+      const { data: routePas } = await supabase
+        .from('route_passenger_assistants')
+        .select('employee_id')
+        .eq('route_id', routeId)
+      routePas?.forEach((r: { employee_id: number }) => crewIds.add(r.employee_id))
+
+      const coordinatorIds = new Set<number>()
+      if (route.school_id) {
+        const { data: coordAssignments } = await supabase
+          .from('coordinator_school_assignments')
+          .select('employee_id')
+          .eq('school_id', route.school_id)
+        coordAssignments?.forEach((c: { employee_id: number }) => coordinatorIds.add(c.employee_id))
+      }
+
+      const combinedIds = Array.from(crewIds).concat(Array.from(coordinatorIds))
+      const uniqueEmployeeIds = Array.from(new Set(combinedIds))
+      const { data: employeeRows } = await supabase
+        .from('employees')
+        .select('id, full_name')
+        .in('id', uniqueEmployeeIds)
+        .order('full_name')
+
+      const { data: passengerRows } = await supabase
+        .from('passengers')
+        .select('id, full_name, schools(name)')
+        .eq('route_id', routeId)
+        .order('full_name')
+
+      if (cancelled) return
+      if (employeeRows) {
+        setEmployees(employeeRows)
+        setSelectedEmployees(prev => prev.filter(id => employeeRows.some((e: any) => e.id === id)))
+      } else {
+        setEmployees([])
+        setSelectedEmployees([])
+      }
+      if (passengerRows) {
+        setPassengers(passengerRows)
+        setSelectedPassengers(prev => prev.filter(id => passengerRows.some((p: any) => p.id === id)))
+      } else {
+        setPassengers([])
+        setSelectedPassengers([])
+      }
+    }
+
+    loadRouteCrewAndPassengers()
+    return () => { cancelled = true }
+  }, [formData.route_id])
 
   useEffect(() => {
     const sessionId = searchParams?.get('route_session_id')
@@ -82,6 +157,73 @@ export default function CreateIncidentPage() {
       loadRouteSessionDetails(parseInt(formData.route_session_id))
     }
   }, [formData.route_session_id])
+
+  // After incident is created, load enriched incident for TR5/TR6/TR7 forms
+  useEffect(() => {
+    if (!createdIncidentId) {
+      setFormIncident(null)
+      return
+    }
+    const id = createdIncidentId.toString()
+    let cancelled = false
+    async function loadFormIncident() {
+      const { data: inc, error: incErr } = await supabase
+        .from('incidents')
+        .select(`
+          *,
+          vehicles(id, vehicle_identifier, make, model, registration, plate_number),
+          routes(id, route_number),
+          route_sessions(id, session_date, session_type, driver_id, passenger_assistant_id, routes(route_number))
+        `)
+        .eq('id', id)
+        .single()
+      if (incErr || !inc || cancelled) return
+
+      const { data: relatedEmployees } = await supabase
+        .from('incident_employees')
+        .select('*, employees(id, full_name, role)')
+        .eq('incident_id', id)
+      const { data: relatedPassengers } = await supabase
+        .from('incident_passengers')
+        .select('*, passengers(id, full_name, schools(name))')
+        .eq('incident_id', id)
+
+      let driverInfo: { name: string | null; tasNumber: string | null } | null = null
+      let paInfo: { name: string | null; tasNumber: string | null } | null = null
+      const session = Array.isArray(inc.route_sessions) ? inc.route_sessions[0] : inc.route_sessions
+      if (session?.driver_id) {
+        const { data: d } = await supabase.from('drivers').select('tas_badge_number, employees(full_name)').eq('employee_id', session.driver_id).maybeSingle()
+        if (d) driverInfo = { name: (d as any).employees?.full_name ?? null, tasNumber: (d as any).tas_badge_number ?? null }
+      }
+      if (session?.passenger_assistant_id) {
+        const { data: p } = await supabase.from('passenger_assistants').select('tas_badge_number, employees(full_name)').eq('employee_id', session.passenger_assistant_id).maybeSingle()
+        if (p) paInfo = { name: (p as any).employees?.full_name ?? null, tasNumber: (p as any).tas_badge_number ?? null }
+      }
+      if (!driverInfo || !paInfo) {
+        const route = Array.isArray(inc.routes) ? inc.routes[0] : inc.routes
+        if (route?.id) {
+          const { data: r } = await supabase.from('routes').select('driver_id, passenger_assistant_id, driver:driver_id(drivers(tas_badge_number), employees(full_name)), pa:passenger_assistant_id(passenger_assistants(tas_badge_number), employees(full_name))').eq('id', route.id).maybeSingle()
+          if (r) {
+            const dr = (r as any).driver
+            const pa = (r as any).pa
+            if (!driverInfo && dr) driverInfo = { name: dr.employees?.full_name ?? null, tasNumber: dr.drivers?.tas_badge_number ?? null }
+            if (!paInfo && pa) paInfo = { name: pa.employees?.full_name ?? null, tasNumber: pa.passenger_assistants?.tas_badge_number ?? null }
+          }
+        }
+      }
+
+      if (cancelled) return
+      setFormIncident({
+        ...inc,
+        incident_employees: relatedEmployees ?? [],
+        incident_passengers: relatedPassengers ?? [],
+        driverInfo: driverInfo ?? null,
+        paInfo: paInfo ?? null,
+      })
+    }
+    loadFormIncident()
+    return () => { cancelled = true }
+  }, [createdIncidentId, supabase])
 
   const loadRouteSessions = async () => {
     setLoadingSessions(true)
@@ -236,8 +378,7 @@ export default function CreateIncidentPage() {
         }),
       })
 
-      router.push('/dashboard/incidents')
-      router.refresh()
+      setCreatedIncidentId(incidentId)
     } catch (error: any) {
       console.error('Error creating incident:', error)
       setError(error.message || 'An error occurred while creating the incident')
@@ -257,10 +398,28 @@ export default function CreateIncidentPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Report New Incident</h1>
-          <p className="text-sm text-slate-500">Fill in the details and select involved parties</p>
+          <h1 className="text-xl font-bold text-slate-900">
+            {createdIncidentId ? 'Incident created' : 'Report New Incident'}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {createdIncidentId ? 'Complete the report forms below or view the incident.' : 'Fill in the details and select involved parties'}
+          </p>
         </div>
       </div>
+
+      {createdIncidentId && (
+        <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-green-800 text-sm">
+            <CheckCircle className="h-5 w-5 flex-shrink-0" />
+            <span>Incident #{createdIncidentId} created. Complete TR5/TR6/TR7 forms below or view the incident.</span>
+          </div>
+          <Link href={`/dashboard/incidents/${createdIncidentId}`}>
+            <Button variant="outline" size="sm" className="border-green-300 text-green-800 hover:bg-green-100">
+              View incident
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
@@ -269,12 +428,14 @@ export default function CreateIncidentPage() {
         </div>
       )}
 
-      {formData.route_session_id && (
+      {!createdIncidentId && formData.route_session_id && (
         <div className="rounded-lg bg-violet-50 border border-violet-200 p-2.5 text-sm text-violet-800">
           <strong>Route session pre-selected.</strong> Route, vehicle and crew will be auto-filled.
         </div>
       )}
 
+      {!createdIncidentId && (
+      <>
       {/* Main Form Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Incident Details Section */}
@@ -378,16 +539,21 @@ export default function CreateIncidentPage() {
           </div>
         </div>
 
-        {/* Related Employees Section */}
+        {/* Related Employees Section — crew (driver, PAs) + coordinators for selected route only */}
         <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
           <h2 className="text-sm font-semibold text-slate-700 flex items-center">
             <UserCog className="mr-2 h-4 w-4" />
             Related Employees ({selectedEmployees.length} selected)
           </h2>
+          {!formData.route_id && (
+            <p className="text-xs text-slate-500 mt-0.5">Select a route or route session to choose from crew and coordinators on that route.</p>
+          )}
         </div>
         <div className="p-4">
-          {employees.length === 0 ? (
-            <p className="text-sm text-slate-500 italic">No employees available</p>
+          {!formData.route_id ? (
+            <p className="text-sm text-slate-500 italic">Select a route or route session above to see crew and coordinators.</p>
+          ) : employees.length === 0 ? (
+            <p className="text-sm text-slate-500 italic">No crew or coordinators for this route.</p>
           ) : (
             <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4 max-h-48 overflow-y-auto">
               {employees.map((employee) => (
@@ -412,16 +578,21 @@ export default function CreateIncidentPage() {
           )}
         </div>
 
-        {/* Related Passengers Section */}
+        {/* Related Passengers Section — passengers on selected route only */}
         <div className="border-t border-b border-slate-100 bg-slate-50 px-4 py-2.5">
           <h2 className="text-sm font-semibold text-slate-700 flex items-center">
             <Users className="mr-2 h-4 w-4" />
             Related Passengers ({selectedPassengers.length} selected)
           </h2>
+          {!formData.route_id && (
+            <p className="text-xs text-slate-500 mt-0.5">Select a route or route session to choose from passengers on that route.</p>
+          )}
         </div>
         <div className="p-4">
-          {passengers.length === 0 ? (
-            <p className="text-sm text-slate-500 italic">No passengers available</p>
+          {!formData.route_id ? (
+            <p className="text-sm text-slate-500 italic">Select a route or route session above to see passengers.</p>
+          ) : passengers.length === 0 ? (
+            <p className="text-sm text-slate-500 italic">No passengers on this route.</p>
           ) : (
             <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4 max-h-48 overflow-y-auto">
               {passengers.map((passenger: any) => (
@@ -461,6 +632,17 @@ export default function CreateIncidentPage() {
           {loading ? 'Submitting...' : 'Submit Report'}
         </Button>
       </div>
+      </>
+      )}
+
+      {/* Incident Report Forms (TR5, TR6, TR7) - shown after create */}
+      {formIncident && (
+        <IncidentReportForms
+          incident={formIncident}
+          driverInfo={formIncident.driverInfo ?? undefined}
+          paInfo={formIncident.paInfo ?? undefined}
+        />
+      )}
     </div>
   )
 }

@@ -68,70 +68,70 @@ export default function IncidentReportForms({ incident, driverInfo, paInfo }: In
 
   return (
     <div className="space-y-6">
-      {/* Document Type Selector */}
+      {/* Document Type Selector + Form content in one card to match incident page */}
       <Card>
-        <CardHeader className="bg-navy text-white">
-          <CardTitle className="flex items-center">
-            <FileText className="mr-2 h-5 w-5" />
+        <CardHeader className="bg-slate-50 border-b border-slate-100 py-2.5 px-4">
+          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center">
+            <FileText className="mr-2 h-4 w-4" />
             Incident Report Forms
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-6">
-          <div className="flex gap-2 border-b border-gray-200">
+        <CardContent className="p-4 pt-4">
+          <nav className="flex gap-1 border-b border-slate-200 mb-4" aria-label="Form type">
             <button
               onClick={() => setSelectedDocument('TR5')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
+              className={`px-3 py-2 text-sm font-medium rounded-t-md transition-colors ${
                 selectedDocument === 'TR5'
-                  ? 'border-b-2 border-navy text-navy'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 border border-b-0 border-slate-200 border-b-transparent -mb-px'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               TR5 Form
             </button>
             <button
               onClick={() => setSelectedDocument('TR6')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
+              className={`px-3 py-2 text-sm font-medium rounded-t-md transition-colors ${
                 selectedDocument === 'TR6'
-                  ? 'border-b-2 border-navy text-navy'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 border border-b-0 border-slate-200 border-b-transparent -mb-px'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               TR6 Form
             </button>
             <button
               onClick={() => setSelectedDocument('TR7')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
+              className={`px-3 py-2 text-sm font-medium rounded-t-md transition-colors ${
                 selectedDocument === 'TR7'
-                  ? 'border-b-2 border-navy text-navy'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 border border-b-0 border-slate-200 border-b-transparent -mb-px'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               TR7 Form
             </button>
-          </div>
+          </nav>
+
+          {/* Document Content - TR5 / TR6 / TR7 forms */}
+          {selectedDocument === 'TR5' && (
+            <TR5Form
+              incident={incident}
+              driverInfo={driverInfo}
+              paInfo={paInfo}
+            />
+          )}
+
+          {selectedDocument === 'TR6' && (
+            <TR6Form incident={incident} />
+          )}
+
+          {selectedDocument === 'TR7' && (
+            <TR7Form
+              incident={incident}
+              driverInfo={driverInfo}
+              paInfo={paInfo}
+            />
+          )}
         </CardContent>
       </Card>
-
-      {/* Document Content */}
-      {selectedDocument === 'TR5' && (
-        <TR5Form 
-          incident={incident} 
-          driverInfo={driverInfo}
-          paInfo={paInfo}
-        />
-      )}
-
-      {selectedDocument === 'TR6' && (
-        <TR6Form incident={incident} />
-      )}
-
-      {selectedDocument === 'TR7' && (
-        <TR7Form 
-          incident={incident}
-          driverInfo={driverInfo}
-          paInfo={paInfo}
-        />
-      )}
     </div>
   )
 }

@@ -216,18 +216,19 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
   }
 
   const activeSessions = sessions.filter((s) => s.started_at && !s.ended_at)
-  const completedSessions = sessions.filter((s) => s.ended_at !== null || (!s.started_at && !s.ended_at))
+  // Only show sessions that have started (exclude future / not-started sessions)
+  const startedSessions = sessions.filter((s) => s.started_at != null)
 
-  const filteredCompletedSessions = useMemo(() => {
-    if (!sessionSearch.trim()) return completedSessions
+  const filteredStartedSessions = useMemo(() => {
+    if (!sessionSearch.trim()) return startedSessions
     const term = sessionSearch.trim().toLowerCase()
-    return completedSessions.filter((session) => {
+    return startedSessions.filter((session) => {
       const dateStr = formatDate(session.session_date).toLowerCase()
       const type = (session.session_type || '').toLowerCase()
-      const status = session.ended_at ? 'completed' : !session.started_at && !session.ended_at ? 'not started' : ''
+      const status = session.ended_at ? 'completed' : 'started'
       return dateStr.includes(term) || type.includes(term) || status.includes(term)
     })
-  }, [completedSessions, sessionSearch])
+  }, [startedSessions, sessionSearch])
 
   const getStatusIcon = (status: AttendanceStatus) => {
     const icons: Record<AttendanceStatus, ReactNode> = {
@@ -432,14 +433,14 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
               <Calendar className="h-4 w-4 text-slate-500" />
               Session History
             </h2>
-            {!loading && completedSessions.length > 0 && (
+            {!loading && startedSessions.length > 0 && (
               <span className="px-2 py-0.5 bg-slate-50 text-slate-600 rounded-full text-[10px] font-bold border border-slate-100">
-                {filteredCompletedSessions.length}/{completedSessions.length}
+                {filteredStartedSessions.length}/{startedSessions.length}
               </span>
             )}
           </div>
 
-          {!loading && completedSessions.length > 0 && (
+          {!loading && startedSessions.length > 0 && (
             <div className="mb-2 relative max-w-xs">
               <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
               <Input
@@ -459,13 +460,13 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
 
           {loading ? (
             <p className="text-center text-slate-400 text-sm py-4">Loading...</p>
-          ) : completedSessions.length === 0 ? (
+          ) : startedSessions.length === 0 ? (
             <p className="text-center text-slate-400 text-sm py-4">No sessions recorded.</p>
-          ) : filteredCompletedSessions.length === 0 ? (
+          ) : filteredStartedSessions.length === 0 ? (
             <p className="text-center text-slate-400 text-sm py-4">No matching sessions.</p>
           ) : (
             <div className="space-y-1">
-              {filteredCompletedSessions.map((session) => {
+              {filteredStartedSessions.map((session) => {
                 const isCompleted = session.ended_at !== null
 
                 return (
@@ -618,4 +619,4 @@ export default function RouteSessionsClient({ routeId, passengers }: RouteSessio
       </Card>
     </div >
   )
-}
+} 

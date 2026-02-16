@@ -37,6 +37,7 @@ import {
   BadgeCheck,
   FileText,
   Wrench,
+  User,
 } from 'lucide-react'
 import { useNotificationCount } from '@/hooks/useNotificationCount'
 import { useComplianceNotificationCount } from '@/hooks/useComplianceNotificationCount'
@@ -109,6 +110,8 @@ const navigationGroups: NavGroup[] = [
     name: 'Admin',
     icon: Shield,
     items: [
+      { name: 'Document Requirements', href: '/dashboard/admin/document-requirements', icon: FileText },
+      { name: 'Users', href: '/dashboard/admin/users', icon: Users },
       { name: 'User Approvals', href: '/dashboard/admin/user-approvals', icon: UserCheck },
     ],
   },
@@ -124,6 +127,8 @@ export function Sidebar() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [displayName, setDisplayName] = useState('User')
+  const [displayRole, setDisplayRole] = useState('Member')
 
   const toggleGroup = (groupName: string) => {
     setExpandedGroups((prev) => {
@@ -176,6 +181,26 @@ export function Sidebar() {
     })
     setExpandedGroups(groupsToExpand)
   }, [pathname])
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user?.email) return
+        const { data } = await supabase
+          .from('users')
+          .select('full_name, role, email')
+          .eq('email', user.email)
+          .maybeSingle()
+        const name = data?.full_name || data?.email || user.email
+        setDisplayName(name)
+        setDisplayRole(data?.role || 'Member')
+      } catch {
+        // best-effort; keep defaults
+      }
+    }
+    loadProfile()
+  }, [])
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -320,17 +345,24 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer with Logout */}
+      {/* Footer with Profile + Logout */}
       <div className="border-t border-slate-200/60 p-4 space-y-3">
         <div className="flex items-center gap-3 px-2">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold">
-            A
+            {(displayName || 'U').trim().charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-700 truncate">Admin User</p>
-            <p className="text-xs text-slate-500">Fleet Manager</p>
+            <p className="text-sm font-medium text-slate-700 truncate">{displayName}</p>
+            <p className="text-xs text-slate-500">{displayRole}</p>
           </div>
         </div>
+        <Link
+          href="/dashboard/profile"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+        >
+          <User className="h-4 w-4" />
+          <span>Profile</span>
+        </Link>
         <button
           onClick={handleLogout}
           disabled={isLoggingOut}

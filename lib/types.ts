@@ -22,6 +22,8 @@ export interface User {
   employee_id: number | null
   email: string
   role: string | null
+  full_name?: string | null
+  avatar_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -119,7 +121,9 @@ export interface Vehicle {
   first_aid_expiry: string | null
   fire_extinguisher_expiry: string | null
   taxi_license: string | null
-  taxi_registration_driver: string | null
+  taxi_licence_holder_id: number | null
+  pmi_weeks: number | null
+  last_pmi_date: string | null
   spare_vehicle: boolean | null
   off_the_road: boolean | null
   assigned_to: number | null
@@ -166,6 +170,16 @@ export interface IncidentPassenger {
   passenger_id: number
   created_at: string
   passengers?: Passenger
+}
+
+export interface IncidentPartyEntry {
+  id: number
+  incident_id: number
+  employee_id: number
+  entry_text: string
+  created_at: string
+  updated_at: string
+  employees?: { id: number; full_name: string; role: string }
 }
 
 export interface PassengerUpdate {

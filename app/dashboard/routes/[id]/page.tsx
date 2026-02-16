@@ -101,8 +101,10 @@ async function getRouteDetails(id: string) {
 
 export default async function ViewRoutePage({
   params,
+  searchParams,
 }: {
   params: { id: string }
+  searchParams?: { from?: string }
 }) {
   const data = await getRouteDetails(params.id)
 
@@ -111,13 +113,14 @@ export default async function ViewRoutePage({
   }
 
   const { route, routePasList, passengers, routePoints, vehicle } = data
+  const backHref = searchParams?.from === 'school-overview' ? '/dashboard/school-overview' : '/dashboard/routes'
 
   return (
     <div className="space-y-3">
       {/* Header with Back Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/routes">
+          <Link href={backHref}>
             <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
               <ArrowLeft className="h-4 w-4" />
               Back

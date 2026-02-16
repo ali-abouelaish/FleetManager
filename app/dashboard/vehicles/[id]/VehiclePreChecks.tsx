@@ -55,6 +55,19 @@ interface VehiclePreCheck {
       route_number: string | null
     } | null
   } | null
+  vehicle_pre_check_driver_responses?: Array<{
+    driver_response_id: number
+    created_at: string
+    driver_responses: {
+      id: number
+      employee_id: number
+      response_type: string
+      response_text: string | null
+      response_details: Record<string, unknown>
+      created_at: string
+      employees: { full_name: string } | null
+    } | null
+  }>
 }
 
 interface VehiclePreChecksProps {
@@ -84,6 +97,19 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
         ),
         route_session:route_session_id(
           routes(route_number)
+        ),
+        vehicle_pre_check_driver_responses(
+          driver_response_id,
+          created_at,
+          driver_responses(
+            id,
+            employee_id,
+            response_type,
+            response_text,
+            response_details,
+            created_at,
+            employees(full_name)
+          )
         )
       `)
       .eq('vehicle_id', vehicleId)
@@ -236,6 +262,23 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
                           </p>
                         </div>
                       )}
+
+                      {check.vehicle_pre_check_driver_responses && check.vehicle_pre_check_driver_responses.length > 0 && (
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Driver responses</p>
+                          <ul className="space-y-1.5 text-sm text-slate-700">
+                            {check.vehicle_pre_check_driver_responses.map((link) => (
+                              link.driver_responses && (
+                                <li key={link.driver_response_id}>
+                                  <span className="font-medium">{link.driver_responses.employees?.full_name ?? 'Driver'}:</span>{' '}
+                                  {link.driver_responses.response_text || link.driver_responses.response_type}
+                                  <span className="text-gray-400 text-xs ml-1">{formatDateTime(link.driver_responses.created_at)}</span>
+                                </li>
+                              )
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
 
                     <Button
@@ -344,6 +387,23 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                   <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
                   <p className="text-sm text-gray-700">{selectedCheck.notes}</p>
+                </div>
+              )}
+
+              {selectedCheck.vehicle_pre_check_driver_responses && selectedCheck.vehicle_pre_check_driver_responses.length > 0 && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-2">Driver responses</h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    {selectedCheck.vehicle_pre_check_driver_responses.map((link) => (
+                      link.driver_responses && (
+                        <li key={link.driver_response_id} className="border-l-2 border-slate-300 pl-3">
+                          <span className="font-medium">{link.driver_responses.employees?.full_name ?? 'Driver'}</span>
+                          <span className="text-gray-500 text-xs ml-2">{formatDateTime(link.driver_responses.created_at)}</span>
+                          <p className="mt-0.5">{link.driver_responses.response_text || link.driver_responses.response_type}</p>
+                        </li>
+                      )
+                    ))}
+                  </ul>
                 </div>
               )}
 

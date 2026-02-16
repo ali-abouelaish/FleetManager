@@ -22,10 +22,8 @@ interface PassengerAssistant {
   birth_certificate: boolean
   marriage_certificate: boolean
   photo_taken: boolean
-  private_hire_badge: boolean
   paper_licence: boolean
   taxi_plate_photo: boolean
-  logbook: boolean
   safeguarding_training_completed: boolean
   safeguarding_training_date: string | null
   tas_pats_training_completed: boolean
@@ -60,10 +58,8 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
     birth_certificate: false,
     marriage_certificate: false,
     photo_taken: false,
-    private_hire_badge: false,
     paper_licence: false,
     taxi_plate_photo: false,
-    logbook: false,
     safeguarding_training_completed: false,
     safeguarding_training_date: '',
     tas_pats_training_completed: false,
@@ -83,10 +79,8 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
     birth_cert_file: null,
     marriage_cert_file: null,
     photo_file: null,
-    private_hire_badge_file: null,
     paper_licence_file: null,
     taxi_plate_photo_file: null,
-    logbook_file: null,
     badge_photo_file: null,
   })
 
@@ -126,10 +120,8 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
       birth_certificate: data.birth_certificate || false,
       marriage_certificate: data.marriage_certificate || false,
       photo_taken: data.photo_taken || false,
-      private_hire_badge: data.private_hire_badge || false,
       paper_licence: data.paper_licence || false,
       taxi_plate_photo: data.taxi_plate_photo || false,
-      logbook: data.logbook || false,
       safeguarding_training_completed: data.safeguarding_training_completed || false,
       safeguarding_training_date: data.safeguarding_training_date ? data.safeguarding_training_date.split('T')[0] : '',
       tas_pats_training_completed: data.tas_pats_training_completed || false,
@@ -204,10 +196,8 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
         birth_cert_file: 'Birth Certificate',
         marriage_cert_file: 'Marriage Certificate',
         photo_file: 'Photo',
-        private_hire_badge_file: 'Private Hire Badge',
         paper_licence_file: 'Paper Licence',
         taxi_plate_photo_file: 'Taxi Plate Photo',
-        logbook_file: 'Logbook',
         badge_photo_file: 'ID Badge Photo',
       }
 
@@ -254,10 +244,8 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
           birth_certificate: formData.birth_certificate,
           marriage_certificate: formData.marriage_certificate,
           photo_taken: formData.photo_taken,
-          private_hire_badge: formData.private_hire_badge,
           paper_licence: formData.paper_licence,
           taxi_plate_photo: formData.taxi_plate_photo,
-          logbook: formData.logbook,
           safeguarding_training_completed: formData.safeguarding_training_completed,
           safeguarding_training_date: formData.safeguarding_training_date || null,
           tas_pats_training_completed: formData.tas_pats_training_completed,
@@ -281,12 +269,9 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
         }),
       }).catch(err => console.error('Audit log error:', err))
 
-      // Insert docs
+      // Insert docs and link to PA
       if (uploadedDocuments.length > 0 && assistant) {
         const documentRecords = uploadedDocuments.map(doc => ({
-          employee_id: assistant.employee_id,
-          owner_type: 'employee',
-          owner_id: assistant.employee_id,
           file_url: JSON.stringify([doc.fileUrl]),
           file_name: doc.fileName,
           file_type: doc.fileType,
@@ -295,7 +280,18 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
           uploaded_at: new Date().toISOString(),
         }))
 
-        await supabase.from('documents').insert(documentRecords);
+        const { data: insertedDocs, error: documentsError } = await supabase
+          .from('documents')
+          .insert(documentRecords)
+          .select('id')
+        if (documentsError) throw documentsError
+        if (insertedDocs?.length) {
+          const links = insertedDocs.map((doc: any) => ({
+            document_id: doc.id,
+            pa_employee_id: assistant.employee_id,
+          }))
+          await supabase.from('document_pa_links').insert(links)
+        }
       }
 
       router.push(`/dashboard/assistants/${params.id}`)
@@ -473,7 +469,6 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b pb-2">Checklist</h2>
               <div className="space-y-2">
                 {[
-                  { id: 'private_hire_badge', label: 'Private Hire Badge' },
                   { id: 'dbs_check', label: 'DBS Checked', warning: 'Requires valid number' },
                   { id: 'birth_certificate', label: 'Birth Certificate' },
                 ].map((item) => (

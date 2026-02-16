@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
-import { ArrowLeft, Trash2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Trash2, AlertCircle, UserCog } from 'lucide-react'
 import Link from 'next/link'
+
+type Coordinator = { id: number; full_name: string }
 
 function EditSchoolPageClient({ id }: { id: string }) {
   const router = useRouter()
@@ -15,6 +17,8 @@ function EditSchoolPageClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [coordinators, setCoordinators] = useState<Coordinator[]>([])
+  const [selectedCoordinatorIds, setSelectedCoordinatorIds] = useState<number[]>([])
 
   const [formData, setFormData] = useState({
     name: '',
@@ -61,6 +65,27 @@ function EditSchoolPageClient({ id }: { id: string }) {
     loadSchool()
   }, [id, supabase])
 
+  useEffect(() => {
+    async function loadCoordinatorsAndAssignments() {
+      const [coordsRes, assignmentsRes] = await Promise.all([
+        supabase
+          .from('employees')
+          .select('id, full_name')
+          .eq('role', 'Coordinator')
+          .order('full_name'),
+        supabase
+          .from('coordinator_school_assignments')
+          .select('employee_id')
+          .eq('school_id', id),
+      ])
+      if (coordsRes.data) setCoordinators(coordsRes.data as Coordinator[])
+      if (assignmentsRes.data) {
+        setSelectedCoordinatorIds(assignmentsRes.data.map((r: { employee_id: number }) => r.employee_id))
+      }
+    }
+    loadCoordinatorsAndAssignments()
+  }, [id, supabase])
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setError(null)
@@ -73,6 +98,24 @@ function EditSchoolPageClient({ id }: { id: string }) {
         .eq('id', id)
 
       if (error) throw error
+
+      // Sync coordinator assignments: replace all for this school
+      const { error: deleteErr } = await supabase
+        .from('coordinator_school_assignments')
+        .delete()
+        .eq('school_id', id)
+      if (deleteErr) throw deleteErr
+
+      if (selectedCoordinatorIds.length > 0) {
+        const rows = selectedCoordinatorIds.map((employee_id) => ({
+          school_id: parseInt(id, 10),
+          employee_id,
+        }))
+        const { error: insertErr } = await supabase
+          .from('coordinator_school_assignments')
+          .insert(rows)
+        if (insertErr) throw insertErr
+      }
 
       // Audit log (non-blocking)
       fetch('/api/audit', {
@@ -250,6 +293,40 @@ function EditSchoolPageClient({ id }: { id: string }) {
                 className="h-9"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Coordinators Section */}
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <UserCog className="h-4 w-4" />
+            Coordinators
+          </h2>
+        </div>
+        <div className="p-4">
+          <p className="text-xs text-slate-500 mb-3">Assign one or more coordinators to this school. They will be responsible for this school in the system.</p>
+          <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2 bg-slate-50">
+            {coordinators.length === 0 ? (
+              <p className="text-sm text-slate-500">No coordinators found. Create employees with role Coordinator first.</p>
+            ) : (
+              coordinators.map((coord) => (
+                <label key={coord.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedCoordinatorIds.includes(coord.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedCoordinatorIds((prev) => [...prev, coord.id])
+                      } else {
+                        setSelectedCoordinatorIds((prev) => prev.filter((sid) => sid !== coord.id))
+                      }
+                    }}
+                    className="rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]"
+                  />
+                  <span className="text-sm text-slate-900">{coord.full_name}</span>
+                </label>
+              ))
+            )}
           </div>
         </div>
       </div>

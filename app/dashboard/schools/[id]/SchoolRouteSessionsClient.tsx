@@ -50,7 +50,8 @@ export default function SchoolRouteSessionsClient({ schoolId, routes }: SchoolRo
       .limit(100)
 
     if (!error && data) {
-      setSessions(data as RouteServiceHistory[])
+      // Only show sessions that have started (exclude future / not-started sessions)
+      setSessions((data as RouteServiceHistory[]).filter((s) => s.started_at != null))
     }
     setLoading(false)
   }
