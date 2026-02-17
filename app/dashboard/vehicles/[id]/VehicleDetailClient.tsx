@@ -200,7 +200,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
         })()
       : null
 
-  const vehicleCertificates = [
+  const vehicleCertificates: Array<{ label: string; date: string | null; important?: boolean; ref?: string }> = [
     { label: 'Insurance', date: vehicle.insurance_expiry_date, important: true },
     { label: 'MOT', date: vehicle.mot_date, important: true },
     { label: 'Tax', date: vehicle.tax_date },
