@@ -32,7 +32,6 @@ export default function CreateVehiclePage() {
     first_aid_file: null,
     fire_extinguisher_file: null,
     tax_file: null,
-    plate_file: null,
     logbook_file: null,
     service_record_file: null,
   })
@@ -45,22 +44,18 @@ export default function CreateVehiclePage() {
     model: '',
     plate_number: '',
     colour: '',
-    plate_expiry_date: '',
     vehicle_type: '',
     ownership_type: '',
     council_assignment: '',
     mot_date: '',
     tax_date: '',
     insurance_expiry_date: '',
-    taxi_badge_number: '',
-    taxi_badge_expiry_date: '',
     tail_lift: false,
     loler_expiry_date: '',
     last_serviced: '',
     service_booked_day: '',
     first_aid_expiry: '',
     fire_extinguisher_expiry: '',
-    taxi_license: '',
     taxi_licence_holder_id: '',
     spare_vehicle: false,
     off_the_road: false,
@@ -139,14 +134,22 @@ export default function CreateVehiclePage() {
         ...vehicleFields
       } = formData
 
-      const dataToInsert = {
-        ...vehicleFields,
+      // Convert empty strings to null for optional fields
+      const cleanValue = (val: string) => (val === '' ? null : val)
+      
+      const dataToInsert: any = {
+        vehicle_identifier: cleanValue(formData.vehicle_identifier),
+        registration: cleanValue(formData.registration),
+        make: cleanValue(formData.make),
+        model: cleanValue(formData.model),
+        plate_number: cleanValue(formData.plate_number),
+        colour: cleanValue(formData.colour),
+        vehicle_type: cleanValue(formData.vehicle_type),
         registration_expiry_date: formData.registration_expiry_date || null,
-        plate_expiry_date: formData.plate_expiry_date || null,
         mot_date: formData.mot_date || null,
         tax_date: formData.tax_date || null,
         insurance_expiry_date: formData.insurance_expiry_date || null,
-        taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
+        tail_lift: formData.tail_lift,
         loler_expiry_date: formData.loler_expiry_date || null,
         last_serviced: formData.last_serviced || null,
         service_booked_day: formData.service_booked_day || null,
@@ -154,18 +157,26 @@ export default function CreateVehiclePage() {
         fire_extinguisher_expiry: formData.fire_extinguisher_expiry || null,
         ownership_type: formData.ownership_type || null,
         council_assignment: formData.council_assignment || null,
+        spare_vehicle: formData.spare_vehicle,
+        off_the_road: formData.off_the_road,
         assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
         taxi_licence_holder_id: formData.taxi_licence_holder_id ? parseInt(formData.taxi_licence_holder_id) : null,
         pmi_weeks: formData.vehicle_type === 'PSV' && formData.pmi_weeks ? parseInt(formData.pmi_weeks, 10) : null,
         last_pmi_date: formData.vehicle_type === 'PSV' && formData.last_pmi_date ? formData.last_pmi_date : null,
+        notes: cleanValue(formData.notes),
       }
 
+      console.log('Submitting vehicle data:', dataToInsert)
+      
       const { data, error } = await supabase
         .from('vehicles')
         .insert([dataToInsert])
         .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Vehicle insert error:', error)
+        throw error
+      }
 
       if (data && data[0]) {
         const vehicleId = data[0].id
@@ -189,7 +200,6 @@ export default function CreateVehiclePage() {
           first_aid_file: 'First Aid Certificate',
           fire_extinguisher_file: 'Fire Extinguisher Certificate',
           tax_file: 'Tax Certificate',
-          plate_file: 'Plate Certificate',
           logbook_file: 'Logbook',
           service_record_file: 'Service Record',
         }
@@ -288,7 +298,9 @@ export default function CreateVehiclePage() {
       router.push('/dashboard/vehicles')
       router.refresh()
     } catch (error: any) {
-      setError(error.message || 'An error occurred')
+      console.error('Vehicle creation error:', error)
+      const errorMessage = error.message || error.details || error.hint || 'An error occurred while creating the vehicle'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -450,7 +462,7 @@ export default function CreateVehiclePage() {
                     <option value="Car">Car</option>
                     <option value="Coach">Coach</option>
                   </Select>
-                  <p className="text-xs text-slate-500">PHV: taxi licence, MOT, LOLER. PSV: PMI interim checks.</p>
+                  <p className="text-xs text-slate-500">PHV: taxi licence, MOT, LOLER. PSV: PMI.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -534,32 +546,6 @@ export default function CreateVehiclePage() {
                       id="registration_file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('registration_file', e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Plate */}
-                <div className="space-y-3 p-3 border rounded-lg">
-                  <h3 className="font-semibold text-slate-700 text-sm">Plate</h3>
-                  <div>
-                    <Label htmlFor="plate_expiry_date">Expiry Date</Label>
-                    <Input
-                      id="plate_expiry_date"
-                      type="date"
-                      value={formData.plate_expiry_date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, plate_expiry_date: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="plate_file">Upload Certificate</Label>
-                    <input
-                      type="file"
-                      id="plate_file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('plate_file', e.target.files?.[0] || null)}
                       className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
@@ -650,33 +636,7 @@ export default function CreateVehiclePage() {
                 <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
                   <h3 className="font-semibold text-navy flex items-center">
                     Taxi Badge
-                    <span className="ml-2 text-xs text-red-600 font-bold">REQUIRED</span>
                   </h3>
-                  <div>
-                    <Label htmlFor="taxi_badge_number">Badge Number</Label>
-                    <Input
-                      id="taxi_badge_number"
-                      value={formData.taxi_badge_number}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taxi_badge_number: e.target.value })
-                      }
-                      placeholder="e.g., TAXI67890"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="taxi_badge_expiry_date">
-                      Expiry Date <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="taxi_badge_expiry_date"
-                      type="date"
-                      value={formData.taxi_badge_expiry_date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taxi_badge_expiry_date: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
                   <div>
                     <Label htmlFor="taxi_badge_file">Upload Certificate</Label>
                     <input
@@ -731,10 +691,10 @@ export default function CreateVehiclePage() {
                 </div>
                 )}
 
-                {/* PSV: PMI interim check */}
+                {/* PSV: PMI */}
                 {formData.vehicle_type === 'PSV' && (
                 <div className="space-y-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
-                  <h3 className="font-semibold text-slate-800 text-sm">PSV – PMI interim check</h3>
+                  <h3 className="font-semibold text-slate-800 text-sm">PSV – PMI</h3>
                   <p className="text-xs text-slate-600">Next due is calculated from last PMI date + interval (weeks).</p>
                   <div>
                     <Label htmlFor="pmi_weeks">Interval (weeks between checks)</Label>

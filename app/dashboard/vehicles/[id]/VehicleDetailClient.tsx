@@ -204,10 +204,8 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
     { label: 'Insurance', date: vehicle.insurance_expiry_date, important: true },
     { label: 'MOT', date: vehicle.mot_date, important: true },
     { label: 'Tax', date: vehicle.tax_date },
-    { label: 'Taxi Badge', date: vehicle.taxi_badge_expiry_date, ref: vehicle.taxi_badge_number },
     { label: 'LOLER', date: vehicle.loler_expiry_date },
     ...(nextPmiDue ? [{ label: 'PMI Due', date: nextPmiDue, important: true }] : []),
-    { label: 'Plate Expiry', date: vehicle.plate_expiry_date },
     { label: 'Registration Expiry', date: vehicle.registration_expiry_date },
     { label: 'First Aid', date: vehicle.first_aid_expiry },
     { label: 'Fire Extinguisher', date: vehicle.fire_extinguisher_expiry },
@@ -403,6 +401,39 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
               </div>
             </Card>
 
+            {/* PMI (PSV only) - Always show for PSV vehicles */}
+            {vehicle.vehicle_type === 'PSV' && (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="p-3 border-b bg-slate-50/50">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                      <Shield className="h-4 w-4" /> PMI
+                    </h3>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500">Last PMI</p>
+                      <p className="text-sm font-medium text-slate-900">
+                        {vehicle.last_pmi_date ? formatDate(vehicle.last_pmi_date) : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Interval</p>
+                      <p className="text-sm font-medium text-slate-900">
+                        {vehicle.pmi_weeks != null ? `${vehicle.pmi_weeks} weeks` : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Next PMI due</p>
+                      <p className="text-sm font-medium text-slate-900">
+                        {nextPmiDue ? formatDate(nextPmiDue) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Maintenance & safety - compact grid */}
             <Card>
               <CardContent className="p-0">
@@ -416,7 +447,6 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                   <FieldWithAudit fieldName="service_booked_day" label="Service Booked" value={vehicle.service_booked_day} formatValue={formatDate} />
                   <FieldWithAudit fieldName="first_aid_expiry" label="First Aid Expiry" value={vehicle.first_aid_expiry} formatValue={formatDate} />
                   <FieldWithAudit fieldName="fire_extinguisher_expiry" label="Fire Extinguisher" value={vehicle.fire_extinguisher_expiry} formatValue={formatDate} />
-                  <FieldWithAudit fieldName="taxi_license" label="Taxi License" value={vehicle.taxi_license} />
                 </div>
               </CardContent>
             </Card>

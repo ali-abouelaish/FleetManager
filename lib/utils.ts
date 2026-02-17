@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDate(date: string | Date | null): string {
   if (!date) return 'N/A'
   const d = new Date(date)
-  return d.toLocaleDateString('en-US', { 
+  return d.toLocaleDateString('en-GB', { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric' 
@@ -18,7 +18,7 @@ export function formatDate(date: string | Date | null): string {
 export function formatDateTime(date: string | Date | null): string {
   if (!date) return 'N/A'
   const d = new Date(date)
-  return d.toLocaleString('en-US', { 
+  return d.toLocaleString('en-GB', { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric',
@@ -30,7 +30,7 @@ export function formatDateTime(date: string | Date | null): string {
 export function formatTime(date: string | Date | null): string {
   if (!date) return '—'
   const d = new Date(date)
-  return d.toLocaleTimeString('en-US', { 
+  return d.toLocaleTimeString('en-GB', { 
     hour: '2-digit',
     minute: '2-digit'
   })

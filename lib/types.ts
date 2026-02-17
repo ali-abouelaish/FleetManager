@@ -32,8 +32,6 @@ export interface Driver {
   employee_id: number
   tas_badge_number: string | null
   tas_badge_expiry_date: string | null
-  taxi_badge_number: string | null
-  taxi_badge_expiry_date: string | null
   dbs_expiry_date: string | null
   psv_license: boolean | null
   updated_at: string
@@ -120,7 +118,6 @@ export interface Vehicle {
   service_booked_day: string | null
   first_aid_expiry: string | null
   fire_extinguisher_expiry: string | null
-  taxi_license: string | null
   taxi_licence_holder_id: number | null
   pmi_weeks: number | null
   last_pmi_date: string | null

@@ -164,14 +164,14 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
           ${routeInfo ? `
             <div class="meta">
               <strong>Route:</strong> ${routeInfo.route_number || 'N/A'} | 
-              <strong>Date:</strong> ${new Date(routeInfo.session_date).toLocaleDateString()} | 
+              <strong>Date:</strong> ${new Date(routeInfo.session_date).toLocaleDateString('en-GB')} | 
               <strong>Session:</strong> ${routeInfo.session_type}<br>
               <strong>Driver:</strong> ${routeInfo.driver_name} | 
               <strong>PA:</strong> ${routeInfo.passenger_assistant_name}
             </div>
           ` : ''}
           <div class="meta">
-            Generated: ${new Date().toLocaleString()}
+            Generated: ${new Date().toLocaleString('en-GB')}
           </div>
         </div>
 
@@ -191,7 +191,7 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
                 </div>
                 ${incident.description ? `<div class="description">${incident.description}</div>` : ''}
                 <div class="date">
-                  Reported: ${new Date(incident.reported_at).toLocaleString()}
+                    Reported: ${new Date(incident.reported_at).toLocaleString('en-GB')}
                 </div>
               </div>
             `).join('')}
@@ -218,7 +218,7 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
                     </div>
                   </div>
                   <div class="date">
-                    Uploaded: ${new Date(doc.uploaded_at).toLocaleString()}
+                    Uploaded: ${new Date(doc.uploaded_at).toLocaleString('en-GB')}
                   </div>
                 </div>
               `

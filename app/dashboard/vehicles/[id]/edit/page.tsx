@@ -9,8 +9,11 @@ import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft, Trash2, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+
+type TabType = 'basic' | 'certificates' | 'documents' | 'maintenance' | 'seating' | 'notes'
+
 function EditVehiclePageClient({ id }: { id: string }) {
   const router = useRouter()
   const supabase = createClient()
@@ -18,6 +21,21 @@ function EditVehiclePageClient({ id }: { id: string }) {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [drivers, setDrivers] = useState<Array<{ id: number; name: string }>>([])
+  const [activeTab, setActiveTab] = useState<TabType>('basic')
+
+  // File uploads state
+  const [fileUploads, setFileUploads] = useState<{ [key: string]: File | null }>({
+    registration_file: null,
+    mot_file: null,
+    insurance_file: null,
+    taxi_badge_file: null,
+    loler_file: null,
+    first_aid_file: null,
+    fire_extinguisher_file: null,
+    tax_file: null,
+    logbook_file: null,
+    service_record_file: null,
+  })
 
   const [formData, setFormData] = useState({
     vehicle_identifier: '',
@@ -27,27 +45,30 @@ function EditVehiclePageClient({ id }: { id: string }) {
     model: '',
     plate_number: '',
     colour: '',
-    plate_expiry_date: '',
     vehicle_type: '',
     ownership_type: '',
     council_assignment: '',
     mot_date: '',
     tax_date: '',
     insurance_expiry_date: '',
-    taxi_badge_number: '',
-    taxi_badge_expiry_date: '',
     tail_lift: false,
     loler_expiry_date: '',
     last_serviced: '',
     service_booked_day: '',
     first_aid_expiry: '',
     fire_extinguisher_expiry: '',
-    taxi_license: '',
     taxi_licence_holder_id: '',
     spare_vehicle: false,
     off_the_road: false,
     assigned_to: '',
     notes: '',
+    // Seating plan fields
+    seating_plan_name: '',
+    total_capacity: '',
+    rows: '',
+    seats_per_row: '',
+    wheelchair_spaces: '',
+    seating_notes: '',
     pmi_weeks: '',
     last_pmi_date: '',
   })
@@ -73,6 +94,29 @@ function EditVehiclePageClient({ id }: { id: string }) {
     loadDrivers()
   }, [supabase])
 
+  const handleFileChange = (fieldName: string, file: File | null) => {
+    setFileUploads(prev => ({
+      ...prev,
+      [fieldName]: file
+    }))
+  }
+
+  const handleNext = () => {
+    const tabs: TabType[] = ['basic', 'certificates', 'documents', 'maintenance', 'seating', 'notes']
+    const currentIndex = tabs.indexOf(activeTab)
+    if (currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1])
+    }
+  }
+
+  const handlePrevious = () => {
+    const tabs: TabType[] = ['basic', 'certificates', 'documents', 'maintenance', 'seating', 'notes']
+    const currentIndex = tabs.indexOf(activeTab)
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1])
+    }
+  }
+
   useEffect(() => {
     async function loadVehicle() {
       const { data, error } = await supabase
@@ -95,30 +139,52 @@ function EditVehiclePageClient({ id }: { id: string }) {
           model: data.model || '',
           plate_number: data.plate_number || '',
           colour: data.colour || '',
-          plate_expiry_date: data.plate_expiry_date || '',
           vehicle_type: data.vehicle_type || '',
           ownership_type: data.ownership_type || '',
           council_assignment: data.council_assignment || '',
           mot_date: data.mot_date || '',
           tax_date: data.tax_date || '',
           insurance_expiry_date: data.insurance_expiry_date || '',
-          taxi_badge_number: data.taxi_badge_number || '',
-          taxi_badge_expiry_date: data.taxi_badge_expiry_date || '',
           tail_lift: data.tail_lift || false,
           loler_expiry_date: data.loler_expiry_date || '',
           last_serviced: data.last_serviced || '',
           service_booked_day: data.service_booked_day || '',
           first_aid_expiry: data.first_aid_expiry || '',
           fire_extinguisher_expiry: data.fire_extinguisher_expiry || '',
-          taxi_license: data.taxi_license || '',
           taxi_licence_holder_id: data.taxi_licence_holder_id ? String(data.taxi_licence_holder_id) : '',
           spare_vehicle: data.spare_vehicle || false,
           off_the_road: data.off_the_road || false,
           assigned_to: data.assigned_to ? String(data.assigned_to) : '',
           notes: data.notes || '',
+          // Seating plan fields - load from seating plan if exists
+          seating_plan_name: '',
+          total_capacity: '',
+          rows: '',
+          seats_per_row: '',
+          wheelchair_spaces: '',
+          seating_notes: '',
           pmi_weeks: data.pmi_weeks != null ? String(data.pmi_weeks) : '',
           last_pmi_date: data.last_pmi_date || '',
         })
+        
+        // Load seating plan if exists
+        const { data: seatingData } = await supabase
+          .from('vehicle_seating_plans')
+          .select('*')
+          .eq('vehicle_id', parseInt(id))
+          .maybeSingle()
+        
+        if (seatingData) {
+          setFormData(prev => ({
+            ...prev,
+            seating_plan_name: seatingData.name || '',
+            total_capacity: String(seatingData.total_capacity || ''),
+            rows: String(seatingData.rows || ''),
+            seats_per_row: String(seatingData.seats_per_row || ''),
+            wheelchair_spaces: String(seatingData.wheelchair_spaces || ''),
+            seating_notes: seatingData.notes || '',
+          }))
+        }
       }
     }
 
@@ -132,14 +198,33 @@ function EditVehiclePageClient({ id }: { id: string }) {
 
     try {
       // Convert empty date strings to null
-      const dataToUpdate = {
-        ...formData,
+      // Exclude seating plan fields and file uploads from vehicle update
+      const {
+        seating_plan_name,
+        total_capacity,
+        rows,
+        seats_per_row,
+        wheelchair_spaces,
+        seating_notes,
+        ...vehicleFields
+      } = formData
+
+      // Convert empty strings to null for optional fields
+      const cleanValue = (val: string) => (val === '' ? null : val)
+      
+      const dataToUpdate: any = {
+        vehicle_identifier: cleanValue(formData.vehicle_identifier),
+        registration: cleanValue(formData.registration),
+        make: cleanValue(formData.make),
+        model: cleanValue(formData.model),
+        plate_number: cleanValue(formData.plate_number),
+        colour: cleanValue(formData.colour),
+        vehicle_type: cleanValue(formData.vehicle_type),
         registration_expiry_date: formData.registration_expiry_date || null,
-        plate_expiry_date: formData.plate_expiry_date || null,
         mot_date: formData.mot_date || null,
         tax_date: formData.tax_date || null,
         insurance_expiry_date: formData.insurance_expiry_date || null,
-        taxi_badge_expiry_date: formData.taxi_badge_expiry_date || null,
+        tail_lift: formData.tail_lift,
         loler_expiry_date: formData.loler_expiry_date || null,
         last_serviced: formData.last_serviced || null,
         service_booked_day: formData.service_booked_day || null,
@@ -147,18 +232,122 @@ function EditVehiclePageClient({ id }: { id: string }) {
         fire_extinguisher_expiry: formData.fire_extinguisher_expiry || null,
         ownership_type: formData.ownership_type || null,
         council_assignment: formData.council_assignment || null,
+        spare_vehicle: formData.spare_vehicle,
+        off_the_road: formData.off_the_road,
         assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
         taxi_licence_holder_id: formData.taxi_licence_holder_id ? parseInt(formData.taxi_licence_holder_id) : null,
         pmi_weeks: formData.vehicle_type === 'PSV' && formData.pmi_weeks ? parseInt(formData.pmi_weeks, 10) : null,
         last_pmi_date: formData.vehicle_type === 'PSV' && formData.last_pmi_date ? formData.last_pmi_date : null,
+        notes: cleanValue(formData.notes),
       }
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('vehicles')
         .update(dataToUpdate)
         .eq('id', id)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Upload files to Supabase Storage
+      const uploadedDocuments: Array<{
+        fileUrl: string
+        fileName: string
+        fileType: string
+        docType: string
+        filePath: string
+      }> = []
+
+      // Map file keys to document types
+      const fileKeyToDocType: { [key: string]: string } = {
+        registration_file: 'Plate Certificate',
+        mot_file: 'MOT Certificate',
+        insurance_file: 'Vehicle Insurance',
+        taxi_badge_file: 'Taxi Badge',
+        loler_file: 'LOLER Certificate',
+        first_aid_file: 'First Aid Certificate',
+        fire_extinguisher_file: 'Fire Extinguisher Certificate',
+        tax_file: 'Tax Certificate',
+        logbook_file: 'Logbook',
+        service_record_file: 'Service Record',
+      }
+
+      for (const [key, file] of Object.entries(fileUploads)) {
+        if (file) {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `vehicles/${id}/${key}_${Date.now()}.${fileExt}`
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('VEHICLE_DOCUMENTS')
+            .upload(fileName, file)
+
+          if (uploadError) {
+            console.error(`Error uploading file ${file.name}:`, uploadError)
+            continue
+          }
+
+          if (uploadData) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('VEHICLE_DOCUMENTS')
+              .getPublicUrl(fileName)
+
+            uploadedDocuments.push({
+              fileUrl: publicUrl,
+              fileName: file.name,
+              fileType: file.type || 'application/octet-stream',
+              docType: fileKeyToDocType[key] || 'Certificate',
+              filePath: fileName,
+            })
+          }
+        }
+      }
+
+      // Create document records and link to vehicle via document_vehicle_links
+      if (uploadedDocuments.length > 0) {
+        for (const doc of uploadedDocuments) {
+          const { data: docRow, error: docErr } = await supabase
+            .from('documents')
+            .insert({
+              file_url: JSON.stringify([doc.fileUrl]),
+              file_name: doc.fileName,
+              file_type: doc.fileType,
+              file_path: doc.filePath,
+              doc_type: doc.docType,
+              uploaded_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single()
+          if (docErr) {
+            console.error('Error creating document record:', docErr)
+            continue
+          }
+          if (docRow?.id) {
+            await supabase.from('document_vehicle_links').insert({
+              document_id: docRow.id,
+              vehicle_id: parseInt(id),
+            })
+          }
+        }
+      }
+
+      // Update seating plan if provided
+      if (formData.seating_plan_name && formData.total_capacity && formData.rows && formData.seats_per_row) {
+        try {
+          await fetch(`/api/vehicles/${id}/seating`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: formData.seating_plan_name,
+              total_capacity: parseInt(formData.total_capacity),
+              rows: parseInt(formData.rows),
+              seats_per_row: parseInt(formData.seats_per_row),
+              wheelchair_spaces: parseInt(formData.wheelchair_spaces) || 0,
+              notes: formData.seating_notes || null,
+            }),
+          })
+        } catch (seatingError) {
+          console.error('Error updating seating plan:', seatingError)
+        }
+      }
 
       await fetch('/api/audit', {
         method: 'POST',
@@ -231,392 +420,870 @@ function EditVehiclePageClient({ id }: { id: string }) {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Vehicle Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="text-sm text-red-800">{error}</div>
-              </div>
-            )}
+      {error && (
+        <Card className="border-l-4 border-red-500 bg-red-50">
+          <CardContent className="py-4">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_identifier">Vehicle Identifier</Label>
-                <Input
-                  id="vehicle_identifier"
-                  value={formData.vehicle_identifier}
-                  onChange={(e) =>
-                    setFormData({ ...formData, vehicle_identifier: e.target.value })
-                  }
-                />
-              </div>
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Form sections">
+          {[
+            { id: 'basic', label: '🚗 Basic Info', icon: '🚗' },
+            { id: 'certificates', label: '📜 Certificates', icon: '📜' },
+            { id: 'documents', label: '📄 Documents', icon: '📄' },
+            { id: 'maintenance', label: '🔧 Maintenance & Status', icon: '🔧' },
+            { id: 'seating', label: '🪑 Seating Plan', icon: '🪑' },
+            { id: 'notes', label: '📝 Notes', icon: '📝' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`
+                border-b-2 px-1 py-3 text-sm font-medium transition-colors
+                ${activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}
+              `}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="registration">Registration</Label>
-                <Input
-                  id="registration"
-                  value={formData.registration}
-                  onChange={(e) =>
-                    setFormData({ ...formData, registration: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
-                <Input
-                  id="registration_expiry_date"
-                  type="date"
-                  value={formData.registration_expiry_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, registration_expiry_date: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="plate_number">Plate Number</Label>
-                <Input
-                  id="plate_number"
-                  value={formData.plate_number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, plate_number: e.target.value })
-                  }
-                  placeholder="e.g., AB12 CDE"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="make">Make</Label>
-                <Input
-                  id="make"
-                  value={formData.make}
-                  onChange={(e) =>
-                    setFormData({ ...formData, make: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="model">Model</Label>
-                <Input
-                  id="model"
-                  value={formData.model}
-                  onChange={(e) =>
-                    setFormData({ ...formData, model: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="colour">Colour</Label>
-                <Input
-                  id="colour"
-                  value={formData.colour}
-                  onChange={(e) =>
-                    setFormData({ ...formData, colour: e.target.value })
-                  }
-                  placeholder="e.g., Red, Blue, White"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="vehicle_type">Vehicle Type</Label>
-                <Select
-                  id="vehicle_type"
-                  value={formData.vehicle_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, vehicle_type: e.target.value })
-                  }
-                >
-                  <option value="">Select type</option>
-                  <option value="PHV">PHV (Private Hire / Taxi)</option>
-                  <option value="PSV">PSV (Public Service Vehicle)</option>
-                  <option value="Minibus">Minibus</option>
-                  <option value="Van">Van</option>
-                  <option value="Car">Car</option>
-                  <option value="Coach">Coach</option>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ownership_type">Ownership Type</Label>
-                <Select
-                  id="ownership_type"
-                  value={formData.ownership_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, ownership_type: e.target.value })
-                  }
-                >
-                  <option value="">Select type</option>
-                  <option value="County Cars">County Cars</option>
-                  <option value="NBT">NBT</option>
-                  <option value="Privately Owned">Privately Owned</option>
-                  <option value="Leased">Leased</option>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="council_assignment">Council Assignment</Label>
-                <Input
-                  id="council_assignment"
-                  value={formData.council_assignment}
-                  onChange={(e) =>
-                    setFormData({ ...formData, council_assignment: e.target.value })
-                  }
-                  placeholder="e.g., Council name or reference"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="insurance_expiry_date">Vehicle Insurance - Expiry Date</Label>
-                <Input
-                  id="insurance_expiry_date"
-                  type="date"
-                  value={formData.insurance_expiry_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, insurance_expiry_date: e.target.value })
-                  }
-                />
-              </div>
-
-              {formData.vehicle_type === 'PHV' && (
-              <div className="space-y-2">
-                <Label htmlFor="mot_date">MOT - Expiry Date</Label>
-                <Input
-                  id="mot_date"
-                  type="date"
-                  value={formData.mot_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, mot_date: e.target.value })
-                  }
-                />
-              </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="tax_date">Tax Date</Label>
-                <Input
-                  id="tax_date"
-                  type="date"
-                  value={formData.tax_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tax_date: e.target.value })
-                  }
-                />
-              </div>
-
-              {formData.vehicle_type === 'PHV' && (
-              <>
-              <div className="space-y-2">
-                <Label htmlFor="taxi_badge_number">
-                  Taxi Badge - Badge Number
-                </Label>
-                <Input
-                  id="taxi_badge_number"
-                  value={formData.taxi_badge_number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, taxi_badge_number: e.target.value })
-                  }
-                  placeholder="e.g., TAXI67890"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="taxi_badge_expiry_date">
-                  Taxi Badge - Expiry Date <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="taxi_badge_expiry_date"
-                  type="date"
-                  value={formData.taxi_badge_expiry_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, taxi_badge_expiry_date: e.target.value })
-                  }
-                  required={formData.vehicle_type === 'PHV'}
-                />
-              </div>
-              </>
-              )}
-
-              {formData.vehicle_type === 'PSV' && (
-              <>
-              <div className="space-y-2">
-                <Label htmlFor="pmi_weeks">PMI interval (weeks between checks)</Label>
-                <Input
-                  id="pmi_weeks"
-                  type="number"
-                  min={1}
-                  max={52}
-                  value={formData.pmi_weeks}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pmi_weeks: e.target.value })
-                  }
-                  placeholder="e.g. 4"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_pmi_date">Last PMI date</Label>
-                <Input
-                  id="last_pmi_date"
-                  type="date"
-                  value={formData.last_pmi_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, last_pmi_date: e.target.value })
-                  }
-                />
-              </div>
-              </>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="last_serviced">Last Serviced</Label>
-                <Input
-                  id="last_serviced"
-                  type="date"
-                  value={formData.last_serviced}
-                  onChange={(e) =>
-                    setFormData({ ...formData, last_serviced: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="tail_lift"
-                  checked={formData.tail_lift}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tail_lift: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="tail_lift">Tail Lift</Label>
-              </div>
-
-              {(formData.vehicle_type === 'PHV' || formData.tail_lift) && (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Info Tab */}
+        {activeTab === 'basic' && (
+          <Card>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="loler_expiry_date">
-                    LOLER Certificate - Expiry Date
-                  </Label>
+                  <Label htmlFor="vehicle_identifier">Vehicle Identifier</Label>
                   <Input
-                    id="loler_expiry_date"
-                    type="date"
-                    value={formData.loler_expiry_date}
+                    id="vehicle_identifier"
+                    value={formData.vehicle_identifier}
                     onChange={(e) =>
-                      setFormData({ ...formData, loler_expiry_date: e.target.value })
+                      setFormData({ ...formData, vehicle_identifier: e.target.value })
                     }
+                    placeholder="e.g., VEH-001"
                   />
                 </div>
-              )}
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="spare_vehicle"
-                  checked={formData.spare_vehicle}
-                  onChange={(e) =>
-                    setFormData({ ...formData, spare_vehicle: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="spare_vehicle">Spare Vehicle</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="registration">Registration</Label>
+                  <Input
+                    id="registration"
+                    value={formData.registration}
+                    onChange={(e) =>
+                      setFormData({ ...formData, registration: e.target.value })
+                    }
+                    placeholder="e.g., AB12 CDE"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="plate_number">Plate Number</Label>
+                  <Input
+                    id="plate_number"
+                    value={formData.plate_number}
+                    onChange={(e) =>
+                      setFormData({ ...formData, plate_number: e.target.value })
+                    }
+                    placeholder="e.g., AB12 CDE"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="make">Make</Label>
+                  <Input
+                    id="make"
+                    value={formData.make}
+                    onChange={(e) =>
+                      setFormData({ ...formData, make: e.target.value })
+                    }
+                    placeholder="e.g., Ford, Mercedes"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="model">Model</Label>
+                  <Input
+                    id="model"
+                    value={formData.model}
+                    onChange={(e) =>
+                      setFormData({ ...formData, model: e.target.value })
+                    }
+                    placeholder="e.g., Transit, Sprinter"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="colour">Colour</Label>
+                  <Input
+                    id="colour"
+                    value={formData.colour}
+                    onChange={(e) =>
+                      setFormData({ ...formData, colour: e.target.value })
+                    }
+                    placeholder="e.g., Red, Blue, White"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle_type">Vehicle Type</Label>
+                  <Select
+                    id="vehicle_type"
+                    value={formData.vehicle_type}
+                    onChange={(e) =>
+                      setFormData({ ...formData, vehicle_type: e.target.value })
+                    }
+                  >
+                    <option value="">Select type</option>
+                    <option value="PHV">PHV (Private Hire / Taxi)</option>
+                    <option value="PSV">PSV (Public Service Vehicle)</option>
+                    <option value="Minibus">Minibus</option>
+                    <option value="Van">Van</option>
+                    <option value="Car">Car</option>
+                    <option value="Coach">Coach</option>
+                  </Select>
+                  <p className="text-xs text-slate-500">PHV: taxi licence, MOT, LOLER. PSV: PMI.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ownership_type">Ownership Type</Label>
+                  <Select
+                    id="ownership_type"
+                    value={formData.ownership_type}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ownership_type: e.target.value })
+                    }
+                  >
+                    <option value="">Select type</option>
+                    <option value="County Cars">County Cars</option>
+                    <option value="NBT">NBT</option>
+                    <option value="Privately Owned">Privately Owned</option>
+                    <option value="Leased">Leased</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="council_assignment">Council Assignment</Label>
+                  <Input
+                    id="council_assignment"
+                    value={formData.council_assignment}
+                    onChange={(e) =>
+                      setFormData({ ...formData, council_assignment: e.target.value })
+                    }
+                    placeholder="e.g., Council name or reference"
+                  />
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="off_the_road"
-                  checked={formData.off_the_road}
-                  onChange={(e) =>
-                    setFormData({ ...formData, off_the_road: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="off_the_road">Off the Road</Label>
+        {/* Navigation Buttons for Basic Info */}
+        {activeTab === 'basic' && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex justify-end gap-3">
+                <Link href={`/dashboard/vehicles/${id}`}>
+                  <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="button" onClick={handleNext}>
+                  Next
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="space-y-2">
-                <SearchableSelect
-                  id="assigned_to"
-                  label="Assigned To (MOT & Service Follow-up)"
-                  value={formData.assigned_to}
-                  onChange={(value) => setFormData({ ...formData, assigned_to: value })}
-                  options={drivers.map(driver => ({
-                    value: driver.id.toString(),
-                    label: driver.name,
-                  }))}
-                  placeholder="Select driver for MOT & service follow-up..."
-                />
-              </div>
-
-              {formData.vehicle_type === 'PHV' && (
-              <div className="space-y-2">
-                <SearchableSelect
-                  id="taxi_licence_holder_id"
-                  label="Taxi Licence Holder"
-                  value={formData.taxi_licence_holder_id}
-                  onChange={(value) => setFormData({ ...formData, taxi_licence_holder_id: value })}
-                  options={drivers.map(driver => ({
-                    value: driver.id.toString(),
-                    label: driver.name,
-                  }))}
-                  placeholder="Search and select driver..."
-                />
-              </div>
-              )}
-            </div>
-
-            {/* Seating Plan Note */}
-            <div className="pt-6 border-t border-gray-200">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl">🪑</div>
+        {/* Certificates Tab */}
+        {activeTab === 'certificates' && (
+          <Card>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Certificates & Expiry Dates</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Plate */}
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Plate</h3>
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-1">Seating Plan Configuration</h4>
-                    <p className="text-sm text-blue-700 mb-2">
-                      Manage the seating layout and capacity for this vehicle on the dedicated seating plan page.
-                    </p>
-                    <Link href={`/dashboard/vehicles/${id}/seating`}>
-                      <Button type="button" variant="secondary" size="sm">
-                        Manage Seating Plan
-                      </Button>
-                    </Link>
+                    <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
+                    <Input
+                      id="registration_expiry_date"
+                      type="date"
+                      value={formData.registration_expiry_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, registration_expiry_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="registration_file">Upload Plate Certificate</Label>
+                    <input
+                      type="file"
+                      id="registration_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('registration_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* PHV: MOT */}
+                {formData.vehicle_type === 'PHV' && (
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">MOT Certificate</h3>
+                  <div>
+                    <Label htmlFor="mot_date">Expiry Date</Label>
+                    <Input
+                      id="mot_date"
+                      type="date"
+                      value={formData.mot_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, mot_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="mot_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="mot_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('mot_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* Tax */}
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Tax Certificate</h3>
+                  <div>
+                    <Label htmlFor="tax_date">Tax Date</Label>
+                    <Input
+                      id="tax_date"
+                      type="date"
+                      value={formData.tax_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tax_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tax_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="tax_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('tax_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Insurance */}
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Vehicle Insurance</h3>
+                  <div>
+                    <Label htmlFor="insurance_expiry_date">Expiry Date</Label>
+                    <Input
+                      id="insurance_expiry_date"
+                      type="date"
+                      value={formData.insurance_expiry_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, insurance_expiry_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="insurance_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="insurance_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('insurance_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* PHV: Taxi Badge */}
+                {formData.vehicle_type === 'PHV' && (
+                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
+                  <h3 className="font-semibold text-navy flex items-center">
+                    Taxi Badge
+                  </h3>
+                  <div>
+                    <Label htmlFor="taxi_badge_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="taxi_badge_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('taxi_badge_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <SearchableSelect
+                      id="taxi_licence_holder_id"
+                      label="Taxi Licence Holder"
+                      value={formData.taxi_licence_holder_id}
+                      onChange={(value) => setFormData({ ...formData, taxi_licence_holder_id: value })}
+                      options={drivers.map(driver => ({
+                        value: driver.id.toString(),
+                        label: driver.name,
+                      }))}
+                      placeholder="Search and select driver..."
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* PHV: LOLER */}
+                {formData.vehicle_type === 'PHV' && (
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">LOLER Certificate</h3>
+                  <div>
+                    <Label htmlFor="loler_expiry_date">Expiry Date</Label>
+                    <Input
+                      id="loler_expiry_date"
+                      type="date"
+                      value={formData.loler_expiry_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, loler_expiry_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="loler_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="loler_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('loler_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* PSV: PMI */}
+                {formData.vehicle_type === 'PSV' && (
+                <div className="space-y-4 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                  <h3 className="font-semibold text-slate-800 text-sm">PSV – PMI</h3>
+                  <p className="text-xs text-slate-600">Next due is calculated from last PMI date + interval (weeks).</p>
+                  <div>
+                    <Label htmlFor="pmi_weeks">Interval (weeks between checks)</Label>
+                    <Input
+                      id="pmi_weeks"
+                      type="number"
+                      min={1}
+                      max={52}
+                      value={formData.pmi_weeks}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pmi_weeks: e.target.value })
+                      }
+                      placeholder="e.g. 4"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="last_pmi_date">Last PMI date</Label>
+                    <Input
+                      id="last_pmi_date"
+                      type="date"
+                      value={formData.last_pmi_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, last_pmi_date: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* First Aid */}
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">First Aid Certificate</h3>
+                  <div>
+                    <Label htmlFor="first_aid_expiry">Expiry Date</Label>
+                    <Input
+                      id="first_aid_expiry"
+                      type="date"
+                      value={formData.first_aid_expiry}
+                      onChange={(e) =>
+                        setFormData({ ...formData, first_aid_expiry: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="first_aid_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="first_aid_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('first_aid_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Fire Extinguisher */}
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">Fire Extinguisher Certificate</h3>
+                  <div>
+                    <Label htmlFor="fire_extinguisher_expiry">Expiry Date</Label>
+                    <Input
+                      id="fire_extinguisher_expiry"
+                      type="date"
+                      value={formData.fire_extinguisher_expiry}
+                      onChange={(e) =>
+                        setFormData({ ...formData, fire_extinguisher_expiry: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fire_extinguisher_file">Upload Certificate</Label>
+                    <input
+                      type="file"
+                      id="fire_extinguisher_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('fire_extinguisher_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                    />
                   </div>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        )}
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <textarea
-                id="notes"
-                rows={3}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <Link href={`/dashboard/vehicles/${id}`}>
-                <Button type="button" variant="secondary">
-                  Cancel
+        {/* Navigation Buttons for Certificates */}
+        {activeTab === 'certificates' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
                 </Button>
-              </Link>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                <div className="flex space-x-4">
+                  <Link href={`/dashboard/vehicles/${id}`}>
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={handleNext}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <Card>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Additional Documents</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <p className="text-sm text-gray-600">
+                Upload additional vehicle documents such as logbook, service records, and other relevant paperwork.
+              </p>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="logbook_file">Vehicle logbook</Label>
+                  <input
+                    type="file"
+                    id="logbook_file"
+                    accept=".pdf,application/pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('logbook_file', e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Upload vehicle logbook (usually a PDF)</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="service_record_file">Service Record</Label>
+                  <input
+                    type="file"
+                    id="service_record_file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('service_record_file', e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Upload service history records (PDF, JPG, PNG)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons for Documents */}
+        {activeTab === 'documents' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex space-x-4">
+                  <Link href={`/dashboard/vehicles/${id}`}>
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={handleNext}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Maintenance & Status Tab */}
+        {activeTab === 'maintenance' && (
+          <Card>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Maintenance & Status</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="last_serviced">Last Serviced</Label>
+                  <Input
+                    id="last_serviced"
+                    type="date"
+                    value={formData.last_serviced}
+                    onChange={(e) =>
+                      setFormData({ ...formData, last_serviced: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="service_booked_day">Service Booked Day</Label>
+                  <Input
+                    id="service_booked_day"
+                    type="date"
+                    value={formData.service_booked_day}
+                    onChange={(e) =>
+                      setFormData({ ...formData, service_booked_day: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="tail_lift"
+                      checked={formData.tail_lift}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tail_lift: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="tail_lift">Tail Lift</Label>
+                  </div>
+                </div>
+
+                {formData.tail_lift && (
+                  <div className="space-y-4 p-4 border rounded-lg md:col-span-2">
+                    <h3 className="font-semibold text-slate-700 text-sm">LOLER Certificate</h3>
+                    <div>
+                      <Label htmlFor="loler_expiry_date">
+                        Expiry Date
+                      </Label>
+                      <Input
+                        id="loler_expiry_date"
+                        type="date"
+                        value={formData.loler_expiry_date}
+                        onChange={(e) =>
+                          setFormData({ ...formData, loler_expiry_date: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="loler_file">Upload Certificate</Label>
+                      <input
+                        type="file"
+                        id="loler_file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileChange('loler_file', e.target.files?.[0] || null)}
+                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="spare_vehicle"
+                      checked={formData.spare_vehicle}
+                      onChange={(e) =>
+                        setFormData({ ...formData, spare_vehicle: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="spare_vehicle">Spare Vehicle</Label>
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="off_the_road"
+                      checked={formData.off_the_road}
+                      onChange={(e) =>
+                        setFormData({ ...formData, off_the_road: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="off_the_road">Off the Road</Label>
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <SearchableSelect
+                    id="assigned_to"
+                    label="Assigned To (MOT & Service Follow-up)"
+                    value={formData.assigned_to}
+                    onChange={(value) => setFormData({ ...formData, assigned_to: value })}
+                    options={drivers.map(driver => ({
+                      value: driver.id.toString(),
+                      label: driver.name,
+                    }))}
+                    placeholder="Select driver for MOT & service follow-up..."
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons for Maintenance */}
+        {activeTab === 'maintenance' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex space-x-4">
+                  <Link href={`/dashboard/vehicles/${id}`}>
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={handleNext}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Seating Plan Tab */}
+        {activeTab === 'seating' && (
+          <Card>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Seating Plan (Optional)</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <p className="text-sm text-gray-600">
+                Configure the seating layout for this vehicle. You can also add this later from the vehicle detail page.
+              </p>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="seating_plan_name">Plan Name</Label>
+                  <Input
+                    id="seating_plan_name"
+                    value={formData.seating_plan_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seating_plan_name: e.target.value })
+                    }
+                    placeholder="e.g., Standard Coach (45 passengers)"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="total_capacity">Total Capacity</Label>
+                  <Input
+                    id="total_capacity"
+                    type="number"
+                    min="1"
+                    value={formData.total_capacity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, total_capacity: e.target.value })
+                    }
+                    placeholder="e.g., 45"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="wheelchair_spaces">Wheelchair Spaces</Label>
+                  <Input
+                    id="wheelchair_spaces"
+                    type="number"
+                    min="0"
+                    value={formData.wheelchair_spaces}
+                    onChange={(e) =>
+                      setFormData({ ...formData, wheelchair_spaces: e.target.value })
+                    }
+                    placeholder="e.g., 2"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rows">Number of Rows</Label>
+                  <Input
+                    id="rows"
+                    type="number"
+                    min="1"
+                    value={formData.rows}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rows: e.target.value })
+                    }
+                    placeholder="e.g., 12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="seats_per_row">Seats per Row</Label>
+                  <Input
+                    id="seats_per_row"
+                    type="number"
+                    min="1"
+                    value={formData.seats_per_row}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seats_per_row: e.target.value })
+                    }
+                    placeholder="e.g., 4"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="seating_notes">Seating Notes</Label>
+                  <textarea
+                    id="seating_notes"
+                    rows={3}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    value={formData.seating_notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, seating_notes: e.target.value })
+                    }
+                    placeholder="e.g., 2 wheelchair lifts, emergency exit row 5"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons for Seating */}
+        {activeTab === 'seating' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex space-x-4">
+                  <Link href={`/dashboard/vehicles/${id}`}>
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={handleNext}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Notes Tab */}
+        {activeTab === 'notes' && (
+          <Card>
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
+              <CardTitle className="text-slate-900 text-base font-semibold">Additional Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <textarea
+                  id="notes"
+                  rows={6}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  placeholder="Any additional information about the vehicle..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons for Notes (Final Tab) */}
+        {activeTab === 'notes' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between space-x-4">
+                <Button type="button" variant="outline" onClick={handlePrevious} className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex space-x-4">
+                  <Link href={`/dashboard/vehicles/${id}`}>
+                    <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </form>
     </div>
   )
 }

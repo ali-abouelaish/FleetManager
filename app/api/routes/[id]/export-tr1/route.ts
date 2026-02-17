@@ -94,8 +94,7 @@ export async function GET(
           id,
           registration,
           plate_number,
-          taxi_badge_number,
-          taxi_license
+          taxi_badge_number
         )
       `)
       .eq('id', routeId)
