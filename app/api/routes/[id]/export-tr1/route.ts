@@ -93,8 +93,7 @@ export async function GET(
         vehicles (
           id,
           registration,
-          plate_number,
-          taxi_badge_number
+          plate_number
         )
       `)
       .eq('id', routeId)
@@ -206,11 +205,10 @@ export async function GET(
       worksheet.getCell(cellLocations.vehicleRegNo).value = vehicle.registration || ''
       console.log(`  ✓ Vehicle Reg No: ${vehicle.registration || ''} → Cell ${cellLocations.vehicleRegNo}`)
       
-      // Use vehicle taxi badge for PSV disc/vehicle plate number, fallback to plate_number
-      const psvDiscValue = vehicle.taxi_badge_number || vehicle.plate_number || ''
+      // Use plate_number for PSV disc/vehicle plate number
+      const psvDiscValue = vehicle.plate_number || ''
       worksheet.getCell(cellLocations.psvDiscVehiclePlateNo).value = psvDiscValue
       console.log(`  ✓ PSV Disc / Vehicle Plate No: ${psvDiscValue || '(empty)'} → Cell ${cellLocations.psvDiscVehiclePlateNo}`)
-      console.log(`    - taxi_badge_number: ${vehicle.taxi_badge_number || '(not set)'}`)
       console.log(`    - plate_number: ${vehicle.plate_number || '(not set)'}`)
     } else {
       // Set empty value even if no vehicle to ensure cell is cleared
@@ -237,16 +235,14 @@ export async function GET(
       worksheet.getCell(cellLocations.driverTasNo).value = ''
     }
     
-    // Licensing Badge No - Use driver's taxi badge number, fallback to vehicle taxi badge
-    const licensingBadgeNo = driver?.taxi_badge_number || vehicle?.taxi_badge_number || ''
+    // Licensing Badge No - Use driver's taxi badge number
+    const licensingBadgeNo = driver?.taxi_badge_number || ''
     worksheet.getCell(cellLocations.licensingBadgeNo).value = licensingBadgeNo
     console.log(`  ✓ Licensing Badge No: ${licensingBadgeNo || '(empty)'} → Cell ${cellLocations.licensingBadgeNo}`)
     if (driver?.taxi_badge_number) {
       console.log(`    - Using driver taxi badge: ${driver.taxi_badge_number}`)
-    } else if (vehicle?.taxi_badge_number) {
-      console.log(`    - Using vehicle taxi badge (driver has none): ${vehicle.taxi_badge_number}`)
     } else {
-      console.log(`    - No taxi badge found (driver or vehicle)`)
+      console.log(`    - No taxi badge found for driver`)
     }
 
     // PA details

@@ -257,6 +257,8 @@ function EditVehiclePageClient({ id }: { id: string }) {
         filePath: string
       }> = []
 
+      const uploadErrors: string[] = []
+
       // Map file keys to document types
       const fileKeyToDocType: { [key: string]: string } = {
         registration_file: 'Plate Certificate',
@@ -273,30 +275,36 @@ function EditVehiclePageClient({ id }: { id: string }) {
 
       for (const [key, file] of Object.entries(fileUploads)) {
         if (file) {
-          const fileExt = file.name.split('.').pop()
-          const fileName = `vehicles/${id}/${key}_${Date.now()}.${fileExt}`
+          try {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `vehicles/${id}/${key}_${Date.now()}.${fileExt}`
 
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('VEHICLE_DOCUMENTS')
-            .upload(fileName, file)
-
-          if (uploadError) {
-            console.error(`Error uploading file ${file.name}:`, uploadError)
-            continue
-          }
-
-          if (uploadData) {
-            const { data: { publicUrl } } = supabase.storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
               .from('VEHICLE_DOCUMENTS')
-              .getPublicUrl(fileName)
+              .upload(fileName, file)
 
-            uploadedDocuments.push({
-              fileUrl: publicUrl,
-              fileName: file.name,
-              fileType: file.type || 'application/octet-stream',
-              docType: fileKeyToDocType[key] || 'Certificate',
-              filePath: fileName,
-            })
+            if (uploadError) {
+              console.error(`Error uploading file ${file.name}:`, uploadError)
+              uploadErrors.push(`Failed to upload ${file.name}: ${uploadError.message}`)
+              continue
+            }
+
+            if (uploadData) {
+              const { data: { publicUrl } } = supabase.storage
+                .from('VEHICLE_DOCUMENTS')
+                .getPublicUrl(fileName)
+
+              uploadedDocuments.push({
+                fileUrl: publicUrl,
+                fileName: file.name,
+                fileType: file.type || 'application/octet-stream',
+                docType: fileKeyToDocType[key] || 'Certificate',
+                filePath: fileName,
+              })
+            }
+          } catch (err: any) {
+            console.error(`Error processing file ${file.name}:`, err)
+            uploadErrors.push(`Failed to process ${file.name}: ${err.message || 'Unknown error'}`)
           }
         }
       }
@@ -304,29 +312,48 @@ function EditVehiclePageClient({ id }: { id: string }) {
       // Create document records and link to vehicle via document_vehicle_links
       if (uploadedDocuments.length > 0) {
         for (const doc of uploadedDocuments) {
-          const { data: docRow, error: docErr } = await supabase
-            .from('documents')
-            .insert({
-              file_url: JSON.stringify([doc.fileUrl]),
-              file_name: doc.fileName,
-              file_type: doc.fileType,
-              file_path: doc.filePath,
-              doc_type: doc.docType,
-              uploaded_at: new Date().toISOString(),
-            })
-            .select('id')
-            .single()
-          if (docErr) {
-            console.error('Error creating document record:', docErr)
-            continue
-          }
-          if (docRow?.id) {
-            await supabase.from('document_vehicle_links').insert({
-              document_id: docRow.id,
-              vehicle_id: parseInt(id),
-            })
+          try {
+            const { data: docRow, error: docErr } = await supabase
+              .from('documents')
+              .insert({
+                file_url: JSON.stringify([doc.fileUrl]),
+                file_name: doc.fileName,
+                file_type: doc.fileType,
+                file_path: doc.filePath,
+                doc_type: doc.docType,
+                uploaded_at: new Date().toISOString(),
+              })
+              .select('id')
+              .single()
+            
+            if (docErr) {
+              console.error('Error creating document record:', docErr)
+              uploadErrors.push(`Failed to save ${doc.fileName}: ${docErr.message}`)
+              continue
+            }
+            
+            if (docRow?.id) {
+              const { error: linkErr } = await supabase.from('document_vehicle_links').insert({
+                document_id: docRow.id,
+                vehicle_id: parseInt(id),
+              })
+              
+              if (linkErr) {
+                console.error('Error linking document to vehicle:', linkErr)
+                uploadErrors.push(`Failed to link ${doc.fileName} to vehicle: ${linkErr.message}`)
+              }
+            }
+          } catch (err: any) {
+            console.error(`Error saving document ${doc.fileName}:`, err)
+            uploadErrors.push(`Failed to save ${doc.fileName}: ${err.message || 'Unknown error'}`)
           }
         }
+      }
+
+      // Show warning if there were upload errors but don't fail the entire update
+      if (uploadErrors.length > 0) {
+        console.warn('Some documents failed to upload:', uploadErrors)
+        // Note: We continue with the update even if some documents fail
       }
 
       // Update seating plan if provided
