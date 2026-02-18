@@ -34,6 +34,7 @@ export default function CreateVehiclePage() {
     tax_file: null,
     logbook_file: null,
     service_record_file: null,
+    iva_file: null,
   })
 
   const [formData, setFormData] = useState({
@@ -45,6 +46,7 @@ export default function CreateVehiclePage() {
     plate_number: '',
     colour: '',
     vehicle_type: '',
+    vehicle_category: '',
     ownership_type: '',
     council_assignment: '',
     mot_date: '',
@@ -145,6 +147,7 @@ export default function CreateVehiclePage() {
         plate_number: cleanValue(formData.plate_number),
         colour: cleanValue(formData.colour),
         vehicle_type: cleanValue(formData.vehicle_type),
+        vehicle_category: cleanValue(formData.vehicle_category),
         registration_expiry_date: formData.registration_expiry_date || null,
         mot_date: formData.mot_date || null,
         tax_date: formData.tax_date || null,
@@ -168,6 +171,23 @@ export default function CreateVehiclePage() {
 
       console.log('Submitting vehicle data:', dataToInsert)
       
+      // Check for duplicate registration if registration is provided
+      if (dataToInsert.registration) {
+        const { data: existingVehicle, error: checkError } = await supabase
+          .from('vehicles')
+          .select('id, registration')
+          .eq('registration', dataToInsert.registration)
+          .maybeSingle()
+
+        if (checkError) {
+          throw new Error(`Error checking for duplicate registration: ${checkError.message}`)
+        }
+
+        if (existingVehicle) {
+          throw new Error(`A vehicle with registration "${dataToInsert.registration}" already exists (Vehicle ID: ${existingVehicle.id})`)
+        }
+      }
+      
       const { data, error } = await supabase
         .from('vehicles')
         .insert([dataToInsert])
@@ -175,6 +195,10 @@ export default function CreateVehiclePage() {
 
       if (error) {
         console.error('Vehicle insert error:', error)
+        // Check if it's a unique constraint violation
+        if (error.code === '23505' || error.message.includes('unique')) {
+          throw new Error(`A vehicle with registration "${dataToInsert.registration}" already exists`)
+        }
         throw error
       }
 
@@ -190,18 +214,19 @@ export default function CreateVehiclePage() {
           filePath: string
         }> = []
 
-        // Map file keys to document types
+        // Map file keys to document types (must match VehicleComplianceDocuments.tsx)
         const fileKeyToDocType: { [key: string]: string } = {
-          registration_file: 'Plate Certificate',
+          registration_file: 'Vehicle Plate Certificate',
           mot_file: 'MOT Certificate',
-          insurance_file: 'Vehicle Insurance',
+          insurance_file: 'Vehicle Insurance Certificate',
           taxi_badge_file: 'Taxi Badge',
           loler_file: 'LOLER Certificate',
-          first_aid_file: 'First Aid Certificate',
+          first_aid_file: 'First Aid Kit Certificate',
           fire_extinguisher_file: 'Fire Extinguisher Certificate',
-          tax_file: 'Tax Certificate',
+          tax_file: 'Vehicle Tax Certificate',
           logbook_file: 'Logbook',
           service_record_file: 'Service Record',
+          iva_file: 'IVA Certificate',
         }
 
         for (const [key, file] of Object.entries(fileUploads)) {
@@ -364,7 +389,7 @@ export default function CreateVehiclePage() {
         </nav>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" lang="en-GB">
         {/* Basic Info Tab */}
         {activeTab === 'basic' && (
           <Card>
@@ -466,6 +491,22 @@ export default function CreateVehiclePage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="vehicle_category">Vehicle Category</Label>
+                  <Select
+                    id="vehicle_category"
+                    value={formData.vehicle_category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, vehicle_category: e.target.value })
+                    }
+                  >
+                    <option value="">Select category</option>
+                    <option value="M1">M1 (Passenger Vehicles)</option>
+                    <option value="N1">N1 (Goods Vehicles)</option>
+                  </Select>
+                  <p className="text-xs text-slate-500">M1: Passenger vehicles. N1: Goods vehicles.</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="ownership_type">Ownership Type</Label>
                   <Select
                     id="ownership_type"
@@ -527,9 +568,9 @@ export default function CreateVehiclePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Plate */}
                 <div className="space-y-3 p-3 border rounded-lg">
-                  <h3 className="font-semibold text-slate-700 text-sm">Plate</h3>
+                  <h3 className="font-semibold text-slate-700 text-sm">Plate Expiry</h3>
                   <div>
-                    <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
+                    <Label htmlFor="registration_expiry_date">Plate Expiry</Label>
                     <Input
                       id="registration_expiry_date"
                       type="date"
@@ -658,6 +699,23 @@ export default function CreateVehiclePage() {
                         label: driver.name,
                       }))}
                       placeholder="Search and select driver..."
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* N1: IVA Certificate */}
+                {formData.vehicle_category === 'N1' && (
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">IVA Certificate</h3>
+                  <div>
+                    <Label htmlFor="iva_file">Upload IVA Certificate</Label>
+                    <input
+                      type="file"
+                      id="iva_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('iva_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>

@@ -35,6 +35,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
     tax_file: null,
     logbook_file: null,
     service_record_file: null,
+    iva_file: null,
   })
 
   const [formData, setFormData] = useState({
@@ -46,6 +47,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
     plate_number: '',
     colour: '',
     vehicle_type: '',
+    vehicle_category: '',
     ownership_type: '',
     council_assignment: '',
     mot_date: '',
@@ -140,6 +142,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
           plate_number: data.plate_number || '',
           colour: data.colour || '',
           vehicle_type: data.vehicle_type || '',
+          vehicle_category: data.vehicle_category || '',
           ownership_type: data.ownership_type || '',
           council_assignment: data.council_assignment || '',
           mot_date: data.mot_date || '',
@@ -220,6 +223,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
         plate_number: cleanValue(formData.plate_number),
         colour: cleanValue(formData.colour),
         vehicle_type: cleanValue(formData.vehicle_type),
+        vehicle_category: cleanValue(formData.vehicle_category),
         registration_expiry_date: formData.registration_expiry_date || null,
         mot_date: formData.mot_date || null,
         tax_date: formData.tax_date || null,
@@ -241,12 +245,36 @@ function EditVehiclePageClient({ id }: { id: string }) {
         notes: cleanValue(formData.notes),
       }
 
+      // Check for duplicate registration if registration is provided
+      if (dataToUpdate.registration) {
+        const { data: existingVehicle, error: checkError } = await supabase
+          .from('vehicles')
+          .select('id, registration')
+          .eq('registration', dataToUpdate.registration)
+          .neq('id', parseInt(id))
+          .maybeSingle()
+
+        if (checkError) {
+          throw new Error(`Error checking for duplicate registration: ${checkError.message}`)
+        }
+
+        if (existingVehicle) {
+          throw new Error(`A vehicle with registration "${dataToUpdate.registration}" already exists (Vehicle ID: ${existingVehicle.id})`)
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('vehicles')
         .update(dataToUpdate)
         .eq('id', id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        // Check if it's a unique constraint violation
+        if (updateError.code === '23505' || updateError.message.includes('unique')) {
+          throw new Error(`A vehicle with registration "${dataToUpdate.registration}" already exists`)
+        }
+        throw updateError
+      }
 
       // Upload files to Supabase Storage
       const uploadedDocuments: Array<{
@@ -259,22 +287,41 @@ function EditVehiclePageClient({ id }: { id: string }) {
 
       const uploadErrors: string[] = []
 
-      // Map file keys to document types
+      // Map file keys to document types (must match VehicleComplianceDocuments.tsx)
       const fileKeyToDocType: { [key: string]: string } = {
-        registration_file: 'Plate Certificate',
+        registration_file: 'Vehicle Plate Certificate',
         mot_file: 'MOT Certificate',
-        insurance_file: 'Vehicle Insurance',
+        insurance_file: 'Vehicle Insurance Certificate',
         taxi_badge_file: 'Taxi Badge',
         loler_file: 'LOLER Certificate',
-        first_aid_file: 'First Aid Certificate',
+        first_aid_file: 'First Aid Kit Certificate',
         fire_extinguisher_file: 'Fire Extinguisher Certificate',
-        tax_file: 'Tax Certificate',
+        tax_file: 'Vehicle Tax Certificate',
+        logbook_file: 'Logbook',
+        service_record_file: 'Service Record',
+        iva_file: 'IVA Certificate',
+      }
+      
+      const fileKeyToDocTypeOld: { [key: string]: string } = {
+        registration_file: 'Vehicle Plate Certificate',
+        mot_file: 'MOT Certificate',
+        insurance_file: 'Vehicle Insurance Certificate',
+        taxi_badge_file: 'Taxi Badge',
+        loler_file: 'LOLER Certificate',
+        first_aid_file: 'First Aid Kit Certificate',
+        fire_extinguisher_file: 'Fire Extinguisher Certificate',
+        tax_file: 'Vehicle Tax Certificate',
         logbook_file: 'Logbook',
         service_record_file: 'Service Record',
       }
 
+      // Debug: Log file uploads state
+      const filesToUpload = Object.entries(fileUploads).filter(([_, file]) => file !== null)
+      console.log('Files to upload:', filesToUpload.length, filesToUpload.map(([key]) => key))
+
       for (const [key, file] of Object.entries(fileUploads)) {
         if (file) {
+          console.log(`Processing file upload: ${key} - ${file.name}`)
           try {
             const fileExt = file.name.split('.').pop()
             const fileName = `vehicles/${id}/${key}_${Date.now()}.${fileExt}`
@@ -293,6 +340,8 @@ function EditVehiclePageClient({ id }: { id: string }) {
               const { data: { publicUrl } } = supabase.storage
                 .from('VEHICLE_DOCUMENTS')
                 .getPublicUrl(fileName)
+
+              console.log(`File uploaded successfully: ${file.name} -> ${fileName}`)
 
               uploadedDocuments.push({
                 fileUrl: publicUrl,
@@ -333,6 +382,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
             }
             
             if (docRow?.id) {
+              console.log(`Creating document link for ${doc.fileName} (doc_id: ${docRow.id}, vehicle_id: ${id})`)
               const { error: linkErr } = await supabase.from('document_vehicle_links').insert({
                 document_id: docRow.id,
                 vehicle_id: parseInt(id),
@@ -341,7 +391,12 @@ function EditVehiclePageClient({ id }: { id: string }) {
               if (linkErr) {
                 console.error('Error linking document to vehicle:', linkErr)
                 uploadErrors.push(`Failed to link ${doc.fileName} to vehicle: ${linkErr.message}`)
+              } else {
+                console.log(`Successfully linked document ${doc.fileName} to vehicle ${id}`)
               }
+            } else {
+              console.error(`No document ID returned for ${doc.fileName}`)
+              uploadErrors.push(`Failed to get document ID for ${doc.fileName}`)
             }
           } catch (err: any) {
             console.error(`Error saving document ${doc.fileName}:`, err)
@@ -353,7 +408,14 @@ function EditVehiclePageClient({ id }: { id: string }) {
       // Show warning if there were upload errors but don't fail the entire update
       if (uploadErrors.length > 0) {
         console.warn('Some documents failed to upload:', uploadErrors)
+        setError(`Vehicle updated successfully, but ${uploadErrors.length} document(s) failed to upload: ${uploadErrors.join('; ')}`)
         // Note: We continue with the update even if some documents fail
+      } else if (uploadedDocuments.length > 0) {
+        // Success message for document uploads
+        console.log(`Successfully uploaded and linked ${uploadedDocuments.length} document(s)`)
+      } else if (filesToUpload.length > 0) {
+        console.warn(`No documents were uploaded despite ${filesToUpload.length} file(s) selected`)
+        setError('Vehicle updated successfully, but documents were not uploaded. Please check console for details.')
       }
 
       // Update seating plan if provided
@@ -485,7 +547,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
         </nav>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" lang="en-GB">
         {/* Basic Info Tab */}
         {activeTab === 'basic' && (
           <Card>
@@ -587,6 +649,22 @@ function EditVehiclePageClient({ id }: { id: string }) {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="vehicle_category">Vehicle Category</Label>
+                  <Select
+                    id="vehicle_category"
+                    value={formData.vehicle_category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, vehicle_category: e.target.value })
+                    }
+                  >
+                    <option value="">Select category</option>
+                    <option value="M1">M1 (Passenger Vehicles)</option>
+                    <option value="N1">N1 (Goods Vehicles)</option>
+                  </Select>
+                  <p className="text-xs text-slate-500">M1: Passenger vehicles. N1: Goods vehicles.</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="ownership_type">Ownership Type</Label>
                   <Select
                     id="ownership_type"
@@ -648,9 +726,9 @@ function EditVehiclePageClient({ id }: { id: string }) {
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Plate */}
                 <div className="space-y-3 p-3 border rounded-lg">
-                  <h3 className="font-semibold text-slate-700 text-sm">Plate</h3>
+                  <h3 className="font-semibold text-slate-700 text-sm">Plate Expiry</h3>
                   <div>
-                    <Label htmlFor="registration_expiry_date">Plate Expiry Date</Label>
+                    <Label htmlFor="registration_expiry_date">Plate Expiry</Label>
                     <Input
                       id="registration_expiry_date"
                       type="date"
@@ -779,6 +857,23 @@ function EditVehiclePageClient({ id }: { id: string }) {
                         label: driver.name,
                       }))}
                       placeholder="Search and select driver..."
+                    />
+                  </div>
+                </div>
+                )}
+
+                {/* N1: IVA Certificate */}
+                {formData.vehicle_category === 'N1' && (
+                <div className="space-y-3 p-3 border rounded-lg">
+                  <h3 className="font-semibold text-slate-700 text-sm">IVA Certificate</h3>
+                  <div>
+                    <Label htmlFor="iva_file">Upload IVA Certificate</Label>
+                    <input
+                      type="file"
+                      id="iva_file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileChange('iva_file', e.target.files?.[0] || null)}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
                     />
                   </div>
                 </div>

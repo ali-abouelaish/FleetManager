@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -76,9 +76,30 @@ export function SubjectDocumentsChecklist({
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/admin/subject-documents?subject_type=${subjectType}&subject_id=${subjectId}`)
+        let res: Response
+        try {
+          res = await fetch(`/api/admin/subject-documents?subject_type=${subjectType}&subject_id=${subjectId}`)
+        } catch (fetchError: any) {
+          // Handle network errors (CORS, connection refused, etc.)
+          throw new Error(fetchError.message?.includes('fetch') 
+            ? 'Network error: Unable to connect to server. Please check your internet connection.'
+            : fetchError.message || 'Failed to load documents')
+        }
+        
+        // Handle HTTP errors
+        if (!res.ok) {
+          let errorMessage = 'Failed to load documents'
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.error || errorMessage
+          } catch {
+            // If response is not JSON, use status text
+            errorMessage = res.statusText || `Server returned ${res.status}`
+          }
+          throw new Error(errorMessage)
+        }
+        
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Failed to load documents')
         setRequirements(data.requirements || [])
         setDocuments(data.documents || [])
         const nextDrafts: Record<string, Draft> = {}
@@ -94,7 +115,10 @@ export function SubjectDocumentsChecklist({
         })
         setDrafts(nextDrafts)
       } catch (err: any) {
-        setError(err.message || 'Failed to load documents')
+        // Handle network errors and other fetch failures
+        const errorMessage = err.message || 'Failed to load documents. Please check your connection and try again.'
+        setError(errorMessage)
+        console.error('Error loading subject documents:', err)
       } finally {
         setLoading(false)
       }
@@ -102,7 +126,7 @@ export function SubjectDocumentsChecklist({
     load()
   }, [subjectType, subjectId])
 
-  const updateDraft = (requirementId: string, key: keyof Draft, value: string) => {
+  const updateDraft = useCallback((requirementId: string, key: keyof Draft, value: string) => {
     setDrafts((prev) => ({
       ...prev,
       [requirementId]: {
@@ -110,30 +134,53 @@ export function SubjectDocumentsChecklist({
         [key]: value,
       },
     }))
-  }
+  }, [])
 
   const ensureDocument = async (requirementId: string): Promise<SubjectDocument | null> => {
     const existing = documentsByRequirement[requirementId]
     if (existing) return existing
     const draft = drafts[requirementId] || defaultDraft
-    const res = await fetch('/api/admin/subject-documents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requirement_id: requirementId,
-        subject_type: subjectType,
-        subject_id: subjectId,
-        status: draft.status,
-        certificate_number: draft.certificate_number || null,
-        issue_date: draft.issue_date || null,
-        expiry_date: draft.expiry_date || null,
-        notes: draft.notes || null,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Failed to create document')
-    setDocuments((prev) => [data.document, ...prev])
-    return data.document as SubjectDocument
+    try {
+      let res: Response
+      try {
+        res = await fetch('/api/admin/subject-documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requirement_id: requirementId,
+            subject_type: subjectType,
+            subject_id: subjectId,
+            status: draft.status,
+            certificate_number: draft.certificate_number || null,
+            issue_date: draft.issue_date || null,
+            expiry_date: draft.expiry_date || null,
+            notes: draft.notes || null,
+          }),
+        })
+      } catch (fetchError: any) {
+        throw new Error(fetchError.message?.includes('fetch') 
+          ? 'Network error: Unable to connect to server. Please check your internet connection.'
+          : fetchError.message || 'Failed to create document')
+      }
+      
+      if (!res.ok) {
+        let errorMessage = 'Failed to create document'
+        try {
+          const errorData = await res.json()
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          errorMessage = res.statusText || `Server returned ${res.status}`
+        }
+        throw new Error(errorMessage)
+      }
+      
+      const data = await res.json()
+      setDocuments((prev) => [data.document, ...prev])
+      return data.document as SubjectDocument
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to create document. Please check your connection and try again.'
+      throw new Error(errorMessage)
+    }
   }
 
   const handleSave = async (requirement: DocumentRequirement) => {
@@ -146,22 +193,43 @@ export function SubjectDocumentsChecklist({
         await ensureDocument(requirement.id)
         return
       }
-      const res = await fetch(`/api/admin/subject-documents/${existing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: draft.status,
-          certificate_number: draft.certificate_number || null,
-          issue_date: draft.issue_date || null,
-          expiry_date: draft.expiry_date || null,
-          notes: draft.notes || null,
-        }),
-      })
+      
+      let res: Response
+      try {
+        res = await fetch(`/api/admin/subject-documents/${existing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: draft.status,
+            certificate_number: draft.certificate_number || null,
+            issue_date: draft.issue_date || null,
+            expiry_date: draft.expiry_date || null,
+            notes: draft.notes || null,
+          }),
+        })
+      } catch (fetchError: any) {
+        throw new Error(fetchError.message?.includes('fetch') 
+          ? 'Network error: Unable to connect to server. Please check your internet connection.'
+          : fetchError.message || 'Failed to update document')
+      }
+      
+      if (!res.ok) {
+        let errorMessage = 'Failed to update document'
+        try {
+          const errorData = await res.json()
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          errorMessage = res.statusText || `Server returned ${res.status}`
+        }
+        throw new Error(errorMessage)
+      }
+      
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to update document')
       setDocuments((prev) => prev.map((doc) => (doc.id === data.document.id ? data.document : doc)))
     } catch (err: any) {
-      setError(err.message || 'Failed to save document')
+      const errorMessage = err.message || 'Failed to save document. Please check your connection and try again.'
+      setError(errorMessage)
+      console.error('Error saving document:', err)
     } finally {
       setSaving((prev) => ({ ...prev, [requirement.id]: false }))
     }
@@ -280,8 +348,9 @@ export function SubjectDocumentsChecklist({
                       <div className="space-y-1.5">
                         <Label>Certificate number</Label>
                         <Input
-                          value={draft.certificate_number}
+                          value={draft.certificate_number || ''}
                           onChange={(e) => updateDraft(req.id, 'certificate_number', e.target.value)}
+                          onFocus={(e) => e.target.select()}
                         />
                       </div>
                     )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
@@ -135,7 +135,7 @@ export default function CreateDriverPage() {
     }))
   }
 
-  const handleCertificateFormDataChange = (requirementId: string, field: string, value: string | File | null) => {
+  const handleCertificateFormDataChange = useCallback((requirementId: string, field: string, value: string | File | null) => {
     setCertificatesFormData(prev => ({
       ...prev,
       [requirementId]: {
@@ -143,7 +143,7 @@ export default function CreateDriverPage() {
         [field]: value,
       }
     }))
-  }
+  }, [])
 
   const handleCertificateFileChange = (requirementId: string, file: File | null) => {
     setCertificatesFileUploads(prev => ({

@@ -29,13 +29,13 @@ interface CertificateType {
 
 const CERTIFICATE_TYPES: CertificateType[] = [
   { key: 'registration_expiry_date', name: 'Vehicle Plate Certificate', expiryField: 'registration_expiry_date' },
-  { key: 'plate_expiry_date', name: 'Vehicle Plate Certificate (alternate)', expiryField: 'plate_expiry_date' },
   { key: 'insurance_expiry_date', name: 'Vehicle Insurance Certificate', expiryField: 'insurance_expiry_date' },
   { key: 'mot_date', name: 'MOT Certificate', expiryField: 'mot_date' },
   { key: 'tax_date', name: 'Vehicle Tax Certificate', expiryField: 'tax_date' },
   { key: 'loler_expiry_date', name: 'LOLER Certificate', expiryField: 'loler_expiry_date' },
   { key: 'first_aid_expiry', name: 'First Aid Kit Certificate', expiryField: 'first_aid_expiry' },
   { key: 'fire_extinguisher_expiry', name: 'Fire Extinguisher Certificate', expiryField: 'fire_extinguisher_expiry' },
+  { key: 'iva', name: 'IVA Certificate', expiryField: '' },
 ]
 
 export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: number }) {
@@ -87,8 +87,29 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
     setLoading(false)
   }
 
+  // Map certificate keys to document type names
+  const certKeyToDocType: { [key: string]: string } = {
+    'registration_expiry_date': 'Vehicle Plate Certificate',
+    'insurance_expiry_date': 'Vehicle Insurance Certificate',
+    'mot_date': 'MOT Certificate',
+    'tax_date': 'Vehicle Tax Certificate',
+    'loler_expiry_date': 'LOLER Certificate',
+    'first_aid_expiry': 'First Aid Kit Certificate',
+    'fire_extinguisher_expiry': 'Fire Extinguisher Certificate',
+    'iva': 'IVA Certificate',
+  }
+  
+  // Get certificate types to display (include IVA only if vehicle category is N1)
+  const getCertificateTypes = () => {
+    if (vehicle?.vehicle_category === 'N1') {
+      return CERTIFICATE_TYPES
+    }
+    return CERTIFICATE_TYPES.filter(cert => cert.key !== 'iva')
+  }
+
   const getDocumentsByType = (certType: string) => {
-    return documents.filter(doc => doc.doc_type === certType)
+    const docTypeName = certKeyToDocType[certType] || certType
+    return documents.filter(doc => doc.doc_type === docTypeName)
   }
 
   const getPublicUrl = (path: string | null, fallback: string | null) => {
@@ -135,13 +156,16 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
           .from('VEHICLE_DOCUMENTS')
           .getPublicUrl(storagePath)
 
+        // Convert certificate key to document type name
+        const docTypeName = certKeyToDocType[selectedCertificateType] || selectedCertificateType
+        
         // Insert document record and link
         const { data: docRow, error: docErr } = await supabase.from('documents').insert({
           file_name: file.name,
           file_type: file.type,
           file_path: storagePath,
           file_url: publicUrl,
-          doc_type: selectedCertificateType,
+          doc_type: docTypeName,
           uploaded_by: null, // Can be updated later to track user
         }).select('id').single()
         if (docErr) {
@@ -256,7 +280,7 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                     onChange={(e) => setSelectedCertificateType(e.target.value)}
                   >
                     <option value="">Select certificate type...</option>
-                    {CERTIFICATE_TYPES.map(cert => (
+                    {getCertificateTypes().map(cert => (
                       <option key={cert.key} value={cert.key}>
                         {cert.name}
                       </option>
@@ -298,14 +322,14 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
             <div className="text-center py-8 text-sm text-gray-600">Loading documents...</div>
           ) : (
             <div className="space-y-6">
-              {CERTIFICATE_TYPES.map(cert => {
+              {getCertificateTypes().map(cert => {
                 const certDocs = getDocumentsByType(cert.key)
                 return (
                   <div key={cert.key} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <h4 className="font-semibold text-gray-900">{cert.name}</h4>
-                        {vehicle && vehicle[cert.expiryField] && (
+                        {vehicle && cert.expiryField && vehicle[cert.expiryField] && (
                           <p className="text-sm text-gray-600">
                             Expiry: {formatDate(vehicle[cert.expiryField])}
                           </p>
@@ -346,7 +370,7 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                                       className="text-xs"
                                     >
                                       <option value="">None</option>
-                                      {CERTIFICATE_TYPES.map(c => (
+                                      {getCertificateTypes().map(c => (
                                         <option key={c.key} value={c.key}>
                                           {c.name}
                                         </option>

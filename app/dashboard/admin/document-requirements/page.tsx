@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -64,6 +64,7 @@ export default function DocumentRequirementsPage() {
   const [editing, setEditing] = useState<DocumentRequirement | null>(null)
   const [formData, setFormData] = useState({ ...emptyForm })
   const [autoCode, setAutoCode] = useState(true)
+  const isCodeFocused = useRef(false)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return requirements
@@ -162,13 +163,18 @@ export default function DocumentRequirementsPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
+    
+    // If user is editing the code field, disable auto-code generation
+    if (name === 'code') {
+      setAutoCode(false)
+    }
+    
     setFormData((prev) => {
       const next = { ...prev, [name]: type === 'checkbox' ? checked : value }
-      if (name === 'name' && autoCode) {
+      // Only auto-generate code if autoCode is enabled AND user is editing the name field
+      // Don't overwrite code if user is currently editing it (focused)
+      if (name === 'name' && autoCode && !isCodeFocused.current) {
         next.code = slugifyCode(String(value))
-      }
-      if (name === 'code') {
-        setAutoCode(false)
       }
       return next
     })
@@ -336,7 +342,14 @@ export default function DocumentRequirementsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="code">Code</Label>
-                  <Input id="code" name="code" value={formData.code} onChange={handleChange} />
+                  <Input 
+                    id="code" 
+                    name="code" 
+                    value={formData.code} 
+                    onChange={handleChange}
+                    onFocus={() => { isCodeFocused.current = true }}
+                    onBlur={() => { isCodeFocused.current = false }}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="subject_type">Subject type</Label>

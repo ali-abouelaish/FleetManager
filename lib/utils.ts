@@ -37,6 +37,34 @@ export function formatTime(date: string | Date | null): string {
 }
 
 /**
+ * Formats a date string for HTML date input (YYYY-MM-DD)
+ * Ensures dates are displayed correctly in UK format
+ */
+export function formatDateForInput(date: string | Date | null): string {
+  if (!date) return ''
+  const d = new Date(date)
+  // Ensure we're working with local date, not UTC
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Parses a date input value (YYYY-MM-DD) to ensure correct date handling
+ */
+export function parseDateInput(value: string): string {
+  if (!value) return ''
+  // Date input always returns YYYY-MM-DD format
+  // Parse and reformat to ensure correct date
+  const d = new Date(value + 'T00:00:00')
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Generate a UUID v4 with fallback for environments that don't support crypto.randomUUID()
  */
 export function generateUUID(): string {
