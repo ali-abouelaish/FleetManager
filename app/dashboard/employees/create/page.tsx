@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Upload } from 'lucide-react'
 import Link from 'next/link'
+import { DynamicCertificatesForm } from '@/components/dashboard/DynamicCertificatesForm'
 
 const defaultDriverForm = {
   spare_driver: false,
@@ -88,9 +89,45 @@ export default function CreateEmployeePage() {
 
   const [driverForm, setDriverForm] = useState(defaultDriverForm)
   const [paForm, setPAForm] = useState(defaultPAForm)
-  const [roleDetailsTab, setRoleDetailsTab] = useState<'basic' | 'certificates' | 'documents' | 'training'>('basic')
   const [driverFiles, setDriverFiles] = useState<Record<string, File | null>>(Object.fromEntries(driverFileKeys.map(k => [k, null])))
   const [paFiles, setPAFiles] = useState<Record<string, File | null>>(Object.fromEntries(paFileKeys.map(k => [k, null])))
+
+  const minYear = 1900
+  const maxYear = new Date().getFullYear() + 20
+  const minDate = `${minYear}-01-01`
+  const maxDate = `${maxYear}-12-31`
+
+  const [driverCertificatesFormData, setDriverCertificatesFormData] = useState<Record<string, { certificate_number: string; expiry_date: string; issue_date: string; file: File | null }>>({})
+  const [driverCertificatesFileUploads, setDriverCertificatesFileUploads] = useState<Record<string, File | null>>({})
+  const [paCertificatesFormData, setPaCertificatesFormData] = useState<Record<string, { certificate_number: string; expiry_date: string; issue_date: string; file: File | null }>>({})
+  const [paCertificatesFileUploads, setPaCertificatesFileUploads] = useState<Record<string, File | null>>({})
+
+  const handleDriverCertificateFormDataChange = useCallback((requirementId: string, field: string, value: string | File | null) => {
+    setDriverCertificatesFormData(prev => ({
+      ...prev,
+      [requirementId]: {
+        ...(prev[requirementId] || { certificate_number: '', expiry_date: '', issue_date: '', file: null }),
+        [field]: value,
+      }
+    }))
+  }, [])
+  const handleDriverCertificateFileChange = (requirementId: string, file: File | null) => {
+    setDriverCertificatesFileUploads(prev => ({ ...prev, [requirementId]: file }))
+    handleDriverCertificateFormDataChange(requirementId, 'file', file)
+  }
+  const handlePaCertificateFormDataChange = useCallback((requirementId: string, field: string, value: string | File | null) => {
+    setPaCertificatesFormData(prev => ({
+      ...prev,
+      [requirementId]: {
+        ...(prev[requirementId] || { certificate_number: '', expiry_date: '', issue_date: '', file: null }),
+        [field]: value,
+      }
+    }))
+  }, [])
+  const handlePaCertificateFileChange = (requirementId: string, file: File | null) => {
+    setPaCertificatesFileUploads(prev => ({ ...prev, [requirementId]: file }))
+    handlePaCertificateFormDataChange(requirementId, 'file', file)
+  }
 
   const handleDriverInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -217,10 +254,44 @@ export default function CreateEmployeePage() {
         if (driverErr) throw driverErr
         await fetch('/api/audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table_name: 'drivers', record_id: employeeId, action: 'CREATE' }) })
         if (uploadedDocs.length > 0) {
-          await supabase.from('documents').insert(uploadedDocs.map(doc => ({
-            employee_id: employeeId, owner_type: 'employee', owner_id: employeeId,
-            file_url: JSON.stringify([doc.fileUrl]), file_name: doc.fileName, file_type: doc.fileType, file_path: doc.fileUrl, doc_type: doc.docType, uploaded_at: new Date().toISOString(),
-          })))
+          const docRecords = uploadedDocs.map(doc => ({ file_name: doc.fileName, file_type: doc.fileType, file_path: doc.filePath, file_url: doc.fileUrl, doc_type: doc.docType, uploaded_by: null }))
+          const { data: insertedDocs } = await supabase.from('documents').insert(docRecords).select('id')
+          if (insertedDocs?.length) {
+            for (const doc of insertedDocs) {
+              await supabase.from('document_driver_links').insert({ document_id: doc.id, driver_employee_id: employeeId })
+            }
+          }
+        }
+        if (Object.keys(driverCertificatesFormData).length > 0 || Object.keys(driverCertificatesFileUploads).length > 0) {
+          const { data: autoCreatedDocs } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'driver').eq('driver_employee_id', employeeId)
+          if (autoCreatedDocs?.length) {
+            for (const [requirementId, certData] of Object.entries(driverCertificatesFormData)) {
+              const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
+              if (existing && (certData.certificate_number || certData.expiry_date || certData.issue_date)) {
+                await supabase.from('subject_documents').update({
+                  certificate_number: certData.certificate_number || null,
+                  expiry_date: certData.expiry_date || null,
+                  issue_date: certData.issue_date || null,
+                  status: certData.expiry_date || certData.certificate_number ? 'valid' : undefined,
+                }).eq('id', existing.id)
+              }
+            }
+            for (const [requirementId, file] of Object.entries(driverCertificatesFileUploads)) {
+              if (!file) continue
+              const ext = file.name.split('.').pop()
+              const path = `drivers/${employeeId}/certificates/${requirementId}_${Date.now()}.${ext}`
+              const { data: up } = await supabase.storage.from('DRIVER_DOCUMENTS').upload(path, file)
+              if (up) {
+                const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(path)
+                const { data: docRecord } = await supabase.from('documents').insert({ file_name: file.name, file_type: file.type || 'application/octet-stream', file_path: path, file_url: publicUrl, doc_type: 'Certificate', uploaded_by: null }).select('id').single()
+                if (docRecord) {
+                  await supabase.from('document_driver_links').insert({ document_id: docRecord.id, driver_employee_id: employeeId })
+                  const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
+                  if (existing) await supabase.from('document_subject_document_links').insert({ document_id: docRecord.id, subject_document_id: existing.id })
+                }
+              }
+            }
+          }
         }
         router.push('/dashboard/drivers')
       } else if (role === 'PA') {
@@ -267,10 +338,44 @@ export default function CreateEmployeePage() {
         if (paErr) throw paErr
         await fetch('/api/audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table_name: 'passenger_assistants', record_id: paResult?.[0]?.id ?? employeeId, action: 'CREATE' }) })
         if (uploadedDocs.length > 0) {
-          await supabase.from('documents').insert(uploadedDocs.map(doc => ({
-            employee_id: employeeId, owner_type: 'employee', owner_id: employeeId,
-            file_url: JSON.stringify([doc.fileUrl]), file_name: doc.fileName, file_type: doc.fileType, file_path: doc.fileUrl, doc_type: doc.docType, uploaded_at: new Date().toISOString(),
-          })))
+          const docRecords = uploadedDocs.map(doc => ({ file_url: JSON.stringify([doc.fileUrl]), file_name: doc.fileName, file_type: doc.fileType, file_path: doc.fileUrl, doc_type: doc.docType, uploaded_at: new Date().toISOString() }))
+          const { data: insertedDocs } = await supabase.from('documents').insert(docRecords).select('id')
+          if (insertedDocs?.length) {
+            for (const doc of insertedDocs) {
+              await supabase.from('document_pa_links').insert({ document_id: doc.id, pa_employee_id: employeeId })
+            }
+          }
+        }
+        if (Object.keys(paCertificatesFormData).length > 0 || Object.keys(paCertificatesFileUploads).length > 0) {
+          const { data: autoCreatedDocs } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'pa').eq('pa_employee_id', employeeId)
+          if (autoCreatedDocs?.length) {
+            for (const [requirementId, certData] of Object.entries(paCertificatesFormData)) {
+              const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
+              if (existing && (certData.certificate_number || certData.expiry_date || certData.issue_date)) {
+                await supabase.from('subject_documents').update({
+                  certificate_number: certData.certificate_number || null,
+                  expiry_date: certData.expiry_date || null,
+                  issue_date: certData.issue_date || null,
+                  status: certData.expiry_date || certData.certificate_number ? 'valid' : undefined,
+                }).eq('id', existing.id)
+              }
+            }
+            for (const [requirementId, file] of Object.entries(paCertificatesFileUploads)) {
+              if (!file) continue
+              const ext = file.name.split('.').pop()
+              const path = `assistants/${employeeId}/certificates/${requirementId}_${Date.now()}.${ext}`
+              const { data: up } = await supabase.storage.from('DRIVER_DOCUMENTS').upload(path, file)
+              if (up) {
+                const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(path)
+                const { data: docRecord } = await supabase.from('documents').insert({ file_url: JSON.stringify([publicUrl]), file_name: file.name, file_type: file.type || 'application/octet-stream', file_path: path, doc_type: 'Certificate', uploaded_at: new Date().toISOString() }).select('id').single()
+                if (docRecord) {
+                  await supabase.from('document_pa_links').insert({ document_id: docRecord.id, pa_employee_id: employeeId })
+                  const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
+                  if (existing) await supabase.from('document_subject_document_links').insert({ document_id: docRecord.id, subject_document_id: existing.id })
+                }
+              }
+            }
+          }
         }
         router.push('/dashboard/assistants')
       } else {
@@ -297,6 +402,31 @@ export default function CreateEmployeePage() {
     }
     loadSchools()
   }, [])
+
+  const CompactFileUploadDriver = ({ id, file }: { id: string; file: File | null }) => (
+    <div className="flex items-center gap-2 mt-1 w-full">
+      <label htmlFor={`driver_${id}`} className="cursor-pointer bg-[#023E8A] text-white px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-[#023E8A]/90 shrink-0 flex items-center gap-1">
+        Upload
+      </label>
+      <div className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-[10px] text-slate-500 truncate flex items-center gap-2">
+        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${file ? 'bg-green-500' : 'bg-slate-300'}`} />
+        <span className={`truncate ${file ? 'text-slate-700 font-medium' : 'text-slate-400 italic'}`}>{file?.name || 'No file selected'}</span>
+      </div>
+      <input type="file" id={`driver_${id}`} accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setDriverFile(id, e.target.files?.[0] || null)} />
+    </div>
+  )
+  const CompactFileUploadPA = ({ id, file }: { id: string; file: File | null }) => (
+    <div className="flex items-center gap-2 mt-1 w-full">
+      <label htmlFor={`pa_${id}`} className="cursor-pointer bg-[#023E8A] text-white px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-[#023E8A]/90 shrink-0 flex items-center gap-1">
+        Upload
+      </label>
+      <div className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-[10px] text-slate-500 truncate flex items-center gap-2">
+        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${file ? 'bg-green-500' : 'bg-slate-300'}`} />
+        <span className={`truncate ${file ? 'text-slate-700 font-medium' : 'text-slate-400 italic'}`}>{file?.name || 'No file selected'}</span>
+      </div>
+      <input type="file" id={`pa_${id}`} accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setPAFile(id, e.target.files?.[0] || null)} />
+    </div>
+  )
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
@@ -507,241 +637,243 @@ export default function CreateEmployeePage() {
               )}
             </div>
 
-            {/* Driver details – shown when role is Driver */}
+            {/* Driver details – same layout as external Add New Driver form */}
             {formData.role === 'Driver' && (
-              <div className="space-y-3 border-t border-slate-100 pt-4">
-                <h3 className="text-sm font-semibold text-slate-700">Driver Details</h3>
-                <div className="border-b border-slate-200">
-                  <nav className="-mb-px flex gap-2">
-                    {(['basic', 'certificates', 'documents', 'training'] as const).map((tab) => (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setRoleDetailsTab(tab)}
-                        className={`py-1.5 px-2 text-xs font-medium border-b-2 ${roleDetailsTab === tab ? 'border-[#023E8A] text-[#023E8A]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                      >
-                        {tab === 'basic' && 'Basic'}
-                        {tab === 'certificates' && 'Certificates'}
-                        {tab === 'documents' && 'Documents'}
-                        {tab === 'training' && 'Training'}
-                      </button>
-                    ))}
-                  </nav>
+              <div className="border-t border-slate-200 pt-6 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700">Driver Details (matches Add New Driver form)</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                  <div className="lg:col-span-3 flex flex-col gap-4">
+                    <Card>
+                      <CardContent className="p-4 space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Identity</h2>
+                        <div className="space-y-4">
+                          <div className="relative group">
+                            <div className="w-full aspect-square bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:border-primary/50 transition-colors cursor-pointer overflow-hidden">
+                              <input type="file" id="driver_badge_photo_file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setDriverFile('badge_photo_file', e.target.files?.[0] || null)} />
+                              {driverFiles.badge_photo_file ? <div className="relative w-full h-full"><p className="absolute bottom-2 left-0 right-0 text-center text-xs bg-black/50 text-white py-1">Photo Selected</p></div> : <><Upload className="h-8 w-8 mb-2" /><span className="text-xs font-medium">Upload Badge Photo</span></>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                            <input type="checkbox" id="spare_driver" name="spare_driver" checked={driverForm.spare_driver} onChange={handleDriverInput} className="rounded border-amber-400 text-amber-600 focus:ring-amber-500" />
+                            <div className="flex-1">
+                              <Label htmlFor="spare_driver" className="text-sm font-semibold text-amber-900 cursor-pointer">Mark as Spare Driver</Label>
+                              <p className="text-[10px] text-amber-700 leading-tight mt-0.5">Not assigned to specific route, available for cover.</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <input type="checkbox" id="self_employed" name="self_employed" checked={driverForm.self_employed} onChange={handleDriverInput} className="rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
+                            <div className="flex-1">
+                              <Label htmlFor="self_employed" className="text-sm font-semibold text-slate-900 cursor-pointer">Self Employed</Label>
+                              <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Driver is self-employed (yes/no).</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="flex-1">
+                      <CardContent className="p-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b pb-2">Checklist</h2>
+                        <div className="space-y-2">
+                          {[
+                            { id: 'psv_license', label: 'PSV License' },
+                            { id: 'private_hire_badge', label: 'Private Hire Badge' },
+                            { id: 'dbs_number', label: 'DBS Checked', note: 'Enter number below in Certificates' },
+                          ].map((item) => (
+                            <div key={item.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-colors">
+                              <Label htmlFor={item.id} className="text-sm text-slate-700 cursor-pointer flex-1">{item.label}</Label>
+                              {item.id === 'dbs_number' ? (
+                                <span className="text-xs text-slate-500">Use Certificates</span>
+                              ) : (
+                                <input type="checkbox" id={item.id} name={item.id} checked={(driverForm as Record<string, unknown>)[item.id] as boolean} onChange={handleDriverInput} className="rounded border-slate-300 text-primary focus:ring-primary" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="lg:col-span-5 flex flex-col gap-4">
+                    <Card className="h-full">
+                      <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Critical Certificates</h2>
+                          <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                            <AlertCircle className="h-3 w-3" />
+                            <span>Expiry tracking enabled</span>
+                          </div>
+                        </div>
+                        <DynamicCertificatesForm subjectType="driver" formData={driverCertificatesFormData} fileUploads={driverCertificatesFileUploads} fieldErrors={fieldErrors} onFormDataChange={handleDriverCertificateFormDataChange} onFileChange={handleDriverCertificateFileChange} minDate={minDate} maxDate={maxDate} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="lg:col-span-4 flex flex-col gap-4">
+                    <Card>
+                      <CardContent className="p-4 space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Training Status</h2>
+                        <div className="space-y-3">
+                          {[
+                            { id: 'safeguarding_training', label: 'Safeguarding', completed: driverForm.safeguarding_training_completed, date: driverForm.safeguarding_training_date },
+                            { id: 'tas_pats_training', label: 'TAS PATS', completed: driverForm.tas_pats_training_completed, date: driverForm.tas_pats_training_date },
+                            { id: 'psa_training', label: 'PSA Training', completed: driverForm.psa_training_completed, date: driverForm.psa_training_date },
+                          ].map((t) => (
+                            <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`font-semibold ${t.completed ? 'text-green-800' : 'text-slate-600'}`}>{t.label}</span>
+                                <input type="checkbox" name={`${t.id}_completed`} checked={t.completed} onChange={handleDriverInput} className="rounded border-slate-300 text-green-600 focus:ring-green-500" />
+                              </div>
+                              {t.completed && <input type="date" name={`${t.id}_date`} value={t.date} onChange={handleDriverInput} min={minDate} max="9999-12-31" className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2" />}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="flex-1">
+                      <CardContent className="p-4 space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Additional Docs</h2>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Utility Bill</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input type="date" name="utility_bill_date" value={driverForm.utility_bill_date} onChange={handleDriverInput} min={minDate} max="9999-12-31" className="h-7 text-xs" />
+                              <CompactFileUploadDriver id="utility_bill_file" file={driverFiles.utility_bill_file} />
+                            </div>
+                          </div>
+                          <div className="space-y-2 pt-2 border-t">
+                            <Label className="text-sm font-semibold">Additional Files</Label>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {['Paper Licence', 'Birth Certificate', 'Marriage Certificate'].map((label) => {
+                                const key = label === 'Paper Licence' ? 'paper_licence_file' : label === 'Birth Certificate' ? 'birth_cert_file' : 'marriage_cert_file'
+                                return (
+                                  <div key={label} className="flex flex-col gap-1">
+                                    <span className="text-slate-500 truncate">{label}</span>
+                                    <CompactFileUploadDriver id={key} file={driverFiles[key]} />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <div className="pt-2">
+                            <Label htmlFor="driver_additional_notes" className="text-sm font-semibold">Notes</Label>
+                            <textarea id="driver_additional_notes" name="additional_notes" value={driverForm.additional_notes} onChange={handleDriverInput} rows={3} className="w-full mt-1 rounded-md border-slate-300 text-sm focus:border-primary focus:ring-primary min-h-[80px]" placeholder="Private HR notes..." />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-                {roleDetailsTab === 'basic' && (
-                  <div className="grid gap-3 md:grid-cols-2 pt-2">
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="spare_driver" name="spare_driver" checked={driverForm.spare_driver} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
-                      <Label htmlFor="spare_driver" className="text-xs text-slate-600">Mark as spare driver</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="psv_license" name="psv_license" checked={driverForm.psv_license} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
-                      <Label htmlFor="psv_license" className="text-xs text-slate-600">PSV License</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="self_employed" name="self_employed" checked={driverForm.self_employed} onChange={handleDriverInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
-                      <Label htmlFor="self_employed" className="text-xs text-slate-600">Self Employed</Label>
-                    </div>
-                    <div className="md:col-span-2 space-y-1">
-                      <Label htmlFor="driver_additional_notes" className="text-xs font-medium text-slate-600">Additional notes</Label>
-                      <textarea id="driver_additional_notes" name="additional_notes" value={driverForm.additional_notes} onChange={handleDriverInput} rows={2} className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
-                    </div>
-                  </div>
-                )}
-                {roleDetailsTab === 'certificates' && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2 p-4 border rounded-lg bg-red-50 border-red-200">
-                      <Label htmlFor="driver_tas_badge_expiry_date">TAS Badge expiry date *</Label>
-                      <Input type="date" id="driver_tas_badge_expiry_date" name="tas_badge_expiry_date" value={driverForm.tas_badge_expiry_date} onChange={handleDriverInput} max="9999-12-31" className={fieldErrors.tas_badge_expiry_date ? 'border-red-500' : ''} />
-                      {fieldErrors.tas_badge_expiry_date && <p className="text-xs text-red-600">{fieldErrors.tas_badge_expiry_date}</p>}
-                      <Input placeholder="TAS Badge number" name="tas_badge_number" value={driverForm.tas_badge_number} onChange={handleDriverInput} className="mt-2" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('tas_badge_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>DBS</Label>
-                      <Input placeholder="DBS number" name="dbs_number" value={driverForm.dbs_number} onChange={handleDriverInput} />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('dbs_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>First Aid expiry</Label>
-                      <Input type="date" name="first_aid_certificate_expiry_date" value={driverForm.first_aid_certificate_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('first_aid_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>Passport expiry</Label>
-                      <Input type="date" name="passport_expiry_date" value={driverForm.passport_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('passport_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>Driving licence expiry</Label>
-                      <Input type="date" name="driving_license_expiry_date" value={driverForm.driving_license_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('driving_license_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>CPC expiry</Label>
-                      <Input type="date" name="cpc_expiry_date" value={driverForm.cpc_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('cpc_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>Utility bill date</Label>
-                      <Input type="date" name="utility_bill_date" value={driverForm.utility_bill_date} onChange={handleDriverInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('utility_bill_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                  </div>
-                )}
-                {roleDetailsTab === 'documents' && (
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {[
-                      { name: 'birth_certificate', label: 'Birth Certificate' },
-                      { name: 'marriage_certificate', label: 'Marriage Certificate' },
-                      { name: 'photo_taken', label: 'Photo Taken' },
-                      { name: 'private_hire_badge', label: 'Private Hire Badge' },
-                      { name: 'paper_licence', label: 'Paper Licence' },
-                      { name: 'taxi_plate_photo', label: 'Taxi Plate Photo' },
-                      { name: 'logbook', label: 'Logbook' },
-                    ].map(({ name, label }) => (
-                      <label key={name} className="flex items-center gap-2">
-                        <input type="checkbox" name={name} checked={(driverForm as Record<string, unknown>)[name] as boolean} onChange={handleDriverInput} className="rounded border-gray-300 text-primary focus:ring-primary" />
-                        <span className="text-sm">{label}</span>
-                      </label>
-                    ))}
-                    <div className="md:col-span-2">
-                      <Label>Badge photo</Label>
-                      <input type="file" accept=".jpg,.jpeg,.png" onChange={(e) => setDriverFile('badge_photo_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                  </div>
-                )}
-                {roleDetailsTab === 'training' && (
-                  <div className="space-y-4">
-                    {[
-                      { key: 'safeguarding', label: 'Safeguarding', completed: 'safeguarding_training_completed', date: 'safeguarding_training_date' },
-                      { key: 'tas_pats', label: 'TAS PATS', completed: 'tas_pats_training_completed', date: 'tas_pats_training_date' },
-                      { key: 'psa', label: 'PSA', completed: 'psa_training_completed', date: 'psa_training_date' },
-                    ].map(({ label, completed, date }) => (
-                      <div key={label} className="flex flex-wrap items-center gap-4 p-4 border rounded-lg">
-                        <label className="flex items-center gap-2">
-                          <input type="checkbox" name={completed} checked={(driverForm as Record<string, unknown>)[completed] as boolean} onChange={handleDriverInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
-                          <span className="text-sm font-medium">{label} completed</span>
-                        </label>
-                        {(() => {
-                          const done = (driverForm as Record<string, unknown>)[completed] === true;
-                          if (!done) return null as React.ReactNode;
-                          const val = (driverForm as Record<string, unknown>)[date];
-                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handleDriverInput} max="9999-12-31" className="w-40" />;
-                        })()}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Passenger Assistant details – shown when role is PA */}
+            {/* Passenger Assistant details – same layout as external Add New PA form */}
             {formData.role === 'PA' && (
-              <div className="space-y-3 border-t border-slate-100 pt-4">
-                <h3 className="text-sm font-semibold text-slate-700">Passenger Assistant Details</h3>
-                <div className="border-b border-slate-200">
-                  <nav className="-mb-px flex gap-2">
-                    {(['basic', 'certificates', 'documents', 'training'] as const).map((tab) => (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setRoleDetailsTab(tab)}
-                        className={`py-1.5 px-2 text-xs font-medium border-b-2 ${roleDetailsTab === tab ? 'border-[#023E8A] text-[#023E8A]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                      >
-                        {tab === 'basic' && 'Basic'}
-                        {tab === 'certificates' && 'Certificates'}
-                        {tab === 'documents' && 'Documents'}
-                        {tab === 'training' && 'Training'}
-                      </button>
-                    ))}
-                  </nav>
+              <div className="border-t border-slate-200 pt-6 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700">Passenger Assistant Details (matches Add New PA form)</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                  <div className="lg:col-span-3 flex flex-col gap-4">
+                    <Card>
+                      <CardContent className="p-4 space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Identity</h2>
+                        <div className="space-y-4">
+                          <div className="relative group">
+                            <div className="w-full aspect-square bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:border-primary/50 transition-colors cursor-pointer overflow-hidden">
+                              <input type="file" id="pa_badge_photo_file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setPAFile('badge_photo_file', e.target.files?.[0] || null)} />
+                              {paFiles.badge_photo_file ? <div className="relative w-full h-full"><p className="absolute bottom-2 left-0 right-0 text-center text-xs bg-black/50 text-white py-1">Photo Selected</p></div> : <><Upload className="h-8 w-8 mb-2" /><span className="text-xs font-medium">Upload Badge Photo</span></>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                            <input type="checkbox" id="spare_pa" name="spare_pa" checked={paForm.spare_pa} onChange={handlePAInput} className="rounded border-amber-400 text-amber-600 focus:ring-amber-500" />
+                            <div className="flex-1">
+                              <Label htmlFor="spare_pa" className="text-sm font-semibold text-amber-900 cursor-pointer">Mark as Spare PA</Label>
+                              <p className="text-[10px] text-amber-700 leading-tight mt-0.5">Not assigned to specific route, available for cover.</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="flex-1">
+                      <CardContent className="p-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b pb-2">Checklist</h2>
+                        <div className="space-y-2">
+                          {[
+                            { id: 'birth_certificate', label: 'Birth Certificate' },
+                          ].map((item) => (
+                            <div key={item.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-colors">
+                              <Label htmlFor={item.id} className="text-sm text-slate-700 cursor-pointer flex-1">{item.label}</Label>
+                              <input type="checkbox" id={item.id} name={item.id} checked={(paForm as Record<string, unknown>)[item.id] as boolean} onChange={handlePAInput} className="rounded border-slate-300 text-primary focus:ring-primary" />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="lg:col-span-5 flex flex-col gap-4">
+                    <Card className="h-full">
+                      <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Critical Certificates</h2>
+                          <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                            <AlertCircle className="h-3 w-3" />
+                            <span>Expiry tracking enabled</span>
+                          </div>
+                        </div>
+                        <DynamicCertificatesForm subjectType="pa" formData={paCertificatesFormData} fileUploads={paCertificatesFileUploads} fieldErrors={fieldErrors} onFormDataChange={handlePaCertificateFormDataChange} onFileChange={handlePaCertificateFileChange} minDate={minDate} maxDate={maxDate} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="lg:col-span-4 flex flex-col gap-4">
+                    <Card>
+                      <CardContent className="p-4 space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Training Status</h2>
+                        <div className="space-y-3">
+                          {[
+                            { id: 'safeguarding_training', label: 'Safeguarding', completed: paForm.safeguarding_training_completed, date: paForm.safeguarding_training_date },
+                            { id: 'tas_pats_training', label: 'TAS PATS', completed: paForm.tas_pats_training_completed, date: paForm.tas_pats_training_date },
+                          ].map((t) => (
+                            <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`font-semibold ${t.completed ? 'text-green-800' : 'text-slate-600'}`}>{t.label}</span>
+                                <input type="checkbox" name={`${t.id}_completed`} checked={t.completed} onChange={handlePAInput} className="rounded border-slate-300 text-green-600 focus:ring-green-500" />
+                              </div>
+                              {t.completed && <input type="date" name={`${t.id}_date`} value={t.date} onChange={handlePAInput} min={minDate} max="9999-12-31" className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2" />}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="flex-1">
+                      <CardContent className="p-4 space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Additional Docs</h2>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Utility Bill</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input type="date" name="utility_bill_date" value={paForm.utility_bill_date} onChange={handlePAInput} min={minDate} max="9999-12-31" className="h-7 text-xs" />
+                              <CompactFileUploadPA id="utility_bill_file" file={paFiles.utility_bill_file} />
+                            </div>
+                          </div>
+                          <div className="space-y-2 pt-2 border-t">
+                            <Label className="text-sm font-semibold">Additional Files</Label>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {['Paper Licence', 'Birth Certificate', 'Marriage Certificate'].map((label) => {
+                                const key = label === 'Paper Licence' ? 'paper_licence_file' : label === 'Birth Certificate' ? 'birth_cert_file' : 'marriage_cert_file'
+                                return (
+                                  <div key={label} className="flex flex-col gap-1">
+                                    <span className="text-slate-500 truncate">{label}</span>
+                                    <CompactFileUploadPA id={key} file={paFiles[key]} />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <div className="pt-2">
+                            <Label htmlFor="pa_additional_notes" className="text-sm font-semibold">Notes</Label>
+                            <textarea id="pa_additional_notes" name="additional_notes" value={paForm.additional_notes} onChange={handlePAInput} rows={3} className="w-full mt-1 rounded-md border-slate-300 text-sm focus:border-primary focus:ring-primary min-h-[80px]" placeholder="Private HR notes..." />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-                {roleDetailsTab === 'basic' && (
-                  <div className="grid gap-3 md:grid-cols-2 pt-2">
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="spare_pa" name="spare_pa" checked={paForm.spare_pa} onChange={handlePAInput} className="h-3.5 w-3.5 rounded border-slate-300 text-[#023E8A] focus:ring-[#023E8A]" />
-                      <Label htmlFor="spare_pa" className="text-xs text-slate-600">Mark as spare PA</Label>
-                    </div>
-                    <div className="md:col-span-2 space-y-1">
-                      <Label htmlFor="pa_additional_notes" className="text-xs font-medium text-slate-600">Additional notes</Label>
-                      <textarea id="pa_additional_notes" name="additional_notes" value={paForm.additional_notes} onChange={handlePAInput} rows={2} className="block w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
-                    </div>
-                  </div>
-                )}
-                {roleDetailsTab === 'certificates' && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2 p-4 border rounded-lg bg-red-50 border-red-200">
-                      <Label htmlFor="pa_tas_badge_expiry_date">TAS Badge expiry date *</Label>
-                      <Input type="date" id="pa_tas_badge_expiry_date" name="tas_badge_expiry_date" value={paForm.tas_badge_expiry_date} onChange={handlePAInput} max="9999-12-31" className={fieldErrors.tas_badge_expiry_date ? 'border-red-500' : ''} />
-                      {fieldErrors.tas_badge_expiry_date && <p className="text-xs text-red-600">{fieldErrors.tas_badge_expiry_date}</p>}
-                      <Input placeholder="TAS Badge number" name="tas_badge_number" value={paForm.tas_badge_number} onChange={handlePAInput} className="mt-2" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('tas_badge_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>DBS</Label>
-                      <Input placeholder="DBS number" name="dbs_number" value={paForm.dbs_number} onChange={handlePAInput} />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('dbs_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>First Aid expiry</Label>
-                      <Input type="date" name="first_aid_certificate_expiry_date" value={paForm.first_aid_certificate_expiry_date} onChange={handlePAInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('first_aid_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>Passport expiry</Label>
-                      <Input type="date" name="passport_expiry_date" value={paForm.passport_expiry_date} onChange={handlePAInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('passport_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                    <div className="space-y-2 p-4 border rounded-lg">
-                      <Label>Utility bill date</Label>
-                      <Input type="date" name="utility_bill_date" value={paForm.utility_bill_date} onChange={handlePAInput} max="9999-12-31" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('utility_bill_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                  </div>
-                )}
-                {roleDetailsTab === 'documents' && (
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {[
-                      { name: 'birth_certificate', label: 'Birth Certificate' },
-                      { name: 'marriage_certificate', label: 'Marriage Certificate' },
-                      { name: 'photo_taken', label: 'Photo Taken' },
-                      { name: 'paper_licence', label: 'Paper Licence' },
-                      { name: 'taxi_plate_photo', label: 'Taxi Plate Photo' },
-                    ].map(({ name, label }) => (
-                      <label key={name} className="flex items-center gap-2">
-                        <input type="checkbox" name={name} checked={(paForm as Record<string, unknown>)[name] as boolean} onChange={handlePAInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
-                        <span className="text-sm">{label}</span>
-                      </label>
-                    ))}
-                    <div className="md:col-span-2">
-                      <Label>Badge photo</Label>
-                      <input type="file" accept=".jpg,.jpeg,.png" onChange={(e) => setPAFile('badge_photo_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
-                    </div>
-                  </div>
-                )}
-                {roleDetailsTab === 'training' && (
-                  <div className="space-y-4">
-                    {[
-                      { key: 'safeguarding', label: 'Safeguarding', completed: 'safeguarding_training_completed', date: 'safeguarding_training_date' },
-                      { key: 'tas_pats', label: 'TAS PATS', completed: 'tas_pats_training_completed', date: 'tas_pats_training_date' },
-                      { key: 'psa', label: 'PSA', completed: 'psa_training_completed', date: 'psa_training_date' },
-                    ].map(({ label, completed, date }) => (
-                      <div key={label} className="flex flex-wrap items-center gap-4 p-4 border rounded-lg">
-                        <label className="flex items-center gap-2">
-                          <input type="checkbox" name={completed} checked={(paForm as Record<string, unknown>)[completed] as boolean} onChange={handlePAInput} className="rounded border-gray-300 text-violet-600 focus:ring-violet-500" />
-                          <span className="text-sm font-medium">{label} completed</span>
-                        </label>
-                        {(() => {
-                          const done = (paForm as Record<string, unknown>)[completed] === true;
-                          if (!done) return null as React.ReactNode;
-                          const val = (paForm as Record<string, unknown>)[date];
-                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handlePAInput} max="9999-12-31" className="w-40" />;
-                        })()}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
