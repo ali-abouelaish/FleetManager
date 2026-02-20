@@ -461,7 +461,7 @@ export default function CreateDriverPage() {
         onChange={onChange}
         required={required}
         min={minDate}
-        max={maxDate}
+        max="9999-12-31"
         className={`h-8 text-sm ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {error && <span className="text-[10px] text-red-500">{error}</span>}
@@ -717,7 +717,7 @@ export default function CreateDriverPage() {
                         value={t.date}
                         onChange={handleInputChange}
                         min={minDate}
-                        max={maxDate}
+                        max="9999-12-31"
                         className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
                       />
                     )}
@@ -741,7 +741,7 @@ export default function CreateDriverPage() {
                       value={formData.utility_bill_date}
                       onChange={handleInputChange}
                       min={minDate}
-                      max={maxDate}
+                      max="9999-12-31"
                       className="h-7 text-xs"
                     />
                     <CompactFileUpload id="utility_bill_file" onChange={handleFileChange} file={fileUploads.utility_bill_file} />
@@ -751,11 +751,9 @@ export default function CreateDriverPage() {
                 <div className="space-y-2 pt-2 border-t">
                   <Label className="text-sm font-semibold">Additional Files</Label>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    {['Paper Licence', 'Taxi Plate Photo', 'Logbook', 'Birth Certificate', 'Marriage Certificate'].map((label, i) => {
+                    {['Paper Licence', 'Birth Certificate', 'Marriage Certificate'].map((label, i) => {
                       const mapping = {
                         'Paper Licence': { key: 'paper_licence_file', state: fileUploads.paper_licence_file },
-                        'Taxi Plate Photo': { key: 'taxi_plate_photo_file', state: fileUploads.taxi_plate_photo_file },
-                        'Logbook': { key: 'logbook_file', state: fileUploads.logbook_file },
                         'Birth Certificate': { key: 'birth_cert_file', state: fileUploads.birth_cert_file },
                         'Marriage Certificate': { key: 'marriage_cert_file', state: fileUploads.marriage_cert_file },
                       }

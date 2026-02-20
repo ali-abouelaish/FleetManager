@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2, Plus, MapPin, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { generateUUID } from '@/lib/utils'
@@ -30,6 +31,7 @@ function EditRoutePageClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [schools, setSchools] = useState<any[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
@@ -660,16 +662,13 @@ function EditRoutePageClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this route?')) {
-      return
-    }
-
     setDeleting(true)
+    setError(null)
 
     try {
-      const { error } = await supabase.from('routes').delete().eq('id', id)
+      const { error: deleteErr } = await supabase.from('routes').delete().eq('id', id)
 
-      if (error) throw error
+      if (deleteErr) throw deleteErr
 
       await fetch('/api/audit', {
         method: 'POST',
@@ -683,8 +682,8 @@ function EditRoutePageClient({ id }: { id: string }) {
 
       router.push('/dashboard/routes')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
     } finally {
       setDeleting(false)
     }
@@ -692,6 +691,26 @@ function EditRoutePageClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={formData.route_number ? `Route ${formData.route_number}` : 'this route'}
+          items={[
+            'The route record',
+            'All pickup points and stop order',
+            'All route sessions and attendance records',
+            'Crew and vehicle assignments for this route',
+          ]}
+          confirmLabel="Yes, Delete Route"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       {/* Header with Back Button */}
       <div className="flex items-center gap-4">
         <Link href={`/dashboard/routes/${id}`}>
@@ -706,7 +725,7 @@ function EditRoutePageClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {error && (
+      {error && !showDeleteConfirm && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-red-700">{error}</div>
@@ -1085,9 +1104,9 @@ function EditRoutePageClient({ id }: { id: string }) {
             Cancel
           </Button>
         </Link>
-        <Button onClick={handleDelete} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
+        <Button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
           <Trash2 className="mr-2 h-4 w-4" />
-          {deleting ? 'Deleting...' : 'Delete Route'}
+          Delete Route
         </Button>
         <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
           {loading ? 'Saving...' : 'Save Changes'}

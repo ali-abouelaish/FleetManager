@@ -578,6 +578,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, registration_expiry_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -605,6 +606,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, mot_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -632,6 +634,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, tax_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -658,6 +661,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, insurance_expiry_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -734,6 +738,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, loler_expiry_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -777,6 +782,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, last_pmi_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                 </div>
@@ -794,6 +800,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, first_aid_expiry: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -820,6 +827,7 @@ export default function CreateVehiclePage() {
                       onChange={(e) =>
                         setFormData({ ...formData, fire_extinguisher_expiry: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -945,6 +953,7 @@ export default function CreateVehiclePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, last_serviced: e.target.value })
                     }
+                    max="9999-12-31"
                   />
                 </div>
 
@@ -957,6 +966,7 @@ export default function CreateVehiclePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, service_booked_day: e.target.value })
                     }
+                    max="9999-12-31"
                   />
                 </div>
 
@@ -989,6 +999,7 @@ export default function CreateVehiclePage() {
                         onChange={(e) =>
                           setFormData({ ...formData, loler_expiry_date: e.target.value })
                         }
+                        max="9999-12-31"
                       />
                     </div>
                     <div>

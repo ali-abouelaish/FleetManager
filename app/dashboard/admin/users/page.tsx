@@ -119,10 +119,31 @@ export default function AdminUsersPage() {
       return
     }
 
-    const employeeId = formData.employee_id.trim() ? Number(formData.employee_id) : null
-    if (formData.employee_id.trim() && !Number.isInteger(employeeId)) {
-      setError('Employee ID must be a valid number')
+    const rawId = formData.employee_id.trim()
+    const parsed = rawId ? Number(formData.employee_id) : NaN
+    const employeeId =
+      rawId && Number.isInteger(parsed) && parsed > 0 ? parsed : null
+
+    if (rawId && (Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0)) {
+      setError('Employee ID must be a positive whole number')
       return
+    }
+
+    // If employee ID provided, ensure it exists in the system
+    if (employeeId != null) {
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('id', employeeId)
+        .maybeSingle()
+      if (empError) {
+        setError(empError.message || 'Failed to verify employee ID')
+        return
+      }
+      if (!employee) {
+        setError("The ID doesn't match employee id in system")
+        return
+      }
     }
 
     setSaving(true)
@@ -162,7 +183,15 @@ export default function AdminUsersPage() {
 
       await loadUsers()
     } catch (err: any) {
-      setError(err.message || 'Failed to save user')
+      const msg = err?.message ?? ''
+      if (
+        msg.includes('users_employee_id_fkey') ||
+        (msg.includes('foreign key') && msg.toLowerCase().includes('employee'))
+      ) {
+        setError("The ID doesn't match employee id in system")
+      } else {
+        setError(msg || 'Failed to save user')
+      }
     } finally {
       setSaving(false)
     }

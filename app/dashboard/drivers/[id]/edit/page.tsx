@@ -307,6 +307,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         value={value}
         onChange={onChange}
         required={required}
+        max="9999-12-31"
         className={`h-8 text-sm ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {error && <span className="text-[10px] text-red-500">{error}</span>}
@@ -646,6 +647,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                         name={`${t.id}_date`}
                         value={t.date}
                         onChange={handleInputChange}
+                        max="9999-12-31"
                         className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
                       />
                     )}
@@ -663,7 +665,7 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                 <div className="space-y-1">
                   <Label className="text-xs">Utility Bill</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="date" name="utility_bill_date" value={formData.utility_bill_date} onChange={handleInputChange} className="h-7 text-xs" />
+                    <Input type="date" name="utility_bill_date" value={formData.utility_bill_date} onChange={handleInputChange} max="9999-12-31" className="h-7 text-xs" />
                     <CompactFileUpload id="utility_bill_file" onChange={handleFileChange} file={fileUploads.utility_bill_file} />
                   </div>
                 </div>
@@ -671,11 +673,9 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
                 <div className="space-y-2 pt-2 border-t">
                   <Label className="text-sm font-semibold">Additional Files</Label>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    {['Paper Licence', 'Taxi Plate Photo', 'Logbook', 'Birth Certificate', 'Marriage Certificate'].map((label, i) => {
+                    {['Paper Licence', 'Birth Certificate', 'Marriage Certificate'].map((label, i) => {
                       const fileKey = {
                         'Paper Licence': 'paper_licence_file',
-                        'Taxi Plate Photo': 'taxi_plate_photo_file',
-                        'Logbook': 'logbook_file',
                         'Birth Certificate': 'birth_cert_file',
                         'Marriage Certificate': 'marriage_cert_file'
                       }[label] || 'unknown'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,13 +14,28 @@ export function IncidentSearchFilters() {
   const get = (k: string) => searchParams?.get(k) ?? ''
   const paramStr = searchParams?.toString() ?? ''
 
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const isSearchFocusedRef = useRef(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const [search, setSearch] = useState(get('search') || '')
   const [status, setStatus] = useState(get('status') || 'all')
 
   useEffect(() => {
-    setSearch(get('search') || '')
+    if (!isSearchFocusedRef.current) {
+      setSearch(get('search') || '')
+    }
     setStatus(get('status') || 'all')
   }, [searchParams])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const updateFilters = (updates: Record<string, string>) => {
     startTransition(() => {
@@ -40,22 +55,38 @@ export function IncidentSearchFilters() {
   }
 
   const handleSearchChange = (value: string) => {
+    // Update local state immediately for responsive typing
     setSearch(value)
-    const params = new URLSearchParams(paramStr)
-    if (get('route_session_id')) {
-      params.set('route_session_id', get('route_session_id'))
+    
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
     }
-    if (value.trim()) {
-      params.set('search', value.trim())
-    } else {
-      params.delete('search')
-    }
-    startTransition(() => {
-      router.push(`?${params.toString()}`)
-    })
+    
+    // Debounce URL update to reduce server requests
+    searchTimeoutRef.current = setTimeout(() => {
+      const params = new URLSearchParams(paramStr)
+      if (get('route_session_id')) {
+        params.set('route_session_id', get('route_session_id'))
+      }
+      if (value.trim()) {
+        params.set('search', value.trim())
+      } else {
+        params.delete('search')
+      }
+      
+      startTransition(() => {
+        router.push(`?${params.toString()}`)
+      })
+    }, 400)
   }
 
   const clearFilters = () => {
+    // Clear any pending search timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+      searchTimeoutRef.current = null
+    }
     setSearch('')
     setStatus('all')
     const params = new URLSearchParams()
@@ -79,13 +110,19 @@ export function IncidentSearchFilters() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
+              ref={searchInputRef}
               id="search"
               type="text"
               placeholder="Search incidents..."
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => {
+                isSearchFocusedRef.current = true
+              }}
+              onBlur={() => {
+                isSearchFocusedRef.current = false
+              }}
               className="pl-10"
-              disabled={isPending}
             />
             {search && (
               <button

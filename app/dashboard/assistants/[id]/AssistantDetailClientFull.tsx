@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
+import DeletePAButton from './DeletePAButton'
 
 const PassengerAssistantQRCodeWrapper = dynamic(
   () => import('@/components/dashboard/PassengerAssistantQRCode'),
@@ -252,6 +253,7 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
             {employee.can_work === false ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
             {employee.can_work === false ? 'Cannot Work' : 'Authorized to Work'}
           </div>
+          <DeletePAButton paId={assistant.id} employeeId={assistant.employee_id} paName={employee.full_name} />
           <Link href={`/dashboard/assistants/${id}/edit`}>
             <Button size="sm" variant="outline" className="h-8 text-xs">
               <Pencil className="h-3 w-3 mr-1.5" /> Edit Profile

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
@@ -19,6 +20,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [drivers, setDrivers] = useState<Array<{ id: number; name: string }>>([])
   const [activeTab, setActiveTab] = useState<TabType>('basic')
@@ -458,16 +460,13 @@ function EditVehiclePageClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this vehicle?')) {
-      return
-    }
-
     setDeleting(true)
+    setError(null)
 
     try {
-      const { error } = await supabase.from('vehicles').delete().eq('id', id)
+      const { error: deleteErr } = await supabase.from('vehicles').delete().eq('id', id)
 
-      if (error) throw error
+      if (deleteErr) throw deleteErr
 
       await fetch('/api/audit', {
         method: 'POST',
@@ -481,15 +480,38 @@ function EditVehiclePageClient({ id }: { id: string }) {
 
       router.push('/dashboard/vehicles')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
     } finally {
       setDeleting(false)
     }
   }
 
+  const vehicleDisplayName =
+    formData.registration || formData.vehicle_identifier || formData.plate_number || 'this vehicle'
+
   return (
     <div className="space-y-6">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={vehicleDisplayName}
+          items={[
+            'The vehicle record',
+            'All compliance documents and certificates',
+            'All document links',
+            'All assignment and maintenance history',
+          ]}
+          confirmLabel="Yes, Delete Vehicle"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href={`/dashboard/vehicles/${id}`}>
@@ -503,13 +525,17 @@ function EditVehiclePageClient({ id }: { id: string }) {
             <p className="mt-2 text-sm text-gray-600">Update vehicle information</p>
           </div>
         </div>
-        <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+        <Button
+          variant="danger"
+          onClick={() => setShowDeleteConfirm(true)}
+          disabled={deleting}
+        >
           <Trash2 className="mr-2 h-4 w-4" />
-          {deleting ? 'Deleting...' : 'Delete'}
+          Delete
         </Button>
       </div>
 
-      {error && (
+      {error && !showDeleteConfirm && (
         <Card className="border-l-4 border-red-500 bg-red-50">
           <CardContent className="py-4">
             <div className="flex items-center">
@@ -736,6 +762,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, registration_expiry_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -763,6 +790,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, mot_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -790,6 +818,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, tax_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -816,6 +845,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, insurance_expiry_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -892,6 +922,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, loler_expiry_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -935,6 +966,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, last_pmi_date: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                 </div>
@@ -952,6 +984,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, first_aid_expiry: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -978,6 +1011,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                       onChange={(e) =>
                         setFormData({ ...formData, fire_extinguisher_expiry: e.target.value })
                       }
+                      max="9999-12-31"
                     />
                   </div>
                   <div>
@@ -1103,6 +1137,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                     onChange={(e) =>
                       setFormData({ ...formData, last_serviced: e.target.value })
                     }
+                    max="9999-12-31"
                   />
                 </div>
 
@@ -1115,6 +1150,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
                     onChange={(e) =>
                       setFormData({ ...formData, service_booked_day: e.target.value })
                     }
+                    max="9999-12-31"
                   />
                 </div>
 

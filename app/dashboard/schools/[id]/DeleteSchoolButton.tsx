@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
-import { Trash2, AlertTriangle } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/Card'
+import { Trash2 } from 'lucide-react'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 
 interface DeleteSchoolButtonProps {
   schoolId: number
@@ -60,60 +60,24 @@ export default function DeleteSchoolButton({
 
   if (showConfirm) {
     return (
-      <Card className="border-l-4 border-red-500 bg-red-50">
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="flex items-start">
-              <AlertTriangle className="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-red-800 mb-2">
-                  Confirm Deletion
-                </h3>
-                <p className="text-sm text-red-700 mb-3">
-                  Are you sure you want to delete <strong>{schoolName}</strong>?
-                </p>
-                <div className="bg-red-100 border border-red-200 rounded p-3 mb-3">
-                  <p className="text-xs font-semibold text-red-900 mb-1">This will permanently delete:</p>
-                  <ul className="text-xs text-red-800 list-disc list-inside space-y-1">
-                    <li>The school record</li>
-                    <li><strong>{routeCount} route{routeCount !== 1 ? 's' : ''}</strong> and all associated data</li>
-                    <li><strong>{passengerCount} passenger{passengerCount !== 1 ? 's' : ''}</strong></li>
-                    <li>All crew assignments for this school</li>
-                    <li>All route points, sessions, and attendance records</li>
-                  </ul>
-                  <p className="text-xs font-bold text-red-900 mt-2">This action cannot be undone!</p>
-                </div>
-                {error && (
-                  <div className="mb-3 p-2 bg-red-200 border border-red-300 rounded text-xs text-red-900">
-                    {error}
-                  </div>
-                )}
-                <div className="flex space-x-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setShowConfirm(false)
-                      setError(null)
-                    }}
-                    disabled={deleting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                  >
-                    {deleting ? 'Deleting...' : 'Yes, Delete School'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ConfirmDeleteCard
+        entityName={schoolName}
+        items={[
+          'The school record',
+          `${routeCount} route${routeCount !== 1 ? 's' : ''} and all associated data`,
+          `${passengerCount} passenger${passengerCount !== 1 ? 's' : ''}`,
+          'All crew assignments for this school',
+          'All route points, sessions, and attendance records',
+        ]}
+        confirmLabel="Yes, Delete School"
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setShowConfirm(false)
+          setError(null)
+        }}
+        loading={deleting}
+        error={error}
+      />
     )
   }
 

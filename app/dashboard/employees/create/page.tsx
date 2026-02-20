@@ -438,6 +438,7 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, date_of_birth: e.target.value })
                   }
+                  max="9999-12-31"
                   className="h-9"
                 />
                 <p className="text-xs text-slate-500">Optional</p>
@@ -452,6 +453,7 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, start_date: e.target.value })
                   }
+                  max="9999-12-31"
                   className="h-9"
                 />
                 <p className="text-xs text-slate-500">Optional</p>
@@ -466,6 +468,7 @@ export default function CreateEmployeePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, end_date: e.target.value })
                   }
+                  max="9999-12-31"
                   className="h-9"
                 />
                 <p className="text-xs text-slate-500">Optional</p>
@@ -549,7 +552,7 @@ export default function CreateEmployeePage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2 p-4 border rounded-lg bg-red-50 border-red-200">
                       <Label htmlFor="driver_tas_badge_expiry_date">TAS Badge expiry date *</Label>
-                      <Input type="date" id="driver_tas_badge_expiry_date" name="tas_badge_expiry_date" value={driverForm.tas_badge_expiry_date} onChange={handleDriverInput} className={fieldErrors.tas_badge_expiry_date ? 'border-red-500' : ''} />
+                      <Input type="date" id="driver_tas_badge_expiry_date" name="tas_badge_expiry_date" value={driverForm.tas_badge_expiry_date} onChange={handleDriverInput} max="9999-12-31" className={fieldErrors.tas_badge_expiry_date ? 'border-red-500' : ''} />
                       {fieldErrors.tas_badge_expiry_date && <p className="text-xs text-red-600">{fieldErrors.tas_badge_expiry_date}</p>}
                       <Input placeholder="TAS Badge number" name="tas_badge_number" value={driverForm.tas_badge_number} onChange={handleDriverInput} className="mt-2" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('tas_badge_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
@@ -561,27 +564,27 @@ export default function CreateEmployeePage() {
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>First Aid expiry</Label>
-                      <Input type="date" name="first_aid_certificate_expiry_date" value={driverForm.first_aid_certificate_expiry_date} onChange={handleDriverInput} />
+                      <Input type="date" name="first_aid_certificate_expiry_date" value={driverForm.first_aid_certificate_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('first_aid_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>Passport expiry</Label>
-                      <Input type="date" name="passport_expiry_date" value={driverForm.passport_expiry_date} onChange={handleDriverInput} />
+                      <Input type="date" name="passport_expiry_date" value={driverForm.passport_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('passport_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>Driving licence expiry</Label>
-                      <Input type="date" name="driving_license_expiry_date" value={driverForm.driving_license_expiry_date} onChange={handleDriverInput} />
+                      <Input type="date" name="driving_license_expiry_date" value={driverForm.driving_license_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('driving_license_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>CPC expiry</Label>
-                      <Input type="date" name="cpc_expiry_date" value={driverForm.cpc_expiry_date} onChange={handleDriverInput} />
+                      <Input type="date" name="cpc_expiry_date" value={driverForm.cpc_expiry_date} onChange={handleDriverInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('cpc_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>Utility bill date</Label>
-                      <Input type="date" name="utility_bill_date" value={driverForm.utility_bill_date} onChange={handleDriverInput} />
+                      <Input type="date" name="utility_bill_date" value={driverForm.utility_bill_date} onChange={handleDriverInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDriverFile('utility_bill_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                   </div>
@@ -624,7 +627,7 @@ export default function CreateEmployeePage() {
                           const done = (driverForm as Record<string, unknown>)[completed] === true;
                           if (!done) return null as React.ReactNode;
                           const val = (driverForm as Record<string, unknown>)[date];
-                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handleDriverInput} className="w-40" />;
+                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handleDriverInput} max="9999-12-31" className="w-40" />;
                         })()}
                       </div>
                     ))}
@@ -670,7 +673,7 @@ export default function CreateEmployeePage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2 p-4 border rounded-lg bg-red-50 border-red-200">
                       <Label htmlFor="pa_tas_badge_expiry_date">TAS Badge expiry date *</Label>
-                      <Input type="date" id="pa_tas_badge_expiry_date" name="tas_badge_expiry_date" value={paForm.tas_badge_expiry_date} onChange={handlePAInput} className={fieldErrors.tas_badge_expiry_date ? 'border-red-500' : ''} />
+                      <Input type="date" id="pa_tas_badge_expiry_date" name="tas_badge_expiry_date" value={paForm.tas_badge_expiry_date} onChange={handlePAInput} max="9999-12-31" className={fieldErrors.tas_badge_expiry_date ? 'border-red-500' : ''} />
                       {fieldErrors.tas_badge_expiry_date && <p className="text-xs text-red-600">{fieldErrors.tas_badge_expiry_date}</p>}
                       <Input placeholder="TAS Badge number" name="tas_badge_number" value={paForm.tas_badge_number} onChange={handlePAInput} className="mt-2" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('tas_badge_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
@@ -682,17 +685,17 @@ export default function CreateEmployeePage() {
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>First Aid expiry</Label>
-                      <Input type="date" name="first_aid_certificate_expiry_date" value={paForm.first_aid_certificate_expiry_date} onChange={handlePAInput} />
+                      <Input type="date" name="first_aid_certificate_expiry_date" value={paForm.first_aid_certificate_expiry_date} onChange={handlePAInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('first_aid_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>Passport expiry</Label>
-                      <Input type="date" name="passport_expiry_date" value={paForm.passport_expiry_date} onChange={handlePAInput} />
+                      <Input type="date" name="passport_expiry_date" value={paForm.passport_expiry_date} onChange={handlePAInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('passport_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                     <div className="space-y-2 p-4 border rounded-lg">
                       <Label>Utility bill date</Label>
-                      <Input type="date" name="utility_bill_date" value={paForm.utility_bill_date} onChange={handlePAInput} />
+                      <Input type="date" name="utility_bill_date" value={paForm.utility_bill_date} onChange={handlePAInput} max="9999-12-31" />
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPAFile('utility_bill_file', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0" />
                     </div>
                   </div>
@@ -733,7 +736,7 @@ export default function CreateEmployeePage() {
                           const done = (paForm as Record<string, unknown>)[completed] === true;
                           if (!done) return null as React.ReactNode;
                           const val = (paForm as Record<string, unknown>)[date];
-                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handlePAInput} className="w-40" />;
+                          return <Input type="date" name={date} value={String(val ?? '')} onChange={handlePAInput} max="9999-12-31" className="w-40" />;
                         })()}
                       </div>
                     ))}

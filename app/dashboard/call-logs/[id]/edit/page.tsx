@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2, AlertCircle, Phone, Users, FileText } from 'lucide-react'
 import Link from 'next/link'
 
@@ -15,6 +16,7 @@ function EditCallLogPageClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [passengers, setPassengers] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
@@ -151,11 +153,11 @@ function EditCallLogPageClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this call log?')) return
     setDeleting(true)
+    setError(null)
     try {
-      const { error } = await supabase.from('call_logs').delete().eq('id', id)
-      if (error) throw error
+      const { error: deleteErr } = await supabase.from('call_logs').delete().eq('id', id)
+      if (deleteErr) throw deleteErr
 
       await fetch('/api/audit', {
         method: 'POST',
@@ -165,8 +167,8 @@ function EditCallLogPageClient({ id }: { id: string }) {
 
       router.push('/dashboard/call-logs')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
     } finally {
       setDeleting(false)
     }
@@ -174,6 +176,25 @@ function EditCallLogPageClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-3">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={formData.subject ? `Call log: ${formData.subject}` : 'this call log'}
+          items={[
+            'The call log record',
+            'All linked passenger, driver, and route references',
+            'Subject, notes, and follow-up data',
+          ]}
+          confirmLabel="Yes, Delete Call Log"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       {/* Header with Back Button */}
       <div className="flex items-center gap-4">
         <Link href={`/dashboard/call-logs/${id}`}>
@@ -188,7 +209,7 @@ function EditCallLogPageClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {error && (
+      {error && !showDeleteConfirm && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-red-700">{error}</div>
@@ -370,9 +391,9 @@ function EditCallLogPageClient({ id }: { id: string }) {
             Cancel
           </Button>
         </Link>
-        <Button onClick={handleDelete} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
+        <Button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
           <Trash2 className="mr-2 h-4 w-4" />
-          {deleting ? 'Deleting...' : 'Delete'}
+          Delete
         </Button>
         <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
           {loading ? 'Saving...' : 'Save Changes'}

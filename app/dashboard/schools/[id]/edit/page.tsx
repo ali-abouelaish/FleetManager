@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2, AlertCircle, UserCog } from 'lucide-react'
 import Link from 'next/link'
 
@@ -16,6 +17,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [coordinators, setCoordinators] = useState<Coordinator[]>([])
   const [selectedCoordinatorIds, setSelectedCoordinatorIds] = useState<number[]>([])
@@ -138,18 +140,14 @@ function EditSchoolPageClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this school? This will affect related routes and passengers.')) {
-      return
-    }
-
     setDeleting(true)
+    setError(null)
 
     try {
-      const { error } = await supabase.from('schools').delete().eq('id', id)
+      const { error: deleteErr } = await supabase.from('schools').delete().eq('id', id)
 
-      if (error) throw error
+      if (deleteErr) throw deleteErr
 
-      // Audit log (non-blocking)
       fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,8 +160,8 @@ function EditSchoolPageClient({ id }: { id: string }) {
 
       router.push('/dashboard/schools')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
     } finally {
       setDeleting(false)
     }
@@ -171,6 +169,27 @@ function EditSchoolPageClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={formData.name || 'this school'}
+          items={[
+            'The school record',
+            'All routes and associated data for this school',
+            'All passengers linked to this school',
+            'All crew assignments for this school',
+            'All route points, sessions, and attendance records',
+          ]}
+          confirmLabel="Yes, Delete School"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       {/* Header with Back Button */}
       <div className="flex items-center gap-4">
         <Link href={`/dashboard/schools/${id}`}>
@@ -185,7 +204,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {error && (
+      {error && !showDeleteConfirm && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-red-700">{error}</div>
@@ -338,9 +357,9 @@ function EditSchoolPageClient({ id }: { id: string }) {
             Cancel
           </Button>
         </Link>
-        <Button onClick={handleDelete} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
+        <Button onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="bg-red-600 text-white hover:bg-red-700">
           <Trash2 className="mr-2 h-4 w-4" />
-          {deleting ? 'Deleting...' : 'Delete School'}
+          Delete School
         </Button>
         <Button onClick={handleSubmit} disabled={loading} className="bg-[#023E8A] hover:bg-[#023E8A]/90 text-white">
           {loading ? 'Saving...' : 'Save Changes'}

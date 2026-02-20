@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2, AlertCircle, MapPin, School as SchoolIcon, Bus } from 'lucide-react'
 import Link from 'next/link'
 
@@ -16,6 +17,7 @@ function EditPassengerPageClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [schools, setSchools] = useState<any[]>([])
   const [routes, setRoutes] = useState<any[]>([])
@@ -101,12 +103,11 @@ function EditPassengerPageClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this passenger?')) return
-
     setDeleting(true)
+    setError(null)
     try {
-      const { error } = await supabase.from('passengers').delete().eq('id', id)
-      if (error) throw error
+      const { error: deleteErr } = await supabase.from('passengers').delete().eq('id', id)
+      if (deleteErr) throw deleteErr
 
       await fetch('/api/audit', {
         method: 'POST',
@@ -116,8 +117,8 @@ function EditPassengerPageClient({ id }: { id: string }) {
 
       router.push('/dashboard/passengers')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
     } finally {
       setDeleting(false)
     }
@@ -125,6 +126,26 @@ function EditPassengerPageClient({ id }: { id: string }) {
 
   return (
     <div className="max-w-[1600px] mx-auto p-4 space-y-6">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={formData.full_name || 'this passenger'}
+          items={[
+            'The passenger record',
+            'All route and pickup assignments',
+            'All incident links and notes',
+            'Parent/guardian contact links for this passenger',
+          ]}
+          confirmLabel="Yes, Delete Passenger"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 -mx-6 -mt-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -140,8 +161,8 @@ function EditPassengerPageClient({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting} className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200">
-            {deleting ? 'Deleting...' : 'Delete Passenger'}
+          <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} disabled={deleting} className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200">
+            Delete Passenger
           </Button>
           <div className="h-6 w-px bg-slate-200 mx-2" />
           <Link href={`/dashboard/passengers/${id}`}>
@@ -153,7 +174,7 @@ function EditPassengerPageClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {error && (
+      {error && !showDeleteConfirm && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3 text-sm">
           <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
           <p className="font-medium">{error}</p>

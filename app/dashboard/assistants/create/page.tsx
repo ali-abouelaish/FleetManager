@@ -443,7 +443,7 @@ export default function CreatePassengerAssistantPage() {
         onChange={onChange}
         required={required}
         min={minDate}
-        max={maxDate}
+        max="9999-12-31"
         className={`h-8 text-sm ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {error && <span className="text-[10px] text-red-500">{error}</span>}
@@ -678,7 +678,7 @@ export default function CreatePassengerAssistantPage() {
                         value={t.date}
                         onChange={handleInputChange}
                         min={minDate}
-                        max={maxDate}
+                        max="9999-12-31"
                         className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
                       />
                     )}
@@ -702,7 +702,7 @@ export default function CreatePassengerAssistantPage() {
                       value={formData.utility_bill_date}
                       onChange={handleInputChange}
                       min={minDate}
-                      max={maxDate}
+                      max="9999-12-31"
                       className="h-7 text-xs"
                     />
                     <CompactFileUpload id="utility_bill_file" onChange={handleFileChange} file={fileUploads.utility_bill_file} />

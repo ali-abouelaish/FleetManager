@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Save, Trash2, AlertCircle, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,6 +26,7 @@ function EditParentContactClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [passengers, setPassengers] = useState<Passenger[]>([])
   const [selectedPassengers, setSelectedPassengers] = useState<number[]>([])
@@ -157,27 +159,21 @@ function EditParentContactClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this parent contact? This will remove all passenger associations.')) {
-      return
-    }
-
     setDeleting(true)
+    setError(null)
     try {
-      // Delete links first (due to foreign key)
       await supabase
         .from('passenger_parent_contacts')
         .delete()
         .eq('parent_contact_id', id)
 
-      // Delete contact
-      const { error } = await supabase
+      const { error: deleteErr } = await supabase
         .from('parent_contacts')
         .delete()
         .eq('id', id)
 
-      if (error) throw error
+      if (deleteErr) throw deleteErr
 
-      // Audit log
       await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,7 +186,6 @@ function EditParentContactClient({ id }: { id: string }) {
 
       router.push('/dashboard/parent-contacts')
     } catch (err: any) {
-      console.error('Error deleting parent contact:', err)
       setError(err.message || 'Failed to delete parent contact')
     } finally {
       setDeleting(false)
@@ -199,6 +194,24 @@ function EditParentContactClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={formData.full_name || 'this parent contact'}
+          items={[
+            'The parent/guardian contact record',
+            'All passenger associations (links to passengers)',
+          ]}
+          confirmLabel="Yes, Delete Contact"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href={`/dashboard/parent-contacts/${id}`}>
@@ -216,7 +229,7 @@ function EditParentContactClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {error && (
+      {error && !showDeleteConfirm && (
         <Card className="border-l-4 border-red-500 bg-red-50">
           <CardContent className="py-4">
             <div className="flex items-center">
@@ -353,12 +366,12 @@ function EditParentContactClient({ id }: { id: string }) {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleting}
                 className="bg-red-600 text-white hover:bg-red-700"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                {deleting ? 'Deleting...' : 'Delete Contact'}
+                Delete Contact
               </Button>
 
               <div className="flex space-x-4">

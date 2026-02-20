@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 function EditEmployeePageClient({ id }: { id: string }) {
@@ -15,6 +16,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [badgePhotoFile, setBadgePhotoFile] = useState<File | null>(null)
   const [existingBadgePhotoUrl, setExistingBadgePhotoUrl] = useState<string | null>(null)
@@ -262,18 +264,14 @@ function EditEmployeePageClient({ id }: { id: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this employee?')) {
-      return
-    }
-
     setDeleting(true)
+    setError(null)
 
     try {
-      const { error } = await supabase.from('employees').delete().eq('id', id)
+      const { error: deleteErr } = await supabase.from('employees').delete().eq('id', id)
 
-      if (error) throw error
+      if (deleteErr) throw deleteErr
 
-      // Log audit
       await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -286,8 +284,8 @@ function EditEmployeePageClient({ id }: { id: string }) {
 
       router.push('/dashboard/employees')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
     } finally {
       setDeleting(false)
     }
@@ -295,6 +293,26 @@ function EditEmployeePageClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
+      {showDeleteConfirm && (
+        <ConfirmDeleteCard
+          entityName={formData.full_name || 'this employee'}
+          items={[
+            'The employee record',
+            'Related driver or passenger assistant record (if any)',
+            'All documents and certificates linked to this employee',
+            'All route and assignment links',
+          ]}
+          confirmLabel="Yes, Delete Employee"
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setError(null)
+          }}
+          loading={deleting}
+          error={error}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href={`/dashboard/employees/${id}`}>
@@ -310,9 +328,13 @@ function EditEmployeePageClient({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+        <Button
+          variant="danger"
+          onClick={() => setShowDeleteConfirm(true)}
+          disabled={deleting}
+        >
           <Trash2 className="mr-2 h-4 w-4" />
-          {deleting ? 'Deleting...' : 'Delete'}
+          Delete
         </Button>
       </div>
 
@@ -431,6 +453,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                   onChange={(e) =>
                     setFormData({ ...formData, date_of_birth: e.target.value })
                   }
+                  max="9999-12-31"
                 />
                 <p className="text-xs text-gray-500">Optional</p>
               </div>
@@ -444,6 +467,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                   onChange={(e) =>
                     setFormData({ ...formData, start_date: e.target.value })
                   }
+                  max="9999-12-31"
                 />
                 <p className="text-xs text-gray-500">Optional - Leave blank if not applicable</p>
               </div>
@@ -457,6 +481,7 @@ function EditEmployeePageClient({ id }: { id: string }) {
                   onChange={(e) =>
                     setFormData({ ...formData, end_date: e.target.value })
                   }
+                  max="9999-12-31"
                 />
                 <p className="text-xs text-gray-500">Optional - Leave blank if employee is still active</p>
               </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -62,11 +63,8 @@ export default function DeleteIncidentPage({ params }: { params: Promise<{ id: s
   }, [params, supabase])
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this incident? This action cannot be undone.')) {
-      return
-    }
-
     setLoading(true)
+    setError(null)
     const { id } = await params
 
     try {
@@ -95,8 +93,8 @@ export default function DeleteIncidentPage({ params }: { params: Promise<{ id: s
 
       router.push('/dashboard/incidents')
       router.refresh()
-    } catch (error: any) {
-      setError(error.message || 'An error occurred while deleting the incident')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while deleting the incident')
     } finally {
       setLoading(false)
     }
@@ -160,50 +158,22 @@ export default function DeleteIncidentPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="bg-red-600 text-white">
-          <CardTitle>Confirm Deletion</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {error && (
-            <div className="rounded-md bg-red-50 p-4 mb-4">
-              <div className="text-sm text-red-800">{error}</div>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <p className="text-gray-700">
-              Are you sure you want to delete incident <strong>#{incident.id}</strong>?
-            </p>
-            <div className="bg-gray-50 p-4 rounded-md">
-              <p className="text-sm font-medium text-gray-900 mb-2">Incident Details:</p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li><strong>Type:</strong> {incident.incident_type || 'N/A'}</li>
-                <li><strong>Status:</strong> {incident.resolved ? 'Resolved' : 'Open'}</li>
-                <li><strong>Reported:</strong> {new Date(incident.reported_at).toLocaleString()}</li>
-              </ul>
-            </div>
-            <p className="text-sm text-red-600 font-medium">
-              ⚠️ This will permanently delete the incident and all related records. This action cannot be undone.
-            </p>
-          </div>
-
-          <div className="flex justify-end space-x-4 mt-6">
-            <Link href={`/dashboard/incidents/${incident.id}`}>
-              <Button type="button" variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50">Cancel</Button>
-            </Link>
-            <Button
-              type="button"
-              variant="danger"
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {loading ? 'Deleting...' : 'Delete Incident'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <ConfirmDeleteCard
+        entityName={`Incident #${incident.id}`}
+        items={[
+          'The incident record',
+          'All linked employees and passengers',
+          'All incident notes and attachments',
+          'Any TR5/TR7 form data linked to this incident',
+        ]}
+        confirmLabel="Yes, Delete Incident"
+        onConfirm={handleDelete}
+        onCancel={() => {
+          router.push(`/dashboard/incidents/${incident.id}`)
+        }}
+        loading={loading}
+        error={error}
+      />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { ArrowLeft, AlertCircle, Upload, CheckCircle, Clock } from 'lucide-react'
+import DeletePAButton from '../DeletePAButton'
 
 interface PassengerAssistant {
   id: number
@@ -315,6 +316,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
         value={value}
         onChange={onChange}
         required={required}
+        max="9999-12-31"
         className={`h-8 text-sm ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {error && <span className="text-[10px] text-red-500">{error}</span>}
@@ -396,6 +398,13 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {assistant && (
+            <DeletePAButton 
+              paId={assistant.id} 
+              employeeId={assistant.employee_id} 
+              paName={assistant.employees?.full_name || 'Unknown'} 
+            />
+          )}
           <Link href={`/dashboard/assistants/${params.id}`}>
             <Button variant="outline" size="sm" className="text-slate-600 border-slate-300 hover:bg-slate-50">Cancel</Button>
           </Link>
@@ -599,6 +608,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
                         name={`${t.id}_date`}
                         value={t.date}
                         onChange={handleInputChange}
+                        max="9999-12-31"
                         className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
                       />
                     )}
@@ -616,7 +626,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
                 <div className="space-y-1">
                   <Label className="text-xs">Utility Bill</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="date" name="utility_bill_date" value={formData.utility_bill_date} onChange={handleInputChange} className="h-7 text-xs" />
+                    <Input type="date" name="utility_bill_date" value={formData.utility_bill_date} onChange={handleInputChange} max="9999-12-31" className="h-7 text-xs" />
                     <CompactFileUpload id="utility_bill_file" onChange={handleFileChange} file={fileUploads.utility_bill_file} />
                   </div>
                 </div>

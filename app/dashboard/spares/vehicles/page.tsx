@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/utils'
 import { getVehicles } from '@/lib/supabase/vehicles'
 
 export default async function SpareVehiclesPage() {
-  const vehicles = await getVehicles({ is_spare: 'yes' })
+  const vehicles = await getVehicles({ is_spare: 'yes', is_vor: 'no' })
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
