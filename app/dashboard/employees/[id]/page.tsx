@@ -110,7 +110,12 @@ export default async function ViewEmployeePage({
 }: {
   params: { id: string }
 }) {
-  const employee = await getEmployee(params.id)
+  let employee: Awaited<ReturnType<typeof getEmployee>>
+  try {
+    employee = await getEmployee(params.id)
+  } catch {
+    notFound()
+  }
 
   if (!employee) {
     notFound()
