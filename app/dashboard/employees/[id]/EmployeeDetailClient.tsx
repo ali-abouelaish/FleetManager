@@ -14,12 +14,37 @@ interface FieldAuditInfo {
   changed_by_name: string
 }
 
+type EmployeeSnapshot = {
+  id?: number
+  full_name?: string | null
+  role?: string | null
+  employment_status?: string | null
+  can_work?: boolean | null
+  phone_number?: string | null
+  personal_email?: string | null
+  address?: string | null
+  next_of_kin?: string | null
+  date_of_birth?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 interface EmployeeDetailClientProps {
-  employee: any
+  employeeJson: string
   employeeId: string
 }
 
-export default function EmployeeDetailClient({ employee, employeeId }: EmployeeDetailClientProps) {
+export default function EmployeeDetailClient({ employeeJson, employeeId }: EmployeeDetailClientProps) {
+  let employee: EmployeeSnapshot
+  try {
+    employee = JSON.parse(employeeJson) as EmployeeSnapshot
+  } catch {
+    return <p className="text-sm text-rose-600">Invalid employee data.</p>
+  }
+  if (!employee) return null
+
   const [fieldAudit, setFieldAudit] = useState<Record<string, FieldAuditInfo>>({})
   const [assignedSchools, setAssignedSchools] = useState<{ id: number; name: string }[]>([])
 
@@ -215,13 +240,13 @@ export default function EmployeeDetailClient({ employee, employeeId }: EmployeeD
           <div>
             <dt className="text-sm font-medium text-gray-500">Created At</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {formatDate(employee.created_at)}
+              {formatDate(employee.created_at ?? null)}
             </dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Updated At</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {formatDate(employee.updated_at)}
+              {formatDate(employee.updated_at ?? null)}
             </dd>
           </div>
         </CardContent>

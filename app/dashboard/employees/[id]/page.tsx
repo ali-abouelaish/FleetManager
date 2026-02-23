@@ -5,22 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, UserCog, UserCheck } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
+
+export const dynamic = 'force-dynamic'
 
 // Dynamically import the employee detail client component (for field audit)
-const EmployeeDetailClient = dynamic(
+const EmployeeDetailClient = nextDynamic(
   () => import('./EmployeeDetailClient'),
   { ssr: false }
 )
 
 // Dynamically import the employee badge photo component
-const EmployeeBadgePhoto = dynamic(
+const EmployeeBadgePhoto = nextDynamic(
   () => import('./EmployeeBadgePhoto'),
   { ssr: false }
 )
 
 // Documents & Certificates (dynamic requirements from Admin > Document Requirements)
-const SubjectDocumentsChecklist = dynamic(
+const SubjectDocumentsChecklist = nextDynamic(
   () => import('@/components/dashboard/SubjectDocumentsChecklist').then((m) => m.SubjectDocumentsChecklist),
   { ssr: false }
 )
@@ -75,7 +77,8 @@ async function getEmployee(id: string) {
     return null
   }
 
-  return data
+  // Strip to plain JSON so RSC payload and client props never see non-serializable values
+  return JSON.parse(JSON.stringify(data)) as typeof data
 }
 
 // Helper to calculate days remaining
@@ -320,9 +323,9 @@ export default async function ViewEmployeePage({
         )
       })()}
 
-      {/* Employee Details with Field Audit - pass only serializable fields to avoid RSC serialization errors */}
+      {/* Employee Details with Field Audit - pass as JSON string to guarantee serializable */}
       <EmployeeDetailClient
-        employee={{
+        employeeJson={JSON.stringify({
           id: employee.id,
           full_name: employee.full_name ?? null,
           role: employee.role ?? null,
@@ -337,12 +340,12 @@ export default async function ViewEmployeePage({
           end_date: employee.end_date ?? null,
           created_at: employee.created_at ?? null,
           updated_at: employee.updated_at ?? null,
-        }}
+        })}
         employeeId={String(employee.id)}
       />
 
       {/* Documents & Certificates (dynamic requirements from Admin > Document Requirements) */}
-      <SubjectDocumentsChecklist subjectType="employee" subjectId={employee.id} />
+      <SubjectDocumentsChecklist subjectType="employee" subjectId={Number(employee.id)} />
 
       {/* Driver Certificates - Comprehensive View */}
       {employee.drivers && Array.isArray(employee.drivers) && employee.drivers.length > 0 && (
