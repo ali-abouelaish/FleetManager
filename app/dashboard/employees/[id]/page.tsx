@@ -320,8 +320,26 @@ export default async function ViewEmployeePage({
         )
       })()}
 
-      {/* Employee Details with Field Audit */}
-      <EmployeeDetailClient employee={employee} employeeId={employee.id.toString()} />
+      {/* Employee Details with Field Audit - pass only serializable fields to avoid RSC serialization errors */}
+      <EmployeeDetailClient
+        employee={{
+          id: employee.id,
+          full_name: employee.full_name ?? null,
+          role: employee.role ?? null,
+          employment_status: employee.employment_status ?? null,
+          can_work: employee.can_work ?? null,
+          phone_number: employee.phone_number ?? null,
+          personal_email: employee.personal_email ?? null,
+          address: employee.address ?? null,
+          next_of_kin: employee.next_of_kin ?? null,
+          date_of_birth: employee.date_of_birth ?? null,
+          start_date: employee.start_date ?? null,
+          end_date: employee.end_date ?? null,
+          created_at: employee.created_at ?? null,
+          updated_at: employee.updated_at ?? null,
+        }}
+        employeeId={String(employee.id)}
+      />
 
       {/* Documents & Certificates (dynamic requirements from Admin > Document Requirements) */}
       <SubjectDocumentsChecklist subjectType="employee" subjectId={employee.id} />
