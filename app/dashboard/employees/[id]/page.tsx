@@ -23,7 +23,7 @@ const EmployeeBadgePhoto = nextDynamic(
 
 // Documents & Certificates (dynamic requirements from Admin > Document Requirements)
 const SubjectDocumentsChecklist = nextDynamic(
-  () => import('@/components/dashboard/SubjectDocumentsChecklist').then((m) => m.SubjectDocumentsChecklist),
+  () => import('@/components/dashboard/SubjectDocumentsChecklist'),
   { ssr: false }
 )
 

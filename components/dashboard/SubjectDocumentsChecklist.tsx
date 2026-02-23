@@ -571,3 +571,4 @@ export function SubjectDocumentsChecklist({
   )
 }
 
+export default SubjectDocumentsChecklist
