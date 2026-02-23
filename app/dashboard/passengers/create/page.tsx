@@ -365,10 +365,14 @@ export default function CreatePassengerPage() {
                           onChange={(e) => updateParentContact(contact.id, 'relationship', e.target.value)}
                           className="h-7 text-xs bg-white"
                         >
-                          <option value="">Relationship...</option>
+                          <option value="">-- Select Relationship --</option>
                           <option value="Mother">Mother</option>
                           <option value="Father">Father</option>
                           <option value="Guardian">Guardian</option>
+                          <option value="Grandparent">Grandparent</option>
+                          <option value="Aunt">Aunt</option>
+                          <option value="Uncle">Uncle</option>
+                          <option value="Sibling">Sibling</option>
                           <option value="Other">Other</option>
                         </Select>
                         <Input

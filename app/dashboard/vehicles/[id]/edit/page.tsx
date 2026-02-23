@@ -117,7 +117,7 @@ function EditVehiclePageClient({ id }: { id: string }) {
   const handleFileChange = (fieldName: string, files: FileList | null) => {
     setFileUploads(prev => ({
       ...prev,
-      [fieldName]: files ? Array.from(files) : [],
+      [fieldName]: files ? [...(prev[fieldName] || []), ...Array.from(files)] : [],
     }))
   }
 

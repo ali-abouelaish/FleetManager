@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
 import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
-import { ArrowLeft, Trash2, AlertCircle, MapPin, School as SchoolIcon, Bus } from 'lucide-react'
+import { ArrowLeft, Trash2, AlertCircle, MapPin, School as SchoolIcon, Bus, Users, Edit2 } from 'lucide-react'
 import Link from 'next/link'
+import { EditParentContactModal } from '../EditParentContactModal'
 
 function EditPassengerPageClient({ id }: { id: string }) {
   const router = useRouter()
@@ -21,6 +22,8 @@ function EditPassengerPageClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [schools, setSchools] = useState<any[]>([])
   const [routes, setRoutes] = useState<any[]>([])
+  const [parentContactLinks, setParentContactLinks] = useState<any[]>([])
+  const [editingContactId, setEditingContactId] = useState<number | null>(null)
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -69,6 +72,13 @@ function EditPassengerPageClient({ id }: { id: string }) {
 
       if (schoolsResult.data) setSchools(schoolsResult.data)
       if (routesResult.data) setRoutes(routesResult.data)
+
+      // Load parent contacts linked to this passenger
+      const { data: links } = await supabase
+        .from('passenger_parent_contacts')
+        .select('*, parent_contacts(*)')
+        .eq('passenger_id', id)
+      if (links) setParentContactLinks(links)
     }
 
     loadData()
@@ -291,8 +301,64 @@ function EditPassengerPageClient({ id }: { id: string }) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Parent contacts - edit from passenger edit */}
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Parent Contacts
+              </h2>
+              {parentContactLinks.length === 0 ? (
+                <p className="text-xs text-slate-500 italic">No parent contacts linked. Add or manage contacts from the passenger detail page.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {parentContactLinks.map((link: any) => (
+                    <li key={link.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-md border border-slate-200">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{link.parent_contacts?.full_name}</p>
+                        <p className="text-xs text-slate-500">{link.parent_contacts?.relationship || '—'} · {link.parent_contacts?.phone_number || 'No phone'}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-primary"
+                          onClick={() => link.parent_contacts?.id != null && setEditingContactId(link.parent_contacts.id)}
+                          title="Edit contact"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Link href={`/dashboard/parent-contacts/${link.parent_contacts?.id}`} target="_blank" rel="noopener noreferrer">
+                          <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-500" title="View contact">
+                            View
+                          </Button>
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link href={`/dashboard/passengers/${id}`}>
+                <Button type="button" variant="outline" size="sm" className="w-full border-slate-300 text-slate-600">
+                  Manage parent contacts on detail page
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
       </form>
+
+      <EditParentContactModal
+        contactId={editingContactId}
+        isOpen={editingContactId != null}
+        onClose={() => setEditingContactId(null)}
+        onSaved={() => {
+          setEditingContactId(null)
+          supabase.from('passenger_parent_contacts').select('*, parent_contacts(*)').eq('passenger_id', id).then(({ data }) => data && setParentContactLinks(data))
+        }}
+      />
     </div>
   )
 }

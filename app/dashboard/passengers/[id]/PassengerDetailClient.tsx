@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { Plus, X, ExternalLink, Trash2, Edit2, MessageSquare } from 'lucide-react'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import { PassengerUpdate, ParentContact } from '@/lib/types'
+import { EditParentContactModal } from './EditParentContactModal'
 
 interface PassengerDetailClientProps {
   passengerId: number
@@ -25,6 +26,7 @@ export default function PassengerDetailClient({ passengerId, showOnlyUpdates = f
   const [allParentContacts, setAllParentContacts] = useState<ParentContact[]>([])
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [showAddContactModal, setShowAddContactModal] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<number | null>(null)
   const [addContactMode, setAddContactMode] = useState<'existing' | 'new'>('existing')
   const [selectedContactId, setSelectedContactId] = useState<string>('')
 
@@ -358,8 +360,17 @@ export default function PassengerDetailClient({ passengerId, showOnlyUpdates = f
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary"
+                        onClick={() => link.parent_contacts?.id != null && setEditingContactId(link.parent_contacts.id)}
+                        title="Edit contact"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
                       <a href={`/dashboard/parent-contacts/${link.parent_contacts?.id}`} target="_blank" rel="noopener noreferrer">
-                        <Button variant="ghost" size="sm" className="text-primary">
+                        <Button variant="ghost" size="sm" className="text-primary" title="View full contact">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </a>
@@ -607,6 +618,13 @@ export default function PassengerDetailClient({ passengerId, showOnlyUpdates = f
           </div>
         </div>
       )}
+
+      <EditParentContactModal
+        contactId={editingContactId}
+        isOpen={editingContactId != null}
+        onClose={() => setEditingContactId(null)}
+        onSaved={() => loadParentContacts()}
+      />
     </div>
   )
 }

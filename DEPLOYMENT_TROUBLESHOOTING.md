@@ -1,5 +1,73 @@
 # Deployment Troubleshooting Guide
 
+## 502 Bad Gateway (nginx)
+
+A **502 Bad Gateway** means nginx could not get a valid response from your app (e.g. Next.js). The app is either not running, crashing, or not reachable on the port nginx expects.
+
+### 1. Check that the app is running
+
+```bash
+# If using PM2
+pm2 list
+pm2 logs
+
+# Start or restart the app (e.g. Next.js on port 3000)
+cd /path/to/your/app
+npm run build
+pm2 start npm --name "fleet" -- start
+# or: node .next/standalone/server.js (if using standalone output)
+```
+
+### 2. Confirm the app listens on the port nginx uses
+
+Your nginx config should have `proxy_pass http://localhost:3000` (or your app port). Next.js by default runs on **3000**. Check nothing else is using that port and the app is bound to `0.0.0.0` or `localhost`:
+
+```bash
+# See what is listening on 3000
+# Linux:
+ss -tlnp | grep 3000
+# or
+netstat -tlnp | grep 3000
+```
+
+### 3. Check nginx and app logs
+
+```bash
+# Nginx (why it returned 502)
+tail -50 /var/log/nginx/error.log
+
+# App (crashes / startup errors)
+pm2 logs
+# or journalctl if using systemd
+```
+
+### 4. Restart app and nginx
+
+```bash
+pm2 restart all
+sudo systemctl restart nginx
+```
+
+### 5. Increase timeouts (if the app is slow to respond)
+
+In your nginx `server` or `location /` block:
+
+```nginx
+proxy_connect_timeout 60s;
+proxy_send_timeout 60s;
+proxy_read_timeout 60s;
+```
+
+### Common causes of 502
+
+- Next.js (or Node) process not running or crashed
+- App listening on a different port than nginx `proxy_pass`
+- App failed to start (e.g. missing env vars, build errors)
+- Firewall or permissions blocking localhost connection
+- Out of memory (process killed)
+
+---
+
 ## 400 Bad Request Errors for Static Assets
 
 If you're seeing errors like:
