@@ -82,3 +82,17 @@ export function generateUUID(): string {
   })
 }
 
+/** Simple email format validation. Empty string is valid (optional field). */
+export function isValidEmail(value: string): boolean {
+  if (!value || !value.trim()) return true
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(value.trim())
+}
+
+/** Phone validation: optional; if provided, allow digits, spaces, dashes, parentheses, plus; require at least 10 digits. */
+export function isValidPhone(value: string): boolean {
+  if (!value || !value.trim()) return true
+  const digitsOnly = value.replace(/\D/g, '')
+  return digitsOnly.length >= 10
+}
+

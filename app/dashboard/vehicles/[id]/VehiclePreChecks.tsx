@@ -97,8 +97,24 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
         ),
         route_session:route_session_id(
           routes(route_number)
-        ),
-        vehicle_pre_check_driver_responses(
+        )
+      `)
+      .eq('vehicle_id', vehicleId)
+      .eq('check_date', selectedDate)
+      .order('completed_at', { ascending: false })
+
+    if (error) {
+      console.error('Vehicle pre-checks fetch error:', error.message, error.details)
+      setLoading(false)
+      return
+    }
+
+    if (data && data.length > 0) {
+      const checkIds = data.map((c: VehiclePreCheck) => c.id)
+      const { data: responses } = await supabase
+        .from('vehicle_pre_check_driver_responses')
+        .select(`
+          vehicle_pre_check_id,
           driver_response_id,
           created_at,
           driver_responses(
@@ -110,14 +126,33 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
             created_at,
             employees(full_name)
           )
-        )
-      `)
-      .eq('vehicle_id', vehicleId)
-      .eq('check_date', selectedDate)
-      .order('completed_at', { ascending: false })
+        `)
+        .in('vehicle_pre_check_id', checkIds)
 
-    if (!error && data) {
-      setPreChecks(data)
+      const responsesByCheck = (responses || []).reduce<Record<number, any[]>>((acc, r: any) => {
+        const id = r.vehicle_pre_check_id
+        if (!acc[id]) acc[id] = []
+        const dr = r.driver_responses
+        const employees = dr?.employees
+        const normalized = {
+          ...r,
+          driver_responses: dr
+            ? {
+                ...dr,
+                employees: Array.isArray(employees) ? (employees[0] ?? null) : employees ?? null,
+              }
+            : null,
+        }
+        acc[id].push(normalized)
+        return acc
+      }, {})
+
+      setPreChecks(data.map((check: VehiclePreCheck) => ({
+        ...check,
+        vehicle_pre_check_driver_responses: (responsesByCheck[check.id] || []) as VehiclePreCheck['vehicle_pre_check_driver_responses'],
+      })))
+    } else {
+      setPreChecks(data || [])
     }
     setLoading(false)
   }
@@ -191,7 +226,7 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
         <div className="grid gap-4">
           {preChecks.map((check) => {
             const status = getCheckStatus(check)
-            const driver = check.driver?.employees
+            const driver = check.driver?.employees ?? check.driver
             const route = check.route_session?.routes
 
             return (
@@ -218,7 +253,7 @@ export default function VehiclePreChecks({ vehicleId }: VehiclePreChecksProps) {
                         <div className="flex items-center space-x-2">
                           <User className="h-4 w-4 text-gray-400" />
                           <span className="text-gray-600">
-                            <strong>Driver:</strong> {driver?.full_name || 'N/A'}
+                            <strong>Driver:</strong> {(driver && 'full_name' in driver ? driver.full_name : (driver as { employees?: { full_name?: string } })?.employees?.full_name) || 'N/A'}
                           </span>
                         </div>
                         {route?.route_number && (

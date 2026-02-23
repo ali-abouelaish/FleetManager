@@ -158,9 +158,7 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
 
   const validateForm = (): { isValid: boolean; errors: { [key: string]: string } } => {
     const errors: { [key: string]: string } = {};
-    if (!formData.tas_badge_expiry_date || formData.tas_badge_expiry_date.trim() === '') {
-      errors.tas_badge_expiry_date = 'TAS Badge expiry required';
-    }
+    // TAS Badge and other certs are in Critical Certificates (dynamic requirements); no legacy field required.
     return { isValid: Object.keys(errors).length === 0, errors };
   }
 

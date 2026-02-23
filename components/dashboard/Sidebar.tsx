@@ -129,6 +129,7 @@ export function Sidebar() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [displayName, setDisplayName] = useState('User')
   const [displayRole, setDisplayRole] = useState('Member')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   const toggleGroup = (groupName: string) => {
     setExpandedGroups((prev) => {
@@ -189,12 +190,13 @@ export function Sidebar() {
         if (!user?.email) return
         const { data } = await supabase
           .from('users')
-          .select('full_name, role, email')
+          .select('full_name, role, email, avatar_url')
           .eq('email', user.email)
           .maybeSingle()
         const name = data?.full_name || data?.email || user.email
         setDisplayName(name)
         setDisplayRole(data?.role || 'Member')
+        setAvatarUrl((data as { avatar_url?: string } | null)?.avatar_url ?? null)
       } catch {
         // best-effort; keep defaults
       }
@@ -348,8 +350,12 @@ export function Sidebar() {
       {/* Footer with Profile + Logout */}
       <div className="border-t border-slate-200/60 p-4 space-y-3">
         <div className="flex items-center gap-3 px-2">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold">
-            {(displayName || 'U').trim().charAt(0).toUpperCase()}
+          <div className="h-8 w-8 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              (displayName || 'U').trim().charAt(0).toUpperCase()
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-700 truncate">{displayName}</p>

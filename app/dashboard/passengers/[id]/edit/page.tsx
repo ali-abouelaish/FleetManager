@@ -42,7 +42,7 @@ function EditPassengerPageClient({ id }: { id: string }) {
       const [passengerResult, schoolsResult, routesResult] = await Promise.all([
         supabase.from('passengers').select('*').eq('id', id).single(),
         supabase.from('schools').select('id, name').order('name'),
-        supabase.from('routes').select('id, route_number').order('route_number')
+        supabase.from('routes').select('id, route_number, school_id').order('route_number')
       ])
 
       if (passengerResult.error) {
@@ -75,8 +75,17 @@ function EditPassengerPageClient({ id }: { id: string }) {
   }, [id, supabase])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value })
+    const next = { ...formData, [e.target.id]: e.target.value }
+    if (e.target.id === 'school_id') {
+      const route = routes.find((r: any) => String(r.id) === next.route_id)
+      if (route && String(route.school_id) !== next.school_id) next.route_id = ''
+    }
+    setFormData(next)
   }
+
+  const routesForSchool = formData.school_id
+    ? routes.filter((r: any) => r.school_id == null || r.school_id === '' || String(r.school_id) === String(formData.school_id))
+    : []
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -242,8 +251,8 @@ function EditPassengerPageClient({ id }: { id: string }) {
                 <div className="col-span-2 md:col-span-1 space-y-1">
                   <Label htmlFor="route_id" className="text-xs text-slate-500 flex items-center gap-1"><Bus className="h-3 w-3" /> Route</Label>
                   <Select id="route_id" value={formData.route_id} onChange={handleInputChange} className="h-8 text-sm">
-                    <option value="">Select Route...</option>
-                    {routes.map(r => <option key={r.id} value={r.id}>{r.route_number || `Route ${r.id}`}</option>)}
+                    <option value="">{formData.school_id ? 'Select Route...' : 'Select school first'}</option>
+                    {routesForSchool.map((r: any) => <option key={r.id} value={r.id}>{r.route_number || `Route ${r.id}`}</option>)}
                   </Select>
                 </div>
               </div>

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/Label'
 import { ConfirmDeleteCard } from '@/components/ui/ConfirmDeleteCard'
 import { ArrowLeft, Trash2, AlertCircle, UserCog } from 'lucide-react'
 import Link from 'next/link'
+import { isValidEmail, isValidPhone } from '@/lib/utils'
 
 type Coordinator = { id: number; full_name: string }
 
@@ -19,6 +20,7 @@ function EditSchoolPageClient({ id }: { id: string }) {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [coordinators, setCoordinators] = useState<Coordinator[]>([])
   const [selectedCoordinatorIds, setSelectedCoordinatorIds] = useState<number[]>([])
 
@@ -91,8 +93,25 @@ function EditSchoolPageClient({ id }: { id: string }) {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setError(null)
-    setLoading(true)
+    setFieldErrors({})
 
+    const errors: Record<string, string> = {}
+    if (formData.phone_number.trim() && !isValidPhone(formData.phone_number)) {
+      errors.phone_number = 'Please enter a valid phone number (at least 10 digits).'
+    }
+    if (formData.contact_phone.trim() && !isValidPhone(formData.contact_phone)) {
+      errors.contact_phone = 'Please enter a valid phone number (at least 10 digits).'
+    }
+    if (formData.contact_email.trim() && !isValidEmail(formData.contact_email)) {
+      errors.contact_email = 'Please enter a valid email address.'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      setError('Please correct the phone and email fields.')
+      return
+    }
+
+    setLoading(true)
     try {
       const { error } = await supabase
         .from('schools')
@@ -269,6 +288,9 @@ function EditSchoolPageClient({ id }: { id: string }) {
                   placeholder="e.g., 0121 464 1676"
                   className="h-9"
                 />
+                {fieldErrors.phone_number && (
+                  <p className="text-xs text-red-600">{fieldErrors.phone_number}</p>
+                )}
               </div>
             </div>
           </form>
@@ -300,6 +322,9 @@ function EditSchoolPageClient({ id }: { id: string }) {
                 placeholder="e.g., 0121 464 1676"
                 className="h-9"
               />
+              {fieldErrors.contact_phone && (
+                <p className="text-xs text-red-600">{fieldErrors.contact_phone}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="contact_email" className="text-xs font-medium text-slate-600">Contact Email</Label>
@@ -311,6 +336,9 @@ function EditSchoolPageClient({ id }: { id: string }) {
                 placeholder="e.g., contact@school.edu"
                 className="h-9"
               />
+              {fieldErrors.contact_email && (
+                <p className="text-xs text-red-600">{fieldErrors.contact_email}</p>
+              )}
             </div>
           </div>
         </div>

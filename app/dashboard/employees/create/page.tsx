@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, AlertCircle, Upload } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Upload, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { DynamicCertificatesForm } from '@/components/dashboard/DynamicCertificatesForm'
 
@@ -70,6 +70,8 @@ export default function CreateEmployeePage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [redirectTo, setRedirectTo] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState({
@@ -150,18 +152,7 @@ export default function CreateEmployeePage() {
 
     try {
       const role = formData.role
-      if (role === 'Driver' && (!driverForm.tas_badge_expiry_date || !driverForm.tas_badge_expiry_date.trim())) {
-        setFieldErrors({ tas_badge_expiry_date: 'TAS Badge expiry date is required for drivers' })
-        setError('Please fill in required driver details (TAS Badge expiry date).')
-        setLoading(false)
-        return
-      }
-      if (role === 'PA' && (!paForm.tas_badge_expiry_date || !paForm.tas_badge_expiry_date.trim())) {
-        setFieldErrors({ tas_badge_expiry_date: 'TAS Badge expiry date is required for passenger assistants' })
-        setError('Please fill in required PA details (TAS Badge expiry date).')
-        setLoading(false)
-        return
-      }
+      // TAS Badge and other certs are now in Critical Certificates (dynamic requirements); no legacy field validation.
 
       let startDate: string | null = formData.start_date.trim() || null
       let endDate: string | null = formData.end_date.trim() || null
@@ -263,11 +254,28 @@ export default function CreateEmployeePage() {
           }
         }
         if (Object.keys(driverCertificatesFormData).length > 0 || Object.keys(driverCertificatesFileUploads).length > 0) {
-          const { data: autoCreatedDocs } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'driver').eq('driver_employee_id', employeeId)
-          if (autoCreatedDocs?.length) {
-            for (const [requirementId, certData] of Object.entries(driverCertificatesFormData)) {
-              const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
-              if (existing && (certData.certificate_number || certData.expiry_date || certData.issue_date)) {
+          const norm = (id: string) => String(id || '').toLowerCase().trim()
+          let { data: autoCreatedDocs } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'driver').eq('driver_employee_id', employeeId)
+          autoCreatedDocs = autoCreatedDocs || []
+          const driverReqIds = Array.from(new Set([...Object.keys(driverCertificatesFormData), ...Object.keys(driverCertificatesFileUploads)]))
+          for (const requirementId of driverReqIds) {
+            let existing = autoCreatedDocs?.find(d => norm(d.requirement_id) === norm(requirementId))
+            if (!existing) {
+              const { data: created, error: insertErr } = await supabase.from('subject_documents').insert({ requirement_id: requirementId, subject_type: 'driver', driver_employee_id: employeeId, status: 'missing' }).select('id, requirement_id').single()
+              if (created) {
+                autoCreatedDocs = [...autoCreatedDocs, created]
+                existing = created
+              } else if (insertErr) {
+                const { data: refetched } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'driver').eq('driver_employee_id', employeeId)
+                if (refetched?.length) {
+                  autoCreatedDocs = refetched
+                  existing = refetched.find(d => norm(d.requirement_id) === norm(requirementId)) ?? undefined
+                }
+              }
+            }
+            if (existing) {
+              const certData = driverCertificatesFormData[requirementId]
+              if (certData && (certData.certificate_number || certData.expiry_date || certData.issue_date)) {
                 await supabase.from('subject_documents').update({
                   certificate_number: certData.certificate_number || null,
                   expiry_date: certData.expiry_date || null,
@@ -276,24 +284,27 @@ export default function CreateEmployeePage() {
                 }).eq('id', existing.id)
               }
             }
-            for (const [requirementId, file] of Object.entries(driverCertificatesFileUploads)) {
-              if (!file) continue
-              const ext = file.name.split('.').pop()
-              const path = `drivers/${employeeId}/certificates/${requirementId}_${Date.now()}.${ext}`
-              const { data: up } = await supabase.storage.from('DRIVER_DOCUMENTS').upload(path, file)
-              if (up) {
-                const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(path)
-                const { data: docRecord } = await supabase.from('documents').insert({ file_name: file.name, file_type: file.type || 'application/octet-stream', file_path: path, file_url: publicUrl, doc_type: 'Certificate', uploaded_by: null }).select('id').single()
-                if (docRecord) {
-                  await supabase.from('document_driver_links').insert({ document_id: docRecord.id, driver_employee_id: employeeId })
-                  const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
-                  if (existing) await supabase.from('document_subject_document_links').insert({ document_id: docRecord.id, subject_document_id: existing.id })
+          }
+          for (const [requirementId, file] of Object.entries(driverCertificatesFileUploads)) {
+            if (!file) continue
+            const ext = file.name.split('.').pop()
+            const path = `drivers/${employeeId}/certificates/${requirementId}_${Date.now()}.${ext}`
+            const { data: up } = await supabase.storage.from('DRIVER_DOCUMENTS').upload(path, file)
+            if (up) {
+              const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(path)
+              const { data: docRecord } = await supabase.from('documents').insert({ file_name: file.name, file_type: file.type || 'application/octet-stream', file_path: path, file_url: publicUrl, doc_type: 'Certificate', uploaded_by: null }).select('id').single()
+              if (docRecord) {
+                await supabase.from('document_driver_links').insert({ document_id: docRecord.id, driver_employee_id: employeeId })
+                const existing = autoCreatedDocs.find(d => norm(d.requirement_id) === norm(requirementId))
+                if (existing) {
+                  await supabase.from('document_subject_document_links').insert({ document_id: docRecord.id, subject_document_id: existing.id })
                 }
               }
             }
           }
         }
-        router.push('/dashboard/drivers')
+        setSuccess(true)
+        setRedirectTo('/dashboard/drivers')
       } else if (role === 'PA') {
         const fileKeyToDocType: Record<string, string> = {
           tas_badge_file: 'TAS Badge', dbs_file: 'DBS Certificate', first_aid_file: 'First Aid Certificate',
@@ -347,11 +358,28 @@ export default function CreateEmployeePage() {
           }
         }
         if (Object.keys(paCertificatesFormData).length > 0 || Object.keys(paCertificatesFileUploads).length > 0) {
-          const { data: autoCreatedDocs } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'pa').eq('pa_employee_id', employeeId)
-          if (autoCreatedDocs?.length) {
-            for (const [requirementId, certData] of Object.entries(paCertificatesFormData)) {
-              const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
-              if (existing && (certData.certificate_number || certData.expiry_date || certData.issue_date)) {
+          const norm = (id: string) => String(id || '').toLowerCase().trim()
+          let { data: autoCreatedDocs } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'pa').eq('pa_employee_id', employeeId)
+          autoCreatedDocs = autoCreatedDocs || []
+          const paReqIds = Array.from(new Set([...Object.keys(paCertificatesFormData), ...Object.keys(paCertificatesFileUploads)]))
+          for (const requirementId of paReqIds) {
+            let existing = autoCreatedDocs?.find(d => norm(d.requirement_id) === norm(requirementId))
+            if (!existing) {
+              const { data: created, error: insertErr } = await supabase.from('subject_documents').insert({ requirement_id: requirementId, subject_type: 'pa', pa_employee_id: employeeId, status: 'missing' }).select('id, requirement_id').single()
+              if (created) {
+                autoCreatedDocs = [...autoCreatedDocs, created]
+                existing = created
+              } else if (insertErr) {
+                const { data: refetched } = await supabase.from('subject_documents').select('id, requirement_id').eq('subject_type', 'pa').eq('pa_employee_id', employeeId)
+                if (refetched?.length) {
+                  autoCreatedDocs = refetched
+                  existing = refetched.find(d => norm(d.requirement_id) === norm(requirementId)) ?? undefined
+                }
+              }
+            }
+            if (existing) {
+              const certData = paCertificatesFormData[requirementId]
+              if (certData && (certData.certificate_number || certData.expiry_date || certData.issue_date)) {
                 await supabase.from('subject_documents').update({
                   certificate_number: certData.certificate_number || null,
                   expiry_date: certData.expiry_date || null,
@@ -360,31 +388,35 @@ export default function CreateEmployeePage() {
                 }).eq('id', existing.id)
               }
             }
-            for (const [requirementId, file] of Object.entries(paCertificatesFileUploads)) {
-              if (!file) continue
-              const ext = file.name.split('.').pop()
-              const path = `assistants/${employeeId}/certificates/${requirementId}_${Date.now()}.${ext}`
-              const { data: up } = await supabase.storage.from('DRIVER_DOCUMENTS').upload(path, file)
-              if (up) {
-                const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(path)
-                const { data: docRecord } = await supabase.from('documents').insert({ file_url: JSON.stringify([publicUrl]), file_name: file.name, file_type: file.type || 'application/octet-stream', file_path: path, doc_type: 'Certificate', uploaded_at: new Date().toISOString() }).select('id').single()
-                if (docRecord) {
-                  await supabase.from('document_pa_links').insert({ document_id: docRecord.id, pa_employee_id: employeeId })
-                  const existing = autoCreatedDocs.find(d => d.requirement_id === requirementId)
-                  if (existing) await supabase.from('document_subject_document_links').insert({ document_id: docRecord.id, subject_document_id: existing.id })
+          }
+          for (const [requirementId, file] of Object.entries(paCertificatesFileUploads)) {
+            if (!file) continue
+            const ext = file.name.split('.').pop()
+            const path = `assistants/${employeeId}/certificates/${requirementId}_${Date.now()}.${ext}`
+            const { data: up } = await supabase.storage.from('PA_DOCUMENTS').upload(path, file)
+            if (up) {
+              const { data: { publicUrl } } = supabase.storage.from('PA_DOCUMENTS').getPublicUrl(path)
+              const { data: docRecord } = await supabase.from('documents').insert({ file_url: JSON.stringify([publicUrl]), file_name: file.name, file_type: file.type || 'application/octet-stream', file_path: path, doc_type: 'Certificate', uploaded_at: new Date().toISOString() }).select('id').single()
+              if (docRecord) {
+                await supabase.from('document_pa_links').insert({ document_id: docRecord.id, pa_employee_id: employeeId })
+                const existing = autoCreatedDocs.find(d => norm(d.requirement_id) === norm(requirementId))
+                if (existing) {
+                  await supabase.from('document_subject_document_links').insert({ document_id: docRecord.id, subject_document_id: existing.id })
                 }
               }
             }
           }
         }
-        router.push('/dashboard/assistants')
+        setSuccess(true)
+        setRedirectTo('/dashboard/assistants')
       } else {
         if (role === 'Coordinator' && assignedSchoolIds.length > 0) {
           await supabase.from('coordinator_school_assignments').insert(
             assignedSchoolIds.map((schoolId) => ({ employee_id: employeeId, school_id: schoolId }))
           )
         }
-        router.push('/dashboard/employees')
+        setSuccess(true)
+        setRedirectTo('/dashboard/employees')
       }
       router.refresh()
     } catch (err: any) {
@@ -393,6 +425,14 @@ export default function CreateEmployeePage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!success || !redirectTo) return
+    const t = setTimeout(() => {
+      router.push(redirectTo)
+    }, 2000)
+    return () => clearTimeout(t)
+  }, [success, redirectTo, router])
 
   useEffect(() => {
     async function loadSchools() {
@@ -429,7 +469,7 @@ export default function CreateEmployeePage() {
   )
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
+    <div className="max-w-[73.6rem] mx-auto space-y-4">
       {/* Header with Back Button */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/employees">
@@ -443,6 +483,13 @@ export default function CreateEmployeePage() {
           <p className="text-sm text-slate-500">Create employee with role-specific details</p>
         </div>
       </div>
+
+      {success && (
+        <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-start gap-2">
+          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-green-700 font-medium">Employee created successfully. Redirecting...</div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">

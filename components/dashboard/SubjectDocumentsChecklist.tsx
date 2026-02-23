@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 
 type DocumentRequirement = {
   id: string
@@ -21,6 +21,13 @@ type DocumentRequirement = {
   is_active: boolean
 }
 
+type LinkedDocument = {
+  id: number
+  file_name: string | null
+  file_url: string | null
+  file_path: string | null
+}
+
 type SubjectDocument = {
   id: string
   requirement_id: string
@@ -30,6 +37,10 @@ type SubjectDocument = {
   expiry_date: string | null
   notes: string | null
   document_requirements?: DocumentRequirement
+  document_subject_document_links?: Array<{
+    document_id: number
+    documents: LinkedDocument | null
+  }>
 }
 
 type Draft = {
@@ -48,6 +59,37 @@ const defaultDraft: Draft = {
   notes: '',
 }
 
+/** Show linked document(s) for a subject_document in view mode */
+function LinkedDocumentsDisplay({ doc }: { doc: SubjectDocument | undefined }) {
+  const links = doc?.document_subject_document_links
+  const files = links?.map((l) => l.documents).filter(Boolean) as LinkedDocument[] | undefined
+  if (!files?.length) return <p className="text-sm text-slate-900 mt-0.5">—</p>
+  return (
+    <div className="mt-0.5 space-y-1">
+      {files.map((f) => (
+        <a
+          key={f.id}
+          href={f.file_url || '#'}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-primary hover:underline block truncate max-w-[200px]"
+          title={f.file_name || 'Open'}
+        >
+          {f.file_name || 'Document'}
+        </a>
+      ))}
+    </div>
+  )
+}
+
+/** Storage bucket per entity for dynamic requirement uploads */
+const STORAGE_BUCKET_BY_SUBJECT: Record<'driver' | 'pa' | 'vehicle' | 'employee', string> = {
+  driver: 'DRIVER_DOCUMENTS',
+  pa: 'PA_DOCUMENTS',
+  vehicle: 'VEHICLE_DOCUMENTS',
+  employee: 'EMPLOYEE_DOCUMENTS',
+}
+
 export function SubjectDocumentsChecklist({
   subjectType,
   subjectId,
@@ -62,6 +104,7 @@ export function SubjectDocumentsChecklist({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
 
   const documentsByRequirement = useMemo(() => {
     const map: Record<string, SubjectDocument> = {}
@@ -136,9 +179,13 @@ export function SubjectDocumentsChecklist({
     }))
   }, [])
 
+  const normId = useCallback((id: string) => String(id || '').toLowerCase().trim(), [])
+
   const ensureDocument = async (requirementId: string): Promise<SubjectDocument | null> => {
     const existing = documentsByRequirement[requirementId]
     if (existing) return existing
+    const existingNorm = documents.find((d) => normId(d.requirement_id) === normId(requirementId))
+    if (existingNorm) return existingNorm
     const draft = drafts[requirementId] || defaultDraft
     try {
       let res: Response
@@ -164,16 +211,22 @@ export function SubjectDocumentsChecklist({
       }
       
       if (!res.ok) {
-        let errorMessage = 'Failed to create document'
-        try {
-          const errorData = await res.json()
-          errorMessage = errorData.error || errorMessage
-        } catch {
-          errorMessage = res.statusText || `Server returned ${res.status}`
+        const errorData = await res.json().catch(() => ({}))
+        const errorMessage = errorData?.error || res.statusText || `Server returned ${res.status}`
+        if (res.status === 409 || /unique|duplicate/.test(String(errorMessage).toLowerCase())) {
+          const refetch = await fetch(`/api/admin/subject-documents?subject_type=${subjectType}&subject_id=${subjectId}`)
+          if (refetch.ok) {
+            const { documents: refetchedDocs } = await refetch.json()
+            const existingDoc = (refetchedDocs || []).find((d: SubjectDocument) => normId(d.requirement_id) === normId(requirementId))
+            if (existingDoc) {
+              setDocuments((prev) => prev.filter((x) => normId(x.requirement_id) !== normId(requirementId)).concat(existingDoc))
+              return existingDoc
+            }
+          }
         }
         throw new Error(errorMessage)
       }
-      
+
       const data = await res.json()
       setDocuments((prev) => [data.document, ...prev])
       return data.document as SubjectDocument
@@ -243,13 +296,14 @@ export function SubjectDocumentsChecklist({
       const doc = await ensureDocument(requirement.id)
       if (!doc) return
       const ext = file.name.split('.').pop() || 'pdf'
+      const bucket = STORAGE_BUCKET_BY_SUBJECT[subjectType]
       const path = `subject-documents/${subjectType}/${subjectId}/${requirement.id}_${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage
-        .from('DRIVER_DOCUMENTS')
+        .from(bucket)
         .upload(path, file, { cacheControl: '3600', upsert: true })
       if (uploadError) throw uploadError
       const { data: { publicUrl } } = supabase.storage
-        .from('DRIVER_DOCUMENTS')
+        .from(bucket)
         .getPublicUrl(path)
       const payload = {
         file_name: file.name,
@@ -269,6 +323,36 @@ export function SubjectDocumentsChecklist({
           document_id: docRow.id,
           subject_document_id: doc.id,
         })
+        if (doc.status === 'missing') {
+          await supabase.from('subject_documents').update({ status: 'valid' }).eq('id', doc.id)
+        }
+        const newStatus = doc.status === 'missing' ? 'valid' : doc.status
+        setDrafts((prev) => ({
+          ...prev,
+          [requirement.id]: { ...(prev[requirement.id] || defaultDraft), status: newStatus },
+        }))
+        setDocuments((prev) =>
+          prev.map((sd) =>
+            sd.id === doc.id
+              ? {
+                  ...sd,
+                  status: newStatus,
+                  document_subject_document_links: [
+                    ...(sd.document_subject_document_links || []),
+                    {
+                      document_id: docRow.id,
+                      documents: {
+                        id: docRow.id,
+                        file_name: file.name,
+                        file_url: publicUrl,
+                        file_path: path,
+                      },
+                    },
+                  ],
+                }
+              : sd
+          )
+        )
         if (subjectType === 'driver') {
           await supabase.from('document_driver_links').insert({
             document_id: docRow.id,
@@ -285,6 +369,7 @@ export function SubjectDocumentsChecklist({
             vehicle_id: subjectId,
           })
         }
+        // employee: document is linked via document_subject_document_links only (subject_document has employee_id)
       }
     } catch (err: any) {
       setError(err.message || 'Failed to upload document')
@@ -293,110 +378,194 @@ export function SubjectDocumentsChecklist({
     }
   }
 
+  const displayStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+
+  const effectiveStatus = (sd: SubjectDocument | undefined, fallback: string) => {
+    const hasLinkedDocs = (sd?.document_subject_document_links?.length ?? 0) > 0
+    if (hasLinkedDocs && fallback === 'missing') return 'valid'
+    return fallback
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Documents & Certificates</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <div className="mb-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 border border-rose-100">
-            {error}
-          </div>
-        )}
-        {loading ? (
-          <div className="text-sm text-slate-500">Loading checklist…</div>
-        ) : (
-          <div className="space-y-4">
-            {requirements.length === 0 && (
-              <div className="text-sm text-slate-500">No requirements configured.</div>
-            )}
-            {requirements.map((req) => {
-              const draft = drafts[req.id] || defaultDraft
-              return (
-                <div key={req.id} className="rounded-xl border border-slate-200 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-800">{req.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {req.criticality} · {req.is_required ? 'Required' : 'Optional'}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleSave(req)}
-                      disabled={!!saving[req.id]}
+      <CardContent className="p-0">
+        <div className="p-3 border-b bg-slate-50/50 flex justify-between items-center">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Documents & Certificates
+          </h3>
+          {!loading && requirements.length > 0 && (
+            <Button
+              variant={isEditing ? 'outline' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setIsEditing((e) => !e)}
+            >
+              {isEditing ? 'Cancel' : 'Edit'}
+            </Button>
+          )}
+        </div>
+        <div className="p-4 space-y-4">
+          {error && (
+            <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 border border-rose-100">
+              {error}
+            </div>
+          )}
+          {loading ? (
+            <div className="text-sm text-slate-500 py-2">Loading checklist…</div>
+          ) : requirements.length === 0 ? (
+            <div className="text-sm text-slate-500 py-2">No requirements configured.</div>
+          ) : (
+            <div className="space-y-3">
+              {requirements.map((req) => {
+                const draft = drafts[req.id] || defaultDraft
+                const doc = documentsByRequirement[req.id]
+                const display = doc ? { ...defaultDraft, ...draft } : draft
+
+                if (!isEditing) {
+                  return (
+                    <div
+                      key={req.id}
+                      className="rounded-lg border border-slate-100 bg-slate-50/30 p-3 space-y-3"
                     >
-                      {saving[req.id] ? 'Saving…' : 'Save'}
-                    </Button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-1.5">
-                      <Label>Status</Label>
-                      <Select
-                        value={draft.status}
-                        onChange={(e) => updateDraft(req.id, 'status', e.target.value)}
-                      >
-                        <option value="missing">Missing</option>
-                        <option value="valid">Valid</option>
-                        <option value="pending">Pending</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="expired">Expired</option>
-                      </Select>
-                    </div>
-                    {req.requires_number && (
-                      <div className="space-y-1.5">
-                        <Label>Certificate number</Label>
-                        <Input
-                          value={draft.certificate_number || ''}
-                          onChange={(e) => updateDraft(req.id, 'certificate_number', e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                        />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{req.name}</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wide">
+                          {req.criticality} · {req.is_required ? 'Required' : 'Optional'}
+                        </p>
                       </div>
-                    )}
-                    <div className="space-y-1.5">
-                      <Label>Issue date</Label>
-                      <Input
-                        type="date"
-                        value={draft.issue_date}
-                        onChange={(e) => updateDraft(req.id, 'issue_date', e.target.value)}
-                      />
+                      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Status</p>
+                          <p className="text-sm text-slate-900 mt-0.5">{displayStatus(effectiveStatus(doc, display.status))}</p>
+                        </div>
+                        {req.requires_number && (
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Certificate number</p>
+                            <p className="text-sm text-slate-900 mt-0.5">{display.certificate_number || '—'}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Issue date</p>
+                          <p className="text-sm text-slate-900 mt-0.5">{display.issue_date || '—'}</p>
+                        </div>
+                        {req.requires_expiry && (
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Expiry date</p>
+                            <p className="text-sm text-slate-900 mt-0.5">{display.expiry_date || '—'}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Notes</p>
+                          <p className="text-sm text-slate-900 mt-0.5">{display.notes || '—'}</p>
+                        </div>
+                        {req.requires_upload && (
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Document</p>
+                            <LinkedDocumentsDisplay doc={doc} />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {req.requires_expiry && (
-                      <div className="space-y-1.5">
-                        <Label>Expiry date</Label>
+                  )
+                }
+
+                return (
+                  <div
+                    key={req.id}
+                    className="rounded-lg border border-slate-100 bg-slate-50/30 p-3 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{req.name}</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wide">
+                          {req.criticality} · {req.is_required ? 'Required' : 'Optional'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleSave(req)}
+                        disabled={!!saving[req.id]}
+                      >
+                        {saving[req.id] ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-slate-500">Status</Label>
+                        <Select
+                          value={draft.status}
+                          onChange={(e) => updateDraft(req.id, 'status', e.target.value)}
+                          className="h-9 text-sm"
+                        >
+                          <option value="missing">Missing</option>
+                          <option value="valid">Valid</option>
+                          <option value="pending">Pending</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="expired">Expired</option>
+                        </Select>
+                      </div>
+                      {req.requires_number && (
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wide text-slate-500">Certificate number</Label>
+                          <Input
+                            className="h-9 text-sm"
+                            value={draft.certificate_number || ''}
+                            onChange={(e) => updateDraft(req.id, 'certificate_number', e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-slate-500">Issue date</Label>
                         <Input
                           type="date"
-                          value={draft.expiry_date}
-                          onChange={(e) => updateDraft(req.id, 'expiry_date', e.target.value)}
+                          className="h-9 text-sm"
+                          value={draft.issue_date}
+                          onChange={(e) => updateDraft(req.id, 'issue_date', e.target.value)}
                         />
                       </div>
-                    )}
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label>Notes</Label>
-                      <Input
-                        value={draft.notes}
-                        onChange={(e) => updateDraft(req.id, 'notes', e.target.value)}
-                      />
+                      {req.requires_expiry && (
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wide text-slate-500">Expiry date</Label>
+                          <Input
+                            type="date"
+                            className="h-9 text-sm"
+                            value={draft.expiry_date}
+                            onChange={(e) => updateDraft(req.id, 'expiry_date', e.target.value)}
+                          />
+                        </div>
+                      )}
                     </div>
-                    {req.requires_upload && (
-                      <div className="space-y-1.5">
-                        <Label>Upload document</Label>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-slate-500">Notes</Label>
                         <Input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={(e) => handleUpload(req, e.target.files?.[0] || null)}
+                          className="h-9 text-sm"
+                          value={draft.notes}
+                          onChange={(e) => updateDraft(req.id, 'notes', e.target.value)}
                         />
                       </div>
-                    )}
+                      {req.requires_upload && (
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wide text-slate-500">Upload document</Label>
+                          <Input
+                            type="file"
+                            className="h-9 text-sm"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleUpload(req, e.target.files?.[0] || null)}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

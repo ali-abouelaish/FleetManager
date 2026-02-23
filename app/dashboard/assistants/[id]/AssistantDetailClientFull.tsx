@@ -12,14 +12,8 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
 import DeletePAButton from './DeletePAButton'
-
-const PassengerAssistantQRCodeWrapper = dynamic(
-  () => import('@/components/dashboard/PassengerAssistantQRCode'),
-  { ssr: false }
-)
 
 interface PassengerAssistant {
   id: number
@@ -172,7 +166,8 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
         const urlToCheck = idBadgeDoc.file_url ? parseFileUrls(idBadgeDoc.file_url)[0] : null
         if (urlToCheck) setIdBadgePhotoUrl(urlToCheck)
         else if (idBadgeDoc.file_path) {
-          const { data: { publicUrl } } = supabase.storage.from('DRIVER_DOCUMENTS').getPublicUrl(idBadgeDoc.file_path)
+          const bucket = idBadgeDoc.file_path.startsWith('subject-documents/pa/') ? 'PA_DOCUMENTS' : 'DRIVER_DOCUMENTS'
+          const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(idBadgeDoc.file_path)
           setIdBadgePhotoUrl(publicUrl)
         }
       }
@@ -262,10 +257,6 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
         </div>
       </div>
 
-      {activeTab === 'documents' && (
-        <SubjectDocumentsChecklist subjectType="pa" subjectId={assistant.employee_id} />
-      )}
-
       {assistant.additional_notes && (
         <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
           <FileText className="h-4 w-4 mt-0.5 shrink-0" />
@@ -346,11 +337,6 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
               </div>
             </CardContent>
           </Card>
-
-          {/* QR Code */}
-          <div className="pt-2">
-            <PassengerAssistantQRCodeWrapper assistantId={assistant.id} />
-          </div>
 
         </div>
 
@@ -464,6 +450,10 @@ export function AssistantDetailClientFull({ id }: { id: string }) {
         </div>
       </div>
     )}
+
+      {activeTab === 'documents' && (
+        <SubjectDocumentsChecklist subjectType="pa" subjectId={assistant.employee_id} />
+      )}
     </div>
   )
 }

@@ -52,7 +52,14 @@ export async function GET(request: NextRequest) {
 
     const { data: documents, error: docError } = await supabase
       .from('subject_documents')
-      .select('*, document_requirements(*)')
+      .select(`
+        *,
+        document_requirements(*),
+        document_subject_document_links(
+          document_id,
+          documents(id, file_name, file_url, file_path)
+        )
+      `)
       .match({ subject_type, ...subjectFilter })
       .order('created_at', { ascending: false })
 

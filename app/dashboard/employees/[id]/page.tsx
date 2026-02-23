@@ -7,12 +7,6 @@ import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
-// Dynamically import the QR code component (client component)
-const PassengerAssistantQRCodeWrapper = dynamic(
-  () => import('@/components/dashboard/PassengerAssistantQRCode'),
-  { ssr: false }
-)
-
 // Dynamically import the employee detail client component (for field audit)
 const EmployeeDetailClient = dynamic(
   () => import('./EmployeeDetailClient'),
@@ -22,6 +16,12 @@ const EmployeeDetailClient = dynamic(
 // Dynamically import the employee badge photo component
 const EmployeeBadgePhoto = dynamic(
   () => import('./EmployeeBadgePhoto'),
+  { ssr: false }
+)
+
+// Documents & Certificates (dynamic requirements from Admin > Document Requirements)
+const SubjectDocumentsChecklist = dynamic(
+  () => import('@/components/dashboard/SubjectDocumentsChecklist').then((m) => m.SubjectDocumentsChecklist),
   { ssr: false }
 )
 
@@ -318,6 +318,9 @@ export default async function ViewEmployeePage({
       {/* Employee Details with Field Audit */}
       <EmployeeDetailClient employee={employee} employeeId={employee.id.toString()} />
 
+      {/* Documents & Certificates (dynamic requirements from Admin > Document Requirements) */}
+      <SubjectDocumentsChecklist subjectType="employee" subjectId={employee.id} />
+
       {/* Driver Certificates - Comprehensive View */}
       {employee.drivers && Array.isArray(employee.drivers) && employee.drivers.length > 0 && (
         <>
@@ -603,10 +606,6 @@ export default async function ViewEmployeePage({
                   </div>
                 </CardContent>
               </Card>
-              {/* QR Code for Document Upload */}
-              {pa.id && (
-                <PassengerAssistantQRCodeWrapper assistantId={pa.id} />
-              )}
             </div>
           ))}
         </>

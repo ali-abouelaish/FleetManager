@@ -113,7 +113,7 @@ function CertificateCard({
                   <Label htmlFor={`cert_${reqId}_file`} className="text-xs text-slate-500">
                     Upload Certificate
                   </Label>
-                  <CompactFileUpload id={`cert_${reqId}_file`} onChange={onFileChange} file={file} />
+                  <CompactFileUpload id={`cert_${reqId}_file`} requirementId={reqId} onChange={onFileChange} file={file} />
                 </div>
               )}
             </div>
@@ -128,7 +128,7 @@ function CertificateCard({
               <Label htmlFor={`cert_${reqId}_file`} className="text-xs text-slate-500">
                 Upload Certificate
               </Label>
-              <CompactFileUpload id={`cert_${reqId}_file`} onChange={onFileChange} file={file} />
+              <CompactFileUpload id={`cert_${reqId}_file`} requirementId={reqId} onChange={onFileChange} file={file} />
             </div>
           </div>
         )}
@@ -163,7 +163,7 @@ function CertificateCard({
             <Label htmlFor={`cert_${reqId}_file`} className="text-xs text-slate-500">
               Upload Certificate
             </Label>
-            <CompactFileUpload id={`cert_${reqId}_file`} onChange={onFileChange} file={file} />
+            <CompactFileUpload id={`cert_${reqId}_file`} requirementId={reqId} onChange={onFileChange} file={file} />
           </div>
         )}
       </div>
@@ -194,7 +194,7 @@ function CompactDateInput({ id, label, value, onChange, required = false, error,
   )
 }
 
-function CompactFileUpload({ id, onChange, file }: any) {
+function CompactFileUpload({ id, requirementId, onChange, file }: { id: string; requirementId: string; onChange: (requirementId: string, file: File | null) => void; file: File | null }) {
   return (
     <div className="flex items-center gap-2 mt-1 w-full">
       <label
@@ -217,7 +217,7 @@ function CompactFileUpload({ id, onChange, file }: any) {
         type="file"
         id={id}
         accept=".pdf,.jpg,.jpeg,.png"
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(id, e.target.files?.[0] || null)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(requirementId, e.target.files?.[0] || null)}
         className="hidden"
       />
     </div>

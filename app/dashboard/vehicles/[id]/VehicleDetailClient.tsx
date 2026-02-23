@@ -22,7 +22,6 @@ import VehicleUpdates from './VehicleUpdates'
 import VehicleDocuments from './VehicleDocuments'
 import VehicleLogbook from './VehicleLogbook'
 import VehicleComplianceDocuments from './VehicleComplianceDocuments'
-import VehicleQRCode from './VehicleQRCode'
 import VehiclePreChecks from './VehiclePreChecks'
 import VORToggleButton from './VORToggleButton'
 import { VehicleSeatingPlan } from '@/lib/types'
@@ -325,6 +324,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                   <FieldWithAudit fieldName="model" label="Model" value={vehicle.model} />
                   <FieldWithAudit fieldName="colour" label="Colour" value={vehicle.colour} />
                   <FieldWithAudit fieldName="vehicle_type" label="Vehicle Type" value={vehicle.vehicle_type} />
+                  <FieldWithAudit fieldName="vehicle_category" label="Vehicle Category" value={vehicle.vehicle_category} />
                   <FieldWithAudit fieldName="ownership_type" label="Ownership" value={vehicle.ownership_type} />
                   <FieldWithAudit fieldName="council_assignment" label="Council" value={vehicle.council_assignment} />
                 </div>
@@ -339,6 +339,7 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                 </div>
                 <div className="p-4 space-y-3">
                   <FieldWithAudit fieldName="tail_lift" label="Tail Lift" value={vehicle.tail_lift} formatValue={(val) => val ? 'Yes' : 'No'} />
+                  <FieldWithAudit fieldName="lpg_fuelled" label="LPG fuelled" value={vehicle.lpg_fuelled} formatValue={(val) => val ? 'Yes' : 'No'} />
                   <FieldWithAudit fieldName="spare_vehicle" label="Spare Vehicle" value={vehicle.spare_vehicle} formatValue={(val) => val ? 'Yes' : 'No'} />
                   {(() => {
                     const assignedEmployee = Array.isArray(vehicle.assigned_employee) ? vehicle.assigned_employee[0] : vehicle.assigned_employee
@@ -353,11 +354,6 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
                 </div>
               </CardContent>
             </Card>
-
-            {/* QR Code */}
-            <div className="pt-2">
-              <VehicleQRCode vehicleId={vehicleId} />
-            </div>
           </div>
 
           {/* Right column (8 cols) */}

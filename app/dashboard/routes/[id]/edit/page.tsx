@@ -996,13 +996,18 @@ function EditRoutePageClient({ id }: { id: string }) {
                       value={point.passenger_id ? String(point.passenger_id) : ''}
                       onChange={(e) => {
                         const selectedPassengerId = e.target.value || null
-                        updateRoutePoint(point.id, 'passenger_id', selectedPassengerId)
-                        if (selectedPassengerId) {
-                          const selectedPassenger = passengers.find((p) => p.id.toString() === selectedPassengerId)
-                          if (selectedPassenger?.address) {
-                            updateRoutePoint(point.id, 'address', selectedPassenger.address)
-                          }
-                        }
+                        const selectedPassenger = selectedPassengerId ? passengers.find((p) => p.id.toString() === selectedPassengerId) : null
+                        setRoutePoints((prev) =>
+                          prev.map((p) =>
+                            p.id === point.id
+                              ? {
+                                  ...p,
+                                  passenger_id: selectedPassengerId,
+                                  ...(selectedPassenger?.address ? { address: selectedPassenger.address } : {}),
+                                }
+                              : p
+                          )
+                        )
                       }}
                       className="h-8 text-sm"
                     >

@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
-import DriverQRCode from './DriverQRCode'
 import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
 import DriverPreChecks from './DriverPreChecks'
 
@@ -329,14 +328,6 @@ export function DriverDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {activeTab === 'documents' && (
-        <SubjectDocumentsChecklist subjectType="driver" subjectId={driver.employee_id} />
-      )}
-
-      {activeTab === 'daily-checks' && (
-        <DriverPreChecks driverId={driver.employee_id} />
-      )}
-
       {driver.additional_notes && (
         <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
           <FileText className="h-4 w-4 mt-0.5 shrink-0" />
@@ -461,11 +452,6 @@ export function DriverDetailClient({ id }: { id: string }) {
             </CardContent>
           </Card>
 
-          {/* QR Code */}
-          <div className="pt-2">
-            <DriverQRCode driverId={driver.employee_id} />
-          </div>
-
         </div>
 
         {/* Right Column: Certificates & Training (8 cols) */}
@@ -582,6 +568,12 @@ export function DriverDetailClient({ id }: { id: string }) {
       </div>
       )}
 
+      {activeTab === 'documents' && (
+        <SubjectDocumentsChecklist subjectType="driver" subjectId={driver.employee_id} />
+      )}
+      {activeTab === 'daily-checks' && (
+        <DriverPreChecks driverId={driver.employee_id} />
+      )}
     </div>
   )
 }

@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { isValidEmail, isValidPhone } from '@/lib/utils'
 
 export default function CreateSchoolPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState({
     name: '',
@@ -28,8 +30,26 @@ export default function CreateSchoolPage() {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setError(null)
-    setLoading(true)
+    setFieldErrors({})
 
+    const errors: Record<string, string> = {}
+    if (!formData.name.trim()) errors.name = 'School name is required.'
+    if (!formData.address.trim()) errors.address = 'School address is required.'
+    if (!formData.ref_number.trim()) errors.ref_number = 'Reference number is required.'
+    if (!formData.phone_number.trim()) errors.phone_number = 'School phone is required.'
+    else if (!isValidPhone(formData.phone_number)) errors.phone_number = 'Please enter a valid phone number (at least 10 digits).'
+    if (!formData.contact_name.trim()) errors.contact_name = 'Contact name is required.'
+    if (!formData.contact_phone.trim()) errors.contact_phone = 'Contact phone is required.'
+    else if (!isValidPhone(formData.contact_phone)) errors.contact_phone = 'Please enter a valid phone number (at least 10 digits).'
+    if (!formData.contact_email.trim()) errors.contact_email = 'Contact email is required.'
+    else if (!isValidEmail(formData.contact_email)) errors.contact_email = 'Please enter a valid email address.'
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      setError('Please fill in all required fields.')
+      return
+    }
+
+    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('schools')
@@ -103,44 +123,59 @@ export default function CreateSchoolPage() {
                   placeholder="e.g., Hamilton School"
                   className="h-9"
                 />
+                {fieldErrors.name && (
+                  <p className="text-xs text-red-600">{fieldErrors.name}</p>
+                )}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ref_number" className="text-xs font-medium text-slate-600">Reference Number</Label>
+                <Label htmlFor="ref_number" className="text-xs font-medium text-slate-600">Reference Number *</Label>
                 <Input
                   id="ref_number"
+                  required
                   value={formData.ref_number}
                   onChange={(e) => setFormData({ ...formData, ref_number: e.target.value })}
                   placeholder="e.g., SCH001"
                   className="h-9"
                 />
+                {fieldErrors.ref_number && (
+                  <p className="text-xs text-red-600">{fieldErrors.ref_number}</p>
+                )}
               </div>
             </div>
 
             {/* Row 2: Address */}
             <div className="space-y-1">
-              <Label htmlFor="address" className="text-xs font-medium text-slate-600">School Address</Label>
+              <Label htmlFor="address" className="text-xs font-medium text-slate-600">School Address *</Label>
               <textarea
                 id="address"
                 rows={2}
-                className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:border-transparent"
+                required
+                className={`flex w-full rounded-md border bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:border-transparent ${fieldErrors.address ? 'border-red-500' : 'border-slate-200'}`}
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="Full school address..."
               />
+              {fieldErrors.address && (
+                <p className="text-xs text-red-600">{fieldErrors.address}</p>
+              )}
             </div>
 
             {/* Row 3: Phone */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="phone_number" className="text-xs font-medium text-slate-600">School Phone</Label>
+                <Label htmlFor="phone_number" className="text-xs font-medium text-slate-600">School Phone *</Label>
                 <Input
                   id="phone_number"
                   type="tel"
+                  required
                   value={formData.phone_number}
                   onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
                   placeholder="e.g., 0121 464 1676"
                   className="h-9"
                 />
+                {fieldErrors.phone_number && (
+                  <p className="text-xs text-red-600">{fieldErrors.phone_number}</p>
+                )}
               </div>
             </div>
           </form>
@@ -153,36 +188,48 @@ export default function CreateSchoolPage() {
         <div className="p-4">
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-1">
-              <Label htmlFor="contact_name" className="text-xs font-medium text-slate-600">Contact Name</Label>
+              <Label htmlFor="contact_name" className="text-xs font-medium text-slate-600">Contact Name *</Label>
               <Input
                 id="contact_name"
+                required
                 value={formData.contact_name}
                 onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
                 placeholder="e.g., Sarah Eaton"
                 className="h-9"
               />
+              {fieldErrors.contact_name && (
+                <p className="text-xs text-red-600">{fieldErrors.contact_name}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="contact_phone" className="text-xs font-medium text-slate-600">Contact Phone</Label>
+              <Label htmlFor="contact_phone" className="text-xs font-medium text-slate-600">Contact Phone *</Label>
               <Input
                 id="contact_phone"
                 type="tel"
+                required
                 value={formData.contact_phone}
                 onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                 placeholder="e.g., 0121 464 1676"
                 className="h-9"
               />
+              {fieldErrors.contact_phone && (
+                <p className="text-xs text-red-600">{fieldErrors.contact_phone}</p>
+              )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="contact_email" className="text-xs font-medium text-slate-600">Contact Email</Label>
+              <Label htmlFor="contact_email" className="text-xs font-medium text-slate-600">Contact Email *</Label>
               <Input
                 id="contact_email"
                 type="email"
+                required
                 value={formData.contact_email}
                 onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                 placeholder="e.g., contact@school.edu"
                 className="h-9"
               />
+              {fieldErrors.contact_email && (
+                <p className="text-xs text-red-600">{fieldErrors.contact_email}</p>
+              )}
             </div>
           </div>
         </div>

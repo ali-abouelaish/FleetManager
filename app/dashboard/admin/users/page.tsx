@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { RefreshCw, Search, UserPlus } from 'lucide-react'
+import { RefreshCw, Search, UserPlus, Mail } from 'lucide-react'
 
 type UserRecord = {
   id: number
@@ -38,6 +38,8 @@ export default function AdminUsersPage() {
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null)
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null)
   const [formData, setFormData] = useState({ ...emptyForm })
+  const [sendingResetForId, setSendingResetForId] = useState<number | null>(null)
+  const [resetEmailMessage, setResetEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm.trim()) return users
@@ -97,6 +99,22 @@ export default function AdminUsersPage() {
     setFormMode(null)
     setEditingUser(null)
     setFormData({ ...emptyForm })
+  }
+
+  const handleSendResetPasswordEmail = async (user: UserRecord) => {
+    if (!user.email?.trim()) return
+    setSendingResetForId(user.id)
+    setResetEmailMessage(null)
+    try {
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email.trim(), { redirectTo })
+      if (error) throw error
+      setResetEmailMessage({ type: 'success', text: `Password reset email sent to ${user.email}. They can use the link to set a new password.` })
+    } catch (err: any) {
+      setResetEmailMessage({ type: 'error', text: err?.message || 'Failed to send reset email. The user may need to sign in with Supabase Auth first.' })
+    } finally {
+      setSendingResetForId(null)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -216,6 +234,12 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {resetEmailMessage && (
+        <div className={`rounded-xl border p-3 text-sm ${resetEmailMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+          {resetEmailMessage.text}
+        </div>
+      )}
+
       {(formMode || error || success) && (
         <Card>
           <CardHeader>
@@ -326,9 +350,21 @@ export default function AdminUsersPage() {
                           {user.employee_id ?? '—'}
                         </td>
                         <td className="py-3 pr-4">
-                          <Button variant="secondary" size="sm" onClick={() => startEdit(user)}>
-                            Edit
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button variant="secondary" size="sm" onClick={() => startEdit(user)}>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSendResetPasswordEmail(user)}
+                              disabled={sendingResetForId === user.id}
+                              title="Send password reset email to this user"
+                            >
+                              <Mail className="h-4 w-4" />
+                              {sendingResetForId === user.id ? 'Sending…' : 'Reset password'}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))

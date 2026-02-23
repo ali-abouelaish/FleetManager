@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
-import { ArrowLeft, Upload, Save, AlertCircle, FileText, CheckCircle, GraduationCap } from 'lucide-react'
+import { ArrowLeft, Upload, Save, AlertCircle, FileText, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { DynamicCertificatesForm } from '@/components/dashboard/DynamicCertificatesForm'
 
@@ -51,12 +51,6 @@ export default function CreateDriverPage() {
     paper_licence: false,
     taxi_plate_photo: false,
     logbook: false,
-    safeguarding_training_completed: false,
-    safeguarding_training_date: '',
-    tas_pats_training_completed: false,
-    tas_pats_training_date: '',
-    psa_training_completed: false,
-    psa_training_date: '',
     additional_notes: '',
   })
 
@@ -164,9 +158,6 @@ export default function CreateDriverPage() {
     const dateFields: Array<{ key: keyof typeof formData; label: string }> = [
       // Dynamic certificate date validation handled separately
       { key: 'utility_bill_date', label: 'Utility Bill date' },
-      { key: 'safeguarding_training_date', label: 'Safeguarding training date' },
-      { key: 'tas_pats_training_date', label: 'TAS PATS training date' },
-      { key: 'psa_training_date', label: 'PSA training date' },
     ]
     dateFields.forEach(({ key, label }) => {
       const value = formData[key]
@@ -279,12 +270,6 @@ export default function CreateDriverPage() {
         paper_licence: formData.paper_licence,
         taxi_plate_photo: formData.taxi_plate_photo,
         logbook: formData.logbook,
-        safeguarding_training_completed: formData.safeguarding_training_completed,
-        safeguarding_training_date: formData.safeguarding_training_date || null,
-        tas_pats_training_completed: formData.tas_pats_training_completed,
-        tas_pats_training_date: formData.tas_pats_training_date || null,
-        psa_training_completed: formData.psa_training_completed,
-        psa_training_date: formData.psa_training_date || null,
         additional_notes: formData.additional_notes || null,
         spare_driver: formData.spare_driver,
         self_employed: formData.self_employed,
@@ -672,61 +657,8 @@ export default function CreateDriverPage() {
           </Card>
         </div>
 
-        {/* Column 3: Docs & Training (Right) */}
+        {/* Column 3: Docs (Right) */}
         <div className="lg:col-span-4 flex flex-col gap-4 h-full">
-          <Card>
-            <CardContent className="p-4 space-y-4">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Training Status</h2>
-
-              <div className="space-y-3">
-                {[
-                  {
-                    id: 'safeguarding_training',
-                    label: 'Safeguarding',
-                    completed: formData.safeguarding_training_completed,
-                    date: formData.safeguarding_training_date
-                  },
-                  {
-                    id: 'tas_pats_training',
-                    label: 'TAS PATS',
-                    completed: formData.tas_pats_training_completed,
-                    date: formData.tas_pats_training_date
-                  },
-                  {
-                    id: 'psa_training',
-                    label: 'PSA Training',
-                    completed: formData.psa_training_completed,
-                    date: formData.psa_training_date
-                  },
-                ].map((t) => (
-                  <div key={t.id} className={`p-3 rounded-lg border text-sm ${t.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`font-semibold ${t.completed ? 'text-green-800' : 'text-slate-600'}`}>{t.label}</span>
-                      <input
-                        type="checkbox"
-                        name={`${t.id}_completed`}
-                        checked={t.completed}
-                        onChange={handleInputChange}
-                        className="rounded border-slate-300 text-green-600 focus:ring-green-500"
-                      />
-                    </div>
-                    {t.completed && (
-                      <input
-                        type="date"
-                        name={`${t.id}_date`}
-                        value={t.date}
-                        onChange={handleInputChange}
-                        min={minDate}
-                        max="9999-12-31"
-                        className="w-full h-7 text-xs border-slate-200 rounded bg-white px-2"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="flex-1">
             <CardContent className="p-4 space-y-4">
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-2">Additional Docs</h2>

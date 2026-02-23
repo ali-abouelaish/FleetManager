@@ -447,14 +447,6 @@ export default function DocumentRequirementsPage() {
                     </div>
                   </>
                 )}
-                <div className="space-y-1.5">
-                  <Label htmlFor="icon_path">Icon path</Label>
-                  <Input id="icon_path" name="icon_path" value={formData.icon_path} onChange={handleChange} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="color">Color (hex)</Label>
-                  <Input id="color" name="color" value={formData.color} onChange={handleChange} placeholder="#0EA5E9" />
-                </div>
                 <div className="flex items-end gap-2 md:col-span-2">
                   <Button type="submit" disabled={saving}>
                     {saving ? 'Saving…' : formMode === 'edit' ? 'Save changes' : 'Create requirement'}

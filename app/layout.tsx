@@ -7,6 +7,10 @@ const montserrat = Montserrat({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Fleet Admin Dashboard',
   description: 'Comprehensive fleet management system',
+  icons: {
+    icon: '/assets/countylogofin.png',
+    apple: '/assets/countylogofin.png',
+  },
 }
 
 export default function RootLayout({

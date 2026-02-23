@@ -36,6 +36,9 @@ const CERTIFICATE_TYPES: CertificateType[] = [
   { key: 'first_aid_expiry', name: 'First Aid Kit Certificate', expiryField: 'first_aid_expiry' },
   { key: 'fire_extinguisher_expiry', name: 'Fire Extinguisher Certificate', expiryField: 'fire_extinguisher_expiry' },
   { key: 'iva', name: 'IVA Certificate', expiryField: '' },
+  { key: 'lpg_safety_check', name: 'LPG Safety Check', expiryField: '' },
+  { key: 'interim_service_certificate', name: 'Interim Service Certificate', expiryField: '' },
+  { key: 'pmi_document', name: 'PMI Document', expiryField: '' },
 ]
 
 export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: number }) {
@@ -97,18 +100,33 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
     'first_aid_expiry': 'First Aid Kit Certificate',
     'fire_extinguisher_expiry': 'Fire Extinguisher Certificate',
     'iva': 'IVA Certificate',
+    'lpg_safety_check': 'LPG Safety Check',
+    'repair_invoice': 'Repair Invoice',
+    'interim_service_certificate': 'Interim Service Certificate',
+    'pmi_document': 'PMI Document',
   }
-  
-  // Get certificate types to display (include IVA only if vehicle category is N1)
+
+  const REPAIR_DOC_TYPES = ['Repair Invoice', 'Repair Document']
+
+  // Get certificate types to display (IVA only if N1; LPG only if lpg_fuelled; PHV/PSV maintenance docs by type; Repair always)
   const getCertificateTypes = () => {
-    if (vehicle?.vehicle_category === 'N1') {
-      return CERTIFICATE_TYPES
-    }
-    return CERTIFICATE_TYPES.filter(cert => cert.key !== 'iva')
+    let types = CERTIFICATE_TYPES.filter(cert =>
+      cert.key !== 'iva' && cert.key !== 'lpg_safety_check' &&
+      cert.key !== 'interim_service_certificate' && cert.key !== 'pmi_document'
+    )
+    if (vehicle?.vehicle_category === 'N1') types.push(CERTIFICATE_TYPES.find(c => c.key === 'iva')!)
+    if (vehicle?.lpg_fuelled) types.push(CERTIFICATE_TYPES.find(c => c.key === 'lpg_safety_check')!)
+    if (vehicle?.vehicle_type === 'PHV') types.push(CERTIFICATE_TYPES.find(c => c.key === 'interim_service_certificate')!)
+    if (vehicle?.vehicle_type === 'PSV') types.push(CERTIFICATE_TYPES.find(c => c.key === 'pmi_document')!)
+    types.push({ key: 'repair_invoice', name: 'Repair Invoice / Parts', expiryField: '' })
+    return types
   }
 
   const getDocumentsByType = (certType: string) => {
     const docTypeName = certKeyToDocType[certType] || certType
+    if (certType === 'repair_invoice') {
+      return documents.filter(doc => doc.doc_type && REPAIR_DOC_TYPES.includes(doc.doc_type))
+    }
     return documents.filter(doc => doc.doc_type === docTypeName)
   }
 
@@ -288,13 +306,14 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Files *</Label>
+                  <Label>Files * (multiple allowed)</Label>
                   <Input
                     type="file"
                     multiple
                     accept="image/*,application/pdf"
                     onChange={(e) => setFiles(e.target.files)}
                   />
+                  <p className="text-xs text-gray-500">Select one or more files per certificate type (e.g. policy + vehicle schedule for insurance).</p>
                 </div>
               </div>
               <div className="flex space-x-2">
