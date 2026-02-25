@@ -167,8 +167,10 @@ export default async function SchoolsPage({
         </Card>
       )}
 
-      {/* Search and Filter Controls */}
-      <SchoolSearchFilters />
+      {/* Search and Filter Controls - wrapped in Suspense for useSearchParams */}
+      <Suspense fallback={<div className="h-10 w-full max-w-md rounded-lg bg-slate-100 animate-pulse" />}>
+        <SchoolSearchFilters />
+      </Suspense>
 
       {/* Table View */}
       <Card className="overflow-hidden border-slate-200">

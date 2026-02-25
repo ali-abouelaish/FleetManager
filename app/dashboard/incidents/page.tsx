@@ -177,7 +177,9 @@ export default async function IncidentsPage({
         </Link>
       </div>
 
-      <IncidentSearchFilters />
+      <Suspense fallback={<div className="h-10 w-full max-w-2xl rounded-lg bg-slate-100 animate-pulse" />}>
+        <IncidentSearchFilters />
+      </Suspense>
 
       <Suspense key={JSON.stringify({ routeSessionId, search, status })} fallback={<TableSkeleton rows={5} columns={8} />}>
         <IncidentsTable routeSessionId={routeSessionId} search={search} status={status} />

@@ -362,8 +362,10 @@ export default async function EmployeeCertificatesPage({
         </p>
       </div>
 
-      {/* Period Filter Tabs */}
-      <CertificateExpiryFilter currentPeriod={period} counts={counts} />
+      {/* Period Filter Tabs - wrapped in Suspense for useSearchParams */}
+      <Suspense fallback={<div className="h-10 w-full max-w-md rounded-lg bg-slate-100 animate-pulse" />}>
+        <CertificateExpiryFilter currentPeriod={period} counts={counts} />
+      </Suspense>
 
       {/* Tables */}
       <Suspense key={period} fallback={<TableSkeleton rows={5} columns={5} />}>

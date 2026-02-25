@@ -122,7 +122,9 @@ export default async function RoutesPage({
         </Link>
       </div>
 
-      <RouteSearchFilters />
+      <Suspense fallback={<div className="h-10 w-full max-w-md rounded-lg bg-slate-100 animate-pulse" />}>
+        <RouteSearchFilters />
+      </Suspense>
 
       <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={5} />}>
         <RoutesTable search={filters.search} />

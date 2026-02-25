@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { Suspense } from 'react'
 import DailySummariesClient from './DailySummariesClient'
 import { BarChart3 } from 'lucide-react'
 
@@ -64,7 +65,9 @@ export default async function DailySummariesPage({
         </div>
       </div>
 
-      <DailySummariesClient initialDate={selectedDate} initialSummaries={summaries} />
+      <Suspense fallback={<div className="h-64 rounded-lg bg-slate-100 animate-pulse" />}>
+        <DailySummariesClient initialDate={selectedDate} initialSummaries={summaries} />
+      </Suspense>
     </div>
   )
 }

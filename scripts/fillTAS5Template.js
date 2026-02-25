@@ -1,7 +1,25 @@
 /**
  * TAS 5 Excel Template Filler
- * Fills the TAS 5 template with route details from school profile
- * while preserving all formatting, borders, and structure
+ * Fills the TAS 5 template with route details while preserving formatting.
+ *
+ * ✅ Column requirements (1–17):
+ * 1  FPS number
+ * 2  Name of school
+ * 3  Empty (leave as-is)
+ * 4  Vehicle ID
+ * 5  Vehicle registration assigned to this route
+ * 6  Number of seats
+ * 7  Vehicle type
+ * 8  D1 category number (if applicable)
+ * 9  PSV expiry date
+ * 10 Capacity
+ * 11 Make and model of car
+ * 12 Driver name
+ * 13 Driver TAS number
+ * 14 Driver TAS number expiry
+ * 15 PA name
+ * 16 PA TAS number
+ * 17 PA TAS expiry
  */
 
 const ExcelJS = require('exceljs');
@@ -9,22 +27,20 @@ const path = require('path');
 
 /**
  * Format time from HH:MM:SS or HH:MM to HH:MM format
- * @param {string} time - Time string
- * @returns {string} - Formatted time or empty string
+ * @param {string} time
+ * @returns {string}
  */
 function formatTime(time) {
   if (!time) return '';
-  // If already in HH:MM format, return as is
-  if (time.match(/^\d{2}:\d{2}$/)) return time;
-  // If in HH:MM:SS format, extract HH:MM
-  if (time.match(/^\d{2}:\d{2}:\d{2}$/)) return time.substring(0, 5);
-  return time;
+  if (/^\d{2}:\d{2}$/.test(time)) return time;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(time)) return time.substring(0, 5);
+  return String(time);
 }
 
 /**
  * Format date to DD/MM/YYYY
- * @param {string|Date} date - Date string or Date object
- * @returns {string} - Formatted date
+ * @param {string|Date} date
+ * @returns {string}
  */
 function formatDate(date) {
   if (!date) return '';
@@ -37,222 +53,303 @@ function formatDate(date) {
 }
 
 /**
+ * Safely unwrap object that might be array
+ * @param {any} val
+ * @returns {any|null}
+ */
+function unwrapFirst(val) {
+  if (!val) return null;
+  return Array.isArray(val) ? (val[0] ?? null) : val;
+}
+
+/**
  * Fill the TAS 5 template with route data
- * @param {Object} options - Configuration options
+ * @param {Object} options
  */
 async function fillTAS5Template(options) {
   const {
     // Input/Output files
     templatePath = './TAS 5.xlsx',
     outputPath = './TAS5_filled.xlsx',
-    
+
     // School data
-    schoolFps, // FPS number from school table (usually ref_number)
-    
-    // Route data (can be single route or array of routes)
-    routes = [], // Array of route objects
-    
-    // =========================================
-    // 📍 CELL LOCATIONS CONFIGURATION
-    // =========================================
-    // ⚠️ IMPORTANT: Update these cell locations to match your TAS 5.xlsx template!
-    // 
-    // HOW TO FIND CELL LOCATIONS:
-    // 1. Open your TAS 5.xlsx template in Excel
-    // 2. Click on the cell where you want data to appear
-    // 3. Look at the cell reference in the formula bar (e.g., "B2", "C5", etc.)
-    // 4. Update the corresponding value below
-    //
-    cellLocations = {
-      // =========================================
-      // ROUTE TABLE STRUCTURE
-      // =========================================
-      // routeTableStartRow: The row number where the FIRST route data starts
-      // Example: If your route table starts at row 10, set routeTableStartRow: 10
-      // 
-      // HOW MULTIPLE ROWS WORK:
-      // - Route 1 (index 0) → Row = routeTableStartRow + 0 = 10
-      // - Route 2 (index 1) → Row = routeTableStartRow + 1 = 11
-      // - Route 3 (index 2) → Row = routeTableStartRow + 2 = 12
-      // - And so on...
-      //
-      // So if you have 5 routes and routeTableStartRow is 10:
-      // Routes will fill rows 10, 11, 12, 13, 14
-      //
-      routeTableStartRow: 7,  // ← Change 10 to the row number where your route table starts
-      routeTableStartColumn: 1, // Usually 1 (Column A), rarely needs changing
-      
-      // =========================================
-      // ROUTE FIELD COLUMNS
-      // =========================================
-      // These are COLUMN NUMBERS (1=A, 2=B, 3=C, 4=D, 5=E, 6=F, 7=G, 8=H, 9=I, 10=J, 11=K, etc.)
-      // Update these to match which columns in your template contain each field
-      //
-      // EXAMPLE LAYOUT:
-      // Row 10: | FPS | Route # | Start Time | End Time | Driver | Driver TAS | PA | PA TAS | Vehicle | ...
-      //         |Col 1|  Col 2  |    Col 3   |  Col 4   | Col 5 |   Col 6    |Col7| Col 8  |  Col 9  | ...
-      //
-      fpsColumn: 1,                    // Column A (1) - FPS Number (from school table)
-      routeNumberColumn: 2,            // Column B (2) - Route Number
-      routeStartTimeColumn: 3,         // Column C (3) - AM Start Time
-      routeEndTimeColumn: 4,           // Column D (4) - PM End Time
-      driverNameColumn: 5,             // Column E (5) - Driver Name
-      driverTasColumn: 6,              // Column F (6) - Driver TAS Number
-      paNameColumn: 7,                 // Column G (7) - PA Name
-      paTasColumn: 8,                  // Column H (8) - PA TAS Number
-      vehicleRegColumn: 9,             // Column I (9) - Vehicle Registration
-      vehiclePlateColumn: 10,           // Column J (10) - Vehicle Plate Number
-      passengerCountColumn: 11,        // Column K (11) - Passenger Count
-      routeNotesColumn: 12,            // Column L (12) - Route Notes
-    },
-    
+    schoolFps, // schools.ref_number (FPS)
+    schoolName, // schools.name
+
+    // Route data
+    routes = [],
+
     // Worksheet name
-    worksheetName = 'Sheet1', // Update if your sheet has a different name
+    worksheetName = 'Sheet1',
+
+    // Cell locations (column numbers)
+    cellLocations = {
+      routeTableStartRow: 7,
+      routeTableStartColumn: 1,
+
+      fpsColumn: 1, // Col 1
+      schoolNameColumn: 2, // Col 2
+      emptyColumn: 3, // Col 3 (leave as-is)
+
+      vehicleIdColumn: 4, // Col 4
+      vehicleRegColumn: 5, // Col 5
+      seatsColumn: 6, // Col 6
+      vehicleTypeColumn: 7, // Col 7
+      d1CategoryNumberColumn: 8, // Col 8
+      psvExpiryDateColumn: 9, // Col 9
+      capacityColumn: 10, // Col 10
+      makeModelColumn: 11, // Col 11
+
+      driverNameColumn: 12, // Col 12
+      driverTasColumn: 13, // Col 13
+      driverTasExpiryColumn: 14, // Col 14
+
+      paNameColumn: 15, // Col 15
+      paTasColumn: 16, // Col 16
+      paTasExpiryColumn: 17, // Col 17
+    },
   } = options;
 
   try {
-    // Load the template
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(templatePath);
-    
-    // Get the first worksheet (or by name if specified)
-    const worksheet = workbook.getWorksheet(worksheetName) || workbook.getWorksheet(1);
-    
-    if (!worksheet) {
-      throw new Error('Worksheet not found in template');
-    }
+
+    const worksheet =
+      workbook.getWorksheet(worksheetName) || workbook.getWorksheet(1);
+
+    if (!worksheet) throw new Error('Worksheet not found in template');
 
     console.log(`📄 Loaded template: ${templatePath}`);
     console.log(`📋 Working with worksheet: ${worksheet.name}`);
 
-    // =========================================
-    // FILL ROUTE DATA
-    // =========================================
-    // HOW MULTIPLE ROWS ARE FILLED:
-    // The script loops through each route and fills it in a separate row.
-    // Row calculation: rowIndex = routeTableStartRow + routeIndex
-    //
-    // EXAMPLE with routeTableStartRow = 10:
-    // - Route 0 → Row 10 (10 + 0)
-    // - Route 1 → Row 11 (10 + 1)
-    // - Route 2 → Row 12 (10 + 2)
-    // - Route 3 → Row 13 (10 + 3)
-    //
-    // Each route's data is filled across the columns specified in cellLocations
     if (routes && routes.length > 0) {
-      console.log(`\n🚌 Filling ${routes.length} route(s)...`);
+      console.log(`\n🚌 Filling ${routes.length} row(s)...`);
       console.log(`   Starting at row ${cellLocations.routeTableStartRow}`);
-      
+
       routes.forEach((route, index) => {
-        // Calculate which row this route should be filled in
-        // First route (index 0) = routeTableStartRow
-        // Second route (index 1) = routeTableStartRow + 1
-        // Third route (index 2) = routeTableStartRow + 2
-        // And so on...
         const rowIndex = cellLocations.routeTableStartRow + index;
-        
-        // FPS Number (from school table - same for all routes)
+
+        const driver = unwrapFirst(route.driver);
+        const pa = unwrapFirst(route.pa);
+        const vehicle = unwrapFirst(route.vehicles || route.vehicle);
+
+        // 1) FPS number
         if (schoolFps) {
-          worksheet.getCell(rowIndex, cellLocations.fpsColumn).value = schoolFps;
+          worksheet.getCell(rowIndex, cellLocations.fpsColumn).value =
+            String(schoolFps);
         }
-        
-        // Route Number
-        if (route.route_number) {
-          worksheet.getCell(rowIndex, cellLocations.routeNumberColumn).value = route.route_number;
-          console.log(`   ✓ Route ${route.route_number} → Row ${rowIndex}`);
+
+        // 2) Name of school
+        if (schoolName) {
+          worksheet.getCell(rowIndex, cellLocations.schoolNameColumn).value =
+            String(schoolName);
+        } else if (route.schoolName) {
+          worksheet.getCell(rowIndex, cellLocations.schoolNameColumn).value =
+            String(route.schoolName);
         }
-        
-        // Start Time (AM)
-        if (route.am_start_time) {
-          const formattedTime = formatTime(route.am_start_time);
-          worksheet.getCell(rowIndex, cellLocations.routeStartTimeColumn).value = formattedTime;
+
+        // 3) Empty: do nothing (preserve template)
+        // worksheet.getCell(rowIndex, cellLocations.emptyColumn).value = '';
+
+        // 4) Vehicle ID
+        if (vehicle) {
+          const vehicleId =
+            vehicle.id ??
+            vehicle.vehicle_id ??
+            vehicle.vehicle_identifier ??
+            route.vehicle_id ??
+            '';
+          if (vehicleId !== '') {
+            worksheet.getCell(rowIndex, cellLocations.vehicleIdColumn).value =
+              String(vehicleId);
+          }
+        } else if (route.vehicle_id) {
+          worksheet.getCell(rowIndex, cellLocations.vehicleIdColumn).value =
+            String(route.vehicle_id);
         }
-        
-        // End Time (PM)
-        if (route.pm_start_time) {
-          const formattedTime = formatTime(route.pm_start_time);
-          worksheet.getCell(rowIndex, cellLocations.routeEndTimeColumn).value = formattedTime;
+
+        // 5) Vehicle registration assigned to this route
+        if (vehicle) {
+          const reg = vehicle.registration ?? vehicle.plate_number ?? '';
+          if (reg) {
+            worksheet.getCell(rowIndex, cellLocations.vehicleRegColumn).value =
+              String(reg);
+          }
+        } else if (route.vehicle_registration) {
+          worksheet.getCell(rowIndex, cellLocations.vehicleRegColumn).value =
+            String(route.vehicle_registration);
         }
-        
-        // Driver Name
-        if (route.driver) {
-          const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver;
-          const driverName = driver?.employees?.full_name || '';
+
+        // 6) Number of seats
+        // (join from vehicle_configurations.seats_total or seating plan total_capacity -> pass in query)
+        if (vehicle) {
+          const seats =
+            vehicle.seats_total ??
+            vehicle.number_of_seats ??
+            vehicle.seats ??
+            '';
+          if (seats !== '') {
+            worksheet.getCell(rowIndex, cellLocations.seatsColumn).value =
+              Number(seats);
+          }
+        } else if (route.number_of_seats != null) {
+          worksheet.getCell(rowIndex, cellLocations.seatsColumn).value =
+            Number(route.number_of_seats);
+        }
+
+        // 7) Vehicle type
+        if (vehicle) {
+          const vType = vehicle.vehicle_type ?? vehicle.type ?? '';
+          if (vType) {
+            worksheet.getCell(rowIndex, cellLocations.vehicleTypeColumn).value =
+              String(vType);
+          }
+        } else if (route.vehicle_type) {
+          worksheet.getCell(rowIndex, cellLocations.vehicleTypeColumn).value =
+            String(route.vehicle_type);
+        }
+
+        // 8) D1 category number (if applicable)
+        // (not in schema snippet; fill if you pass it in)
+        const d1 =
+          route.d1_category_number ??
+          driver?.d1_category_number ??
+          vehicle?.d1_category_number ??
+          '';
+        if (d1) {
+          worksheet.getCell(
+            rowIndex,
+            cellLocations.d1CategoryNumberColumn
+          ).value = String(d1);
+        }
+
+        // 9) PSV expiry date
+        // (not explicit in schema snippet; fill if passed in; else blank)
+        const psvExpiry =
+          route.psv_expiry_date ??
+          vehicle?.psv_expiry_date ??
+          vehicle?.psv_license_expiry_date ??
+          '';
+        if (psvExpiry) {
+          worksheet.getCell(rowIndex, cellLocations.psvExpiryDateColumn).value =
+            formatDate(psvExpiry);
+        }
+
+        // 10) Capacity
+        // (commonly from vehicle_seating_plans.total_capacity -> pass in)
+        if (vehicle) {
+          const capacity = vehicle.total_capacity ?? vehicle.capacity ?? '';
+          if (capacity !== '') {
+            worksheet.getCell(rowIndex, cellLocations.capacityColumn).value =
+              Number(capacity);
+          }
+        } else if (route.capacity != null) {
+          worksheet.getCell(rowIndex, cellLocations.capacityColumn).value =
+            Number(route.capacity);
+        }
+
+        // 11) Make and model of car
+        if (vehicle) {
+          const make = vehicle.make ?? '';
+          const model = vehicle.model ?? '';
+          const makeModel = [make, model].filter(Boolean).join(' ');
+          if (makeModel) {
+            worksheet.getCell(rowIndex, cellLocations.makeModelColumn).value =
+              makeModel;
+          }
+        } else if (route.make_model) {
+          worksheet.getCell(rowIndex, cellLocations.makeModelColumn).value =
+            String(route.make_model);
+        }
+
+        // 12) Driver name
+        if (driver) {
+          const driverName =
+            driver?.employees?.full_name ?? driver?.full_name ?? '';
           if (driverName) {
-            worksheet.getCell(rowIndex, cellLocations.driverNameColumn).value = driverName;
+            worksheet.getCell(rowIndex, cellLocations.driverNameColumn).value =
+              String(driverName);
           }
+        } else if (route.driver_name) {
+          worksheet.getCell(rowIndex, cellLocations.driverNameColumn).value =
+            String(route.driver_name);
         }
-        
-        // Driver TAS Number
-        if (route.driver) {
-          const driver = Array.isArray(route.driver) ? route.driver[0] : route.driver;
-          const driverTas = driver?.tas_badge_number || driver?.taxi_badge_number || '';
+
+        // 13) Driver TAS number
+        if (driver) {
+          const driverTas = driver?.tas_badge_number ?? '';
           if (driverTas) {
-            worksheet.getCell(rowIndex, cellLocations.driverTasColumn).value = driverTas;
+            worksheet.getCell(rowIndex, cellLocations.driverTasColumn).value =
+              String(driverTas);
           }
+        } else if (route.driver_tas_number) {
+          worksheet.getCell(rowIndex, cellLocations.driverTasColumn).value =
+            String(route.driver_tas_number);
         }
-        
-        // Passenger Assistant Name
-        if (route.pa) {
-          const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa;
-          const paName = pa?.employees?.full_name || '';
+
+        // 14) Driver TAS number expiry
+        if (driver) {
+          const exp = driver?.tas_badge_expiry_date ?? '';
+          if (exp) {
+            worksheet.getCell(
+              rowIndex,
+              cellLocations.driverTasExpiryColumn
+            ).value = formatDate(exp);
+          }
+        } else if (route.driver_tas_expiry) {
+          worksheet.getCell(rowIndex, cellLocations.driverTasExpiryColumn).value =
+            formatDate(route.driver_tas_expiry);
+        }
+
+        // 15) PA name
+        if (pa) {
+          const paName = pa?.employees?.full_name ?? '';
           if (paName) {
-            worksheet.getCell(rowIndex, cellLocations.paNameColumn).value = paName;
+            worksheet.getCell(rowIndex, cellLocations.paNameColumn).value =
+              String(paName);
           }
+        } else if (route.pa_name) {
+          worksheet.getCell(rowIndex, cellLocations.paNameColumn).value =
+            String(route.pa_name);
         }
-        
-        // Passenger Assistant TAS Number
-        if (route.pa) {
-          const pa = Array.isArray(route.pa) ? route.pa[0] : route.pa;
-          const paTas = pa?.tas_badge_number || '';
+
+        // 16) PA TAS number
+        if (pa) {
+          const paTas = pa?.tas_badge_number ?? '';
           if (paTas) {
-            worksheet.getCell(rowIndex, cellLocations.paTasColumn).value = paTas;
+            worksheet.getCell(rowIndex, cellLocations.paTasColumn).value =
+              String(paTas);
           }
+        } else if (route.pa_tas_number) {
+          worksheet.getCell(rowIndex, cellLocations.paTasColumn).value =
+            String(route.pa_tas_number);
         }
-        
-        // Vehicle Registration
-        if (route.vehicles) {
-          const vehicle = Array.isArray(route.vehicles) ? route.vehicles[0] : route.vehicles;
-          const vehicleReg = vehicle?.registration || vehicle?.plate_number || '';
-          if (vehicleReg) {
-            worksheet.getCell(rowIndex, cellLocations.vehicleRegColumn).value = vehicleReg;
+
+        // 17) PA TAS expiry
+        if (pa) {
+          const exp = pa?.tas_badge_expiry_date ?? '';
+          if (exp) {
+            worksheet.getCell(rowIndex, cellLocations.paTasExpiryColumn).value =
+              formatDate(exp);
           }
-        }
-        
-        // Vehicle Plate Number
-        if (route.vehicles) {
-          const vehicle = Array.isArray(route.vehicles) ? route.vehicles[0] : route.vehicles;
-          const vehiclePlate = vehicle?.plate_number || vehicle?.registration || '';
-          if (vehiclePlate) {
-            worksheet.getCell(rowIndex, cellLocations.vehiclePlateColumn).value = vehiclePlate;
-          }
-        }
-        
-        // Passenger Count (if passengers array is provided)
-        if (route.passengers && Array.isArray(route.passengers)) {
-          worksheet.getCell(rowIndex, cellLocations.passengerCountColumn).value = route.passengers.length;
-        }
-        
-        // Route Notes
-        if (route.notes) {
-          worksheet.getCell(rowIndex, cellLocations.routeNotesColumn).value = route.notes;
+        } else if (route.pa_tas_expiry) {
+          worksheet.getCell(rowIndex, cellLocations.paTasExpiryColumn).value =
+            formatDate(route.pa_tas_expiry);
         }
       });
+    } else {
+      console.log('\nℹ️ No routes provided. Nothing to fill.');
     }
 
-    // =========================================
-    // 3️⃣ SAVE OUTPUT FILE
-    // =========================================
     console.log('\n💾 Saving filled template...');
     await workbook.xlsx.writeFile(outputPath);
     console.log(`✅ Successfully saved: ${outputPath}`);
-    
+
     return {
       success: true,
       outputPath,
       routesCount: routes ? routes.length : 0,
     };
-
   } catch (error) {
     console.error('❌ Error filling template:', error);
     throw error;
@@ -265,96 +362,82 @@ async function fillTAS5Template(options) {
 async function main() {
   try {
     const result = await fillTAS5Template({
-      // Input/Output
       templatePath: path.join(__dirname, 'TAS 5.xlsx'),
       outputPath: path.join(__dirname, 'TAS5_filled.xlsx'),
-      
-      // School data
-      schoolFps: 'FPS-001', // FPS number from school table
-      
-      // Route data (example)
+
+      // School
+      schoolFps: 'FPS-001',
+      schoolName: 'Example School',
+
+      // Routes (each route becomes 1 row starting at routeTableStartRow)
       routes: [
         {
-          route_number: 'R001',
-          am_start_time: '08:00:00',
-          pm_start_time: '15:30:00',
+          // You can pass these in whatever shape you fetch;
+          // The filler supports nested objects like your old script.
+          vehicles: {
+            id: 101,
+            registration: 'AB12 CDE',
+            make: 'Ford',
+            model: 'Transit',
+            vehicle_type: 'Minibus',
+            seats_total: 16, // optional
+            total_capacity: 16, // optional
+            // psv_expiry_date: '2026-11-30', // optional if you have it
+          },
           driver: {
             employees: { full_name: 'John Smith' },
             tas_badge_number: 'TAS-DRV-001',
+            tas_badge_expiry_date: '2026-06-01',
           },
           pa: {
             employees: { full_name: 'Jane Doe' },
             tas_badge_number: 'TAS-PA-001',
+            tas_badge_expiry_date: '2026-07-15',
           },
-          vehicles: {
-            registration: 'AB12 CDE',
-            plate_number: 'PLATE123',
-          },
-          passengers: [
-            { full_name: 'Alice Johnson' },
-            { full_name: 'Bob Williams' },
-          ],
-          notes: 'Morning route only',
-        },
-        {
-          route_number: 'R002',
-          am_start_time: '08:15:00',
-          pm_start_time: '15:45:00',
-          driver: {
-            employees: { full_name: 'Mike Johnson' },
-            tas_badge_number: 'TAS-DRV-002',
-          },
-          pa: {
-            employees: { full_name: 'Sarah Wilson' },
-            tas_badge_number: 'TAS-PA-002',
-          },
-          vehicles: {
-            registration: 'XY98 ZAB',
-            plate_number: 'PLATE456',
-          },
-          passengers: [
-            { full_name: 'Charlie Brown' },
-            { full_name: 'Diana Smith' },
-            { full_name: 'Ethan Davis' },
-          ],
+
+          // Optional extra fields if you have them:
+          // d1_category_number: 'D1-12345',
+          // psv_expiry_date: '2026-12-10',
         },
       ],
-      
-      // Cell locations - ADJUST THESE TO MATCH YOUR TEMPLATE
+
+      // If your template uses different start row:
       cellLocations: {
-        // Route table structure
-        routeTableStartRow: 7, // Row where first route data goes
-        routeTableStartColumn: 1, // Column A
-        
-        // Route field columns (adjust based on your template layout)
-        fpsColumn: 1, // Column A - FPS Number (from school table)
-        routeNumberColumn: 2, // Column B - Route Number
-        routeStartTimeColumn: 3, // Column C - Start Time
-        routeEndTimeColumn: 4, // Column D - End Time
-        driverNameColumn: 5, // Column E - Driver Name
-        driverTasColumn: 6, // Column F - Driver TAS
-        paNameColumn: 7, // Column G - PA Name
-        paTasColumn: 8, // Column H - PA TAS
-        vehicleRegColumn: 9, // Column I - Vehicle Registration
-        vehiclePlateColumn: 10, // Column J - Vehicle Plate
-        passengerCountColumn: 11, // Column K - Passenger Count
-        routeNotesColumn: 12, // Column L - Route Notes
+        routeTableStartRow: 7,
+
+        fpsColumn: 1,
+        schoolNameColumn: 2,
+        emptyColumn: 3,
+
+        vehicleIdColumn: 4,
+        vehicleRegColumn: 5,
+        seatsColumn: 6,
+        vehicleTypeColumn: 7,
+        d1CategoryNumberColumn: 8,
+        psvExpiryDateColumn: 9,
+        capacityColumn: 10,
+        makeModelColumn: 11,
+
+        driverNameColumn: 12,
+        driverTasColumn: 13,
+        driverTasExpiryColumn: 14,
+
+        paNameColumn: 15,
+        paTasColumn: 16,
+        paTasExpiryColumn: 17,
       },
     });
-    
+
     console.log('\n📊 Summary:');
-    console.log(`   Routes filled: ${result.routesCount}`);
-    
+    console.log(`   Rows filled: ${result.routesCount}`);
   } catch (error) {
     console.error('Failed to fill template:', error);
     process.exit(1);
   }
 }
 
-// Run if called directly
 if (require.main === module) {
   main();
 }
 
-// Export for use as module
 module.exports = { fillTAS5Template, formatTime, formatDate };

@@ -214,7 +214,9 @@ export default async function DriversPage({
         </Link>
       </div>
 
-      <DriverSearchFilters />
+      <Suspense fallback={<div className="h-10 w-full max-w-2xl rounded-lg bg-slate-100 animate-pulse" />}>
+        <DriverSearchFilters />
+      </Suspense>
 
       <Suspense key={suspenseKey} fallback={<TableSkeleton rows={5} columns={7} />}>
         <DriversTable {...filters} />

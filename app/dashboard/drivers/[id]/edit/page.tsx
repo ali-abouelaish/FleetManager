@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { ArrowLeft, AlertCircle, Upload, CheckCircle } from 'lucide-react'
+import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
 
 interface Driver {
   employee_id: number
@@ -641,6 +642,11 @@ export default function EditDriverPage({ params }: { params: { id: string } }) {
         </div>
 
       </form>
+
+      {/* Required documents checklist (same rules as create, with existing data visible) */}
+      <div className="mt-6">
+        <SubjectDocumentsChecklist subjectType="driver" subjectId={driver.employee_id} />
+      </div>
     </div>
   )
 }

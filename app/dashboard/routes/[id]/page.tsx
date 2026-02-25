@@ -10,6 +10,7 @@ import { notFound } from 'next/navigation'
 import RouteSessionsClient from './RouteSessionsClient'
 import RouteDetailClient from './RouteDetailClient'
 import RoutePointsManager from './RoutePointsManager'
+import RouteDocumentsCard from './RouteDocumentsCard'
 
 // Helper function to format time (HH:MM:SS to HH:MM)
 function formatTime(time: string | null): string {
@@ -289,6 +290,9 @@ export default async function ViewRoutePage({
 
       {/* Route Sessions & Attendance Section */}
       <RouteSessionsClient routeId={parseInt(params.id)} passengers={passengers} />
+
+      {/* Route Documents */}
+      <RouteDocumentsCard routeId={route.id} />
     </div>
   )
 }

@@ -197,7 +197,9 @@ export default async function AssistantsPage({
         </Link>
       </div>
 
-      <AssistantSearchFilters />
+      <Suspense fallback={<div className="h-10 w-full max-w-2xl rounded-lg bg-slate-100 animate-pulse" />}>
+        <AssistantSearchFilters />
+      </Suspense>
 
       <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={9} />}>
         <AssistantsTable search={filters.search} status={filters.status} can_work={filters.can_work} />

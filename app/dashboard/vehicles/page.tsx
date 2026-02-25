@@ -131,7 +131,9 @@ export default async function VehiclesPage({
       </div>
 
       {/* Search and Filter Controls */}
-      <VehicleSearchFilters />
+      <Suspense fallback={<div className="h-10 w-full max-w-2xl rounded-lg bg-slate-100 animate-pulse" />}>
+        <VehicleSearchFilters />
+      </Suspense>
 
       <Suspense key={suspenseKey} fallback={<TableSkeleton rows={5} columns={8} />}>
         <VehiclesTable filters={filters} />

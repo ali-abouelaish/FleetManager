@@ -9,11 +9,32 @@ import fs from 'fs/promises'
  */
 function formatTime(time: string | null): string {
   if (!time) return ''
-  // If already in HH:MM format, return as is
   if (time.match(/^\d{2}:\d{2}$/)) return time
-  // If in HH:MM:SS format, extract HH:MM
   if (time.match(/^\d{2}:\d{2}:\d{2}$/)) return time.substring(0, 5)
   return time
+}
+
+/** Format date for display (YYYY-MM-DD or existing string). */
+function formatDate(date: string | null | undefined): string {
+  if (!date) return ''
+  const d = typeof date === 'string' ? date : String(date)
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.substring(0, 10)
+  return d
+}
+
+/**
+ * Compute PSV expiry (next PMI due) from last_pmi_date and pmi_weeks; return formatted date or ''.
+ */
+function psvExpiryDate(lastPmiDate: string | null | undefined, pmiWeeks: number | null | undefined): string {
+  if (!lastPmiDate || !pmiWeeks || pmiWeeks <= 0) return ''
+  try {
+    const d = new Date(lastPmiDate)
+    if (Number.isNaN(d.getTime())) return ''
+    d.setDate(d.getDate() + pmiWeeks * 7)
+    return d.toISOString().slice(0, 10)
+  } catch {
+    return ''
+  }
 }
 
 /**
@@ -88,6 +109,7 @@ export async function GET(
             .select(`
               employee_id,
               tas_badge_number,
+              tas_badge_expiry_date,
               taxi_badge_number,
               employees (
                 id,
@@ -107,17 +129,18 @@ export async function GET(
             .select(`
               employee_id,
               tas_badge_number,
+              tas_badge_expiry_date,
               employees (
                 id,
                 full_name
               )
             `)
-            .eq('id', route.passenger_assistant_id)
+            .eq('employee_id', route.passenger_assistant_id)
             .maybeSingle()
           pa = paData
         }
 
-        // Fetch vehicle data if vehicle_id exists
+        // Fetch vehicle data if vehicle_id exists (include type, PMI for PSV expiry, make/model)
         let vehicle = null
         if (route.vehicle_id) {
           const { data: vehicleData } = await supabase
@@ -127,11 +150,27 @@ export async function GET(
               registration,
               plate_number,
               vehicle_identifier,
-              taxi_badge_number
+              make,
+              model,
+              vehicle_type,
+              last_pmi_date,
+              pmi_weeks
             `)
             .eq('id', route.vehicle_id)
             .maybeSingle()
           vehicle = vehicleData
+          // Fetch active seating plan for capacity / number of seats
+          if (vehicleData?.id) {
+            const { data: plan } = await supabase
+              .from('vehicle_seating_plans')
+              .select('total_capacity')
+              .eq('vehicle_id', vehicleData.id)
+              .eq('is_active', true)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            vehicle = { ...vehicleData, total_capacity: plan?.total_capacity ?? null }
+          }
         }
 
         // Fetch passengers for this route
@@ -198,216 +237,112 @@ export async function GET(
     // =========================================
     // 📍 CELL LOCATIONS CONFIGURATION
     // =========================================
-    // ⚠️ IMPORTANT: Update these cell locations to match your TAS 5.xlsx template!
-    // 
-    // HOW TO FIND CELL LOCATIONS:
-    // 1. Open your TAS 5.xlsx template in Excel
-    // 2. Click on the cell where you want data to appear
-    // 3. Look at the cell reference in the formula bar (e.g., "B2", "C5", etc.)
-    // 4. Update the corresponding value below
-    //
-    // NOTE: Nothing should be filled before row 7. Route data starts at row 7.
-    //
+    // Column order: 1=Route#, 2=School name, 3=Empty, 4=Vehicle ID … 17=PA TAS expiry.
+    // No extra header: one row per route, data starts at row 7 (template has its own header).
     const cellLocations = {
-      // =========================================
-      // ROUTE TABLE STRUCTURE
-      // =========================================
-      // routeTableStartRow: The row number where the FIRST route data starts
-      // IMPORTANT: Nothing should be filled before this row!
-      // 
-      // HOW MULTIPLE ROWS WORK:
-      // - Route 1 (index 0) → Row = routeTableStartRow + 0 = 7
-      // - Route 2 (index 1) → Row = routeTableStartRow + 1 = 8
-      // - Route 3 (index 2) → Row = routeTableStartRow + 2 = 9
-      // - And so on...
-      //
-      // So if you have 5 routes and routeTableStartRow is 7:
-      // Routes will fill rows 7, 8, 9, 10, 11
-      //
-      routeTableStartRow: 7,  // ← Route table starts at row 7 (nothing filled before this)
-      
-      // =========================================
-      // ROUTE FIELD COLUMNS
-      // =========================================
-      // These are COLUMN NUMBERS (1=A, 2=B, 3=C, 4=D, 5=E, 6=F, 7=G, 8=H, 9=I, 10=J, 11=K, 12=L, etc.)
-      // Update these to match which columns in your template contain each field
-      //
-      // EXAMPLE LAYOUT:
-      // Row 7:  | FPS | Route # | Start Time | End Time | Driver | Driver TAS | PA | PA TAS | Vehicle | ...
-      //         |Col 1|  Col 2  |    Col 3   |  Col 4   | Col 5 |   Col 6    |Col7| Col 8  |  Col 9  | ...
-      //
-      fpsColumn: 1,                    // Column A (1) - FPS Number (from school table)
-      routeNumberColumn: 2,            // Column B (2) - Route Number
-      routeStartTimeColumn: 3,         // Column C (3) - AM Start Time
-      routeEndTimeColumn: 4,           // Column D (4) - PM End Time
-      driverNameColumn: 5,             // Column E (5) - Driver Name
-      driverTasColumn: 6,              // Column F (6) - Driver TAS Number
-      paNameColumn: 7,                 // Column G (7) - PA Name
-      paTasColumn: 8,                  // Column H (8) - PA TAS Number
-      vehicleRegColumn: 9,             // Column I (9) - Vehicle Registration
-      vehiclePlateColumn: 10,            // Column J (10) - Vehicle Plate Number
-      passengerCountColumn: 11,        // Column K (11) - Passenger Count
-      routeNotesColumn: 12,            // Column L (12) - Route Notes
+      routeTableStartRow: 7,
+      column1RouteNumber: 1,
+      column2SchoolName: 2,
+      column3Empty: 3,
+      column4VehicleId: 4,
+      column5VehicleRegistration: 5,
+      column6NumberOfSeats: 6,
+      column7VehicleType: 7,
+      column8D1Category: 8,
+      column9PsvExpiryDate: 9,
+      column10Capacity: 10,
+      column11MakeAndModel: 11,
+      column12DriverName: 12,
+      column13DriverTasNumber: 13,
+      column14DriverTasExpiry: 14,
+      column15PaName: 15,
+      column16PaTasNumber: 16,
+      column17PaTasExpiry: 17,
     }
 
-    // Get FPS from school (using ref_number as FPS, or you can add a dedicated fps field later)
-    const schoolFps = school.ref_number || (school as any).fps || ''
+    const loc = cellLocations
+    const schoolName = school.name || ''
 
-    // =========================================
-    // FILL ROUTE DATA
-    // =========================================
-    // IMPORTANT: Nothing is filled before row 7. Route data starts at row 7.
-    // 
-    // HOW MULTIPLE ROWS ARE FILLED:
-    // The script loops through each route and fills it in a separate row.
-    // Row calculation: rowIndex = routeTableStartRow + routeIndex
-    //
-    // EXAMPLE with routeTableStartRow = 7:
-    // - Route 0 → Row 7 (7 + 0)
-    // - Route 1 → Row 8 (7 + 1)
-    // - Route 2 → Row 9 (7 + 2)
-    // - Route 3 → Row 10 (7 + 3)
-    //
-    // Each route's data is filled across the columns specified in cellLocations
+    console.log(`[TAS5 Export] Writing ${routesWithPassengers.length} route(s) starting at row ${loc.routeTableStartRow}, columns A–Q`)
+
     routesWithPassengers.forEach((route, index) => {
-      // Calculate which row this route should be filled in
-      // First route (index 0) = routeTableStartRow
-      // Second route (index 1) = routeTableStartRow + 1
-      // Third route (index 2) = routeTableStartRow + 2
-      // And so on...
-      const rowIndex = cellLocations.routeTableStartRow + index
+      const rowIndex = loc.routeTableStartRow + index
 
-      // FPS Number (from school table - same for all routes)
-      if (schoolFps) {
-        worksheet.getCell(rowIndex, cellLocations.fpsColumn).value = schoolFps
-      }
-
-      // Route Number
-      if (route.route_number) {
+      const set = (col: number, value: string | number | null | undefined) => {
+        if (value === null || value === undefined) return
         try {
-          worksheet.getCell(rowIndex, cellLocations.routeNumberColumn).value = String(route.route_number).trim()
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing route number:`, error)
+          const v = typeof value === 'number' ? value : String(value).trim()
+          if (v !== '') worksheet.getCell(rowIndex, col).value = v
+        } catch (e) {
+          console.warn(`[TAS5 Export] Error writing column ${col}:`, e)
         }
       }
 
-      // Start Time (AM)
-      if (route.am_start_time) {
-        try {
-          const timeValue = formatTime(route.am_start_time)
-          if (timeValue) {
-            worksheet.getCell(rowIndex, cellLocations.routeStartTimeColumn).value = timeValue
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing start time:`, error)
-        }
-      }
+      // Column 1: Route number
+      set(loc.column1RouteNumber, route.route_number ?? null)
 
-      // End Time (PM)
-      if (route.pm_start_time) {
-        try {
-          const timeValue = formatTime(route.pm_start_time)
-          if (timeValue) {
-            worksheet.getCell(rowIndex, cellLocations.routeEndTimeColumn).value = timeValue
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing end time:`, error)
-        }
-      }
+      // Column 2: Name of school
+      set(loc.column2SchoolName, schoolName)
 
-      // Driver Name
+      // Column 3: Empty for now
+      // (leave blank)
+
+      const vehicle = route.vehicles as (typeof route.vehicles) & { total_capacity?: number | null } | null
+
+      // Column 4: Vehicle ID
+      if (vehicle?.id != null) set(loc.column4VehicleId, vehicle.id)
+
+      // Column 5: Vehicle registration assigned to this route
+      set(loc.column5VehicleRegistration, vehicle?.registration ?? vehicle?.plate_number ?? vehicle?.vehicle_identifier ?? null)
+
+      // Column 6: Number of seats
+      if (vehicle?.total_capacity != null) set(loc.column6NumberOfSeats, vehicle.total_capacity)
+
+      // Column 7: Vehicle type
+      set(loc.column7VehicleType, vehicle?.vehicle_type ?? null)
+
+      // Column 8: D1 category number (if applicable) – not in schema, leave empty
+      // (leave blank)
+
+      // Column 9: PSV expiry date (next PMI due from last_pmi_date + pmi_weeks)
+      set(loc.column9PsvExpiryDate, psvExpiryDate(vehicle?.last_pmi_date, vehicle?.pmi_weeks))
+
+      // Column 10: Capacity (same as seats from seating plan)
+      if (vehicle?.total_capacity != null) set(loc.column10Capacity, vehicle.total_capacity)
+
+      // Column 11: Make and model of car
+      set(loc.column11MakeAndModel, [vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || null)
+
+      // Column 12: Driver name
       if (route.driver) {
-        try {
-          const driver = route.driver
-          const employees = Array.isArray(driver.employees) ? driver.employees[0] : driver.employees
-          const driverName = employees?.full_name || ''
-          if (driverName) {
-            worksheet.getCell(rowIndex, cellLocations.driverNameColumn).value = String(driverName).trim()
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing driver name:`, error)
-        }
+        const emp = Array.isArray(route.driver.employees) ? route.driver.employees[0] : route.driver.employees
+        set(loc.column12DriverName, emp?.full_name ?? null)
       }
 
-      // Driver TAS Number
+      // Column 13: Driver TAS number
       if (route.driver) {
-        try {
-          const driver = route.driver
-          const driverTas = driver?.tas_badge_number || driver?.taxi_badge_number || ''
-          if (driverTas) {
-            worksheet.getCell(rowIndex, cellLocations.driverTasColumn).value = String(driverTas).trim()
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing driver TAS:`, error)
-        }
+        const tas = route.driver.tas_badge_number ?? route.driver.taxi_badge_number ?? null
+        set(loc.column13DriverTasNumber, tas)
       }
 
-      // Passenger Assistant Name
+      // Column 14: Driver TAS number expiry
+      if (route.driver?.tas_badge_expiry_date) {
+        set(loc.column14DriverTasExpiry, formatDate(route.driver.tas_badge_expiry_date))
+      }
+
+      // Column 15: PA name
       if (route.pa) {
-        try {
-          const pa = route.pa
-          const employees = Array.isArray(pa.employees) ? pa.employees[0] : pa.employees
-          const paName = employees?.full_name || ''
-          if (paName) {
-            worksheet.getCell(rowIndex, cellLocations.paNameColumn).value = String(paName).trim()
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing PA name:`, error)
-        }
+        const emp = Array.isArray(route.pa.employees) ? route.pa.employees[0] : route.pa.employees
+        set(loc.column15PaName, emp?.full_name ?? null)
       }
 
-      // Passenger Assistant TAS Number
-      if (route.pa) {
-        try {
-          const pa = route.pa
-          const paTas = pa?.tas_badge_number || ''
-          if (paTas) {
-            worksheet.getCell(rowIndex, cellLocations.paTasColumn).value = String(paTas).trim()
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing PA TAS:`, error)
-        }
-      }
+      // Column 16: PA TAS number
+      if (route.pa) set(loc.column16PaTasNumber, route.pa.tas_badge_number ?? null)
 
-      // Vehicle Registration
-      if (route.vehicles) {
-        try {
-          const vehicle = route.vehicles
-          const vehicleReg = vehicle?.registration || vehicle?.plate_number || vehicle?.vehicle_identifier || ''
-          if (vehicleReg) {
-            worksheet.getCell(rowIndex, cellLocations.vehicleRegColumn).value = String(vehicleReg).trim()
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing vehicle registration:`, error)
-        }
+      // Column 17: PA TAS number expiry
+      if (route.pa?.tas_badge_expiry_date) {
+        set(loc.column17PaTasExpiry, formatDate(route.pa.tas_badge_expiry_date))
       }
-
-      // Vehicle Plate Number
-      if (route.vehicles) {
-        try {
-          const vehicle = route.vehicles
-          const vehiclePlate = vehicle?.plate_number || vehicle?.registration || ''
-          if (vehiclePlate) {
-            worksheet.getCell(rowIndex, cellLocations.vehiclePlateColumn).value = String(vehiclePlate).trim()
-          }
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing vehicle plate:`, error)
-        }
-      }
-
-      // Passenger Count
-      if (route.passengers && Array.isArray(route.passengers)) {
-        try {
-          worksheet.getCell(rowIndex, cellLocations.passengerCountColumn).value = route.passengers.length
-        } catch (error) {
-          console.warn(`[TAS5 Export] Error writing passenger count:`, error)
-        }
-      }
-
-      // Route Notes (if notes column exists in routes table, uncomment below)
-      // if (route.notes) {
-      //   worksheet.getCell(rowIndex, cellLocations.routeNotesColumn).value = route.notes
-      // }
     })
 
     // =========================================

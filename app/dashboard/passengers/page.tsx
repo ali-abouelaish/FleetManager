@@ -165,7 +165,9 @@ export default async function PassengersPage({
         </Link>
       </div>
 
-      <PassengerSearchFilters />
+      <Suspense fallback={<div className="h-10 w-full max-w-md rounded-lg bg-slate-100 animate-pulse" />}>
+        <PassengerSearchFilters />
+      </Suspense>
 
       <Suspense key={JSON.stringify(filters)} fallback={<TableSkeleton rows={5} columns={8} />}>
         <PassengersTable search={filters.search} mobility_type={filters.mobility_type} />

@@ -276,6 +276,7 @@ function EditParentContactClient({ id }: { id: string }) {
                   <option value="Aunt">Aunt</option>
                   <option value="Uncle">Uncle</option>
                   <option value="Sibling">Sibling</option>
+                  <option value="Foster parents">Foster parents</option>
                   <option value="Other">Other</option>
                 </Select>
               </div>

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { ArrowLeft, AlertCircle, Upload, CheckCircle, Clock } from 'lucide-react'
 import DeletePAButton from '../DeletePAButton'
+import { SubjectDocumentsChecklist } from '@/components/dashboard/SubjectDocumentsChecklist'
 
 interface PassengerAssistant {
   id: number
@@ -647,6 +648,11 @@ export default function EditPassengerAssistantPage({ params }: { params: { id: s
         </div>
 
       </form>
+
+      {/* Required documents checklist (same rules as create, with existing data visible) */}
+      <div className="mt-6">
+        <SubjectDocumentsChecklist subjectType="pa" subjectId={assistant.employee_id} />
+      </div>
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation'
 import SchoolRouteSessionsClient from './SchoolRouteSessionsClient'
 import DeleteSchoolButton from './DeleteSchoolButton'
 import ExportTAS5Button from './ExportTAS5Button'
+import SchoolDocumentsCard from './SchoolDocumentsCard'
 
 async function getSchoolDetails(id: string) {
   const supabase = await createClient()
@@ -401,6 +402,9 @@ export default async function ViewSchoolPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Documents Section */}
+      <SchoolDocumentsCard schoolId={school.id} />
 
       {/* Route Sessions & Attendance Section */}
       {routes.length > 0 && (
