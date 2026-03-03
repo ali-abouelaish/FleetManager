@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissions } from '@/hooks/usePermissions'
+import { canAccessRoute } from '@/lib/permissions'
 import {
   LayoutDashboard,
   Users,
@@ -97,6 +99,13 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
+    name: 'Maintenance',
+    icon: ClipboardCheck,
+    items: [
+      { name: 'Maintenance Questions', href: '/dashboard/maintenance/questions', icon: ClipboardList },
+    ],
+  },
+  {
     name: 'Reports',
     icon: TrendingUp,
     items: [
@@ -112,7 +121,16 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Document Requirements', href: '/dashboard/admin/document-requirements', icon: FileText },
       { name: 'Users', href: '/dashboard/admin/users', icon: Users },
+      { name: 'Role Management', href: '/dashboard/admin/roles', icon: Shield },
       { name: 'User Approvals', href: '/dashboard/admin/user-approvals', icon: UserCheck },
+      { name: 'Send Notification', href: '/dashboard/admin/notifications', icon: Bell },
+    ],
+  },
+  {
+    name: 'Account',
+    icon: User,
+    items: [
+      { name: 'My Notifications', href: '/dashboard/my-notifications', icon: Bell },
     ],
   },
 ]
@@ -121,10 +139,13 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const { permissions, loading: permissionsLoading } = usePermissions()
   const { count: notificationCount } = useNotificationCount()
   const { count: complianceCount } = useComplianceNotificationCount()
   const { count: routeActivityCount } = useRouteActivityNotificationCount()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+
+  const canAccess = useMemo(() => (href: string) => canAccessRoute(href, permissions), [permissions])
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [displayName, setDisplayName] = useState('User')
@@ -230,7 +251,7 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin space-y-1">
         {/* Top-level items */}
         <div className="space-y-1 mb-4 pb-4 border-b border-slate-200/60">
-          {topLevelItems.map((item) => {
+          {topLevelItems.filter((item) => permissionsLoading || canAccess(item.href)).map((item) => {
             const isActive = isItemActive(item.href)
             let badgeCount = 0
             let showBadge = false
@@ -276,8 +297,10 @@ export function Sidebar() {
 
         {/* Collapsible groups */}
         {navigationGroups.map((group) => {
+          const visibleItems = group.items.filter((item) => permissionsLoading || canAccess(item.href))
+          if (visibleItems.length === 0) return null
           const isExpanded = expandedGroups.has(group.name)
-          const hasActiveItem = isGroupActive(group.items)
+          const hasActiveItem = isGroupActive(visibleItems)
 
           return (
             <div key={group.name} className="mb-1">
@@ -309,7 +332,7 @@ export function Sidebar() {
                 isExpanded ? "max-h-[400px] opacity-100 mt-1" : "max-h-0 opacity-0"
               )}>
                 <div className="ml-4 space-y-1 border-l-2 border-slate-200 pl-3">
-                  {group.items.map((item) => {
+                  {visibleItems.map((item) => {
                     const isActive = isItemActive(item.href)
                     const showBadge = item.href === '/dashboard/notifications' && notificationCount > 0
 

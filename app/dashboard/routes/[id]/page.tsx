@@ -85,8 +85,18 @@ async function getRouteDetails(id: string) {
     .eq('route_id', id)
     .order('sort_order')
 
+  const paEmployeeIds = (routePas ?? []).map((r: any) => r.employee_id)
+  const { data: paRows } = paEmployeeIds.length
+    ? await supabase
+        .from('passenger_assistants')
+        .select('id, employee_id')
+        .in('employee_id', paEmployeeIds)
+    : { data: [] as { id: number; employee_id: number }[] | null }
+  const paIdByEmployeeId = new Map((paRows ?? []).map((p: any) => [p.employee_id, p.id]))
+
   const routePasList = (routePas || []).map((r: any) => ({
     employee_id: r.employee_id,
+    pa_id: paIdByEmployeeId.get(r.employee_id) ?? null,
     sort_order: r.sort_order,
     employees: r.employees,
   }))
@@ -117,7 +127,7 @@ export default async function ViewRoutePage({
   const backHref = searchParams?.from === 'school-overview' ? '/dashboard/school-overview' : '/dashboard/routes'
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Header with Back Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -148,21 +158,21 @@ export default async function ViewRoutePage({
       <RouteDetailClient route={route} routeId={route.id} routePasList={routePasList} />
 
       <Card>
-        <CardContent className="p-3 space-y-1">
-          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 border-b pb-1.5">Statistics</h2>
-          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+        <CardContent className="p-2.5">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1.5 border-b border-slate-100 pb-1">Statistics</h2>
+          <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
             <span className="text-xs text-slate-500">Total Passengers</span>
-            <span className="text-base font-bold text-slate-900">{passengers.length}</span>
+            <span className="text-sm font-bold text-slate-900">{passengers.length}</span>
           </div>
-          <div className="flex items-center justify-between py-1 border-b border-slate-100">
+          <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
             <span className="text-xs text-slate-500">Crew Members</span>
-            <span className="text-base font-bold text-slate-900">
+            <span className="text-sm font-bold text-slate-900">
               {(route.driver_id ? 1 : 0) + (routePasList?.length ?? (route.passenger_assistant_id ? 1 : 0))}
             </span>
           </div>
-          <div className="flex items-center justify-between py-1">
+          <div className="flex items-center justify-between py-0.5">
             <span className="text-xs text-slate-500">Pick-up Points</span>
-            <span className="text-base font-bold text-slate-900">{routePoints.length}</span>
+            <span className="text-sm font-bold text-slate-900">{routePoints.length}</span>
           </div>
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { ArrowLeft, AlertCircle, Phone, Users, FileText } from 'lucide-react'
 import Link from 'next/link'
 
@@ -17,6 +18,7 @@ export default function CreateCallLogPage() {
   const [error, setError] = useState<string | null>(null)
   const [passengers, setPassengers] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
+  const [parentContacts, setParentContacts] = useState<{ id: number; full_name: string | null }[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
   const [assistants, setAssistants] = useState<any[]>([])
   const [routes, setRoutes] = useState<any[]>([])
@@ -28,6 +30,7 @@ export default function CreateCallLogPage() {
     caller_type: 'Parent',
     call_type: 'Inquiry',
     call_to_type: '',
+    outgoing_receiver: '',
     related_passenger_id: '',
     related_driver_id: '',
     related_assistant_id: '',
@@ -45,9 +48,10 @@ export default function CreateCallLogPage() {
 
   useEffect(() => {
     async function loadData() {
-      const [passengersResult, employeesResult, driversResult, assistantsResult, routesResult] = await Promise.all([
+      const [passengersResult, employeesResult, parentContactsResult, driversResult, assistantsResult, routesResult] = await Promise.all([
         supabase.from('passengers').select('id, full_name').order('full_name'),
         supabase.from('employees').select('id, full_name').order('full_name'),
+        supabase.from('parent_contacts').select('id, full_name').order('full_name'),
         supabase.from('drivers').select('employee_id, employees(full_name)').order('employee_id'),
         supabase.from('passenger_assistants').select('employee_id, employees(full_name)').order('employee_id'),
         supabase.from('routes').select('id, route_number').order('route_number')
@@ -55,6 +59,7 @@ export default function CreateCallLogPage() {
 
       if (passengersResult.data) setPassengers(passengersResult.data)
       if (employeesResult.data) setEmployees(employeesResult.data)
+      if (parentContactsResult.data) setParentContacts(parentContactsResult.data)
       if (routesResult.data) setRoutes(routesResult.data)
       if (driversResult.data) {
         setDrivers(driversResult.data.map((d: any) => ({
@@ -78,8 +83,17 @@ export default function CreateCallLogPage() {
     setLoading(true)
 
     try {
+      const [receiverParentId, receiverEmployeeId] = (() => {
+        const v = formData.outgoing_receiver
+        if (!v) return [null, null]
+        if (v.startsWith('parent:')) return [parseInt(v.slice(7), 10) || null, null]
+        if (v.startsWith('employee:')) return [null, parseInt(v.slice(9), 10) || null]
+        return [null, null]
+      })()
       const cleanedData = {
         ...formData,
+        outgoing_receiver_parent_contact_id: receiverParentId,
+        outgoing_receiver_employee_id: receiverEmployeeId,
         related_passenger_id: formData.related_passenger_id === '' ? null : (formData.related_passenger_id ? parseInt(formData.related_passenger_id) : null),
         related_driver_id: formData.related_driver_id === '' ? null : (formData.related_driver_id ? parseInt(formData.related_driver_id) : null),
         related_assistant_id: formData.related_assistant_id === '' ? null : (formData.related_assistant_id ? parseInt(formData.related_assistant_id) : null),
@@ -88,6 +102,7 @@ export default function CreateCallLogPage() {
         call_to_type: formData.call_to_type === '' ? null : formData.call_to_type,
         follow_up_date: formData.follow_up_date === '' ? null : (formData.follow_up_date.includes('T') ? formData.follow_up_date.replace('T', ' ') : formData.follow_up_date),
       }
+      delete (cleanedData as any).outgoing_receiver
 
       const { data, error } = await supabase.from('call_logs').insert([cleanedData]).select()
       if (error) throw error
@@ -186,6 +201,20 @@ export default function CreateCallLogPage() {
                   <option value="Admin">Admin</option>
                 </Select>
               </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="outgoing_receiver" className="text-xs font-medium text-slate-600">Outgoing call receiver</Label>
+                <SearchableSelect
+                  id="outgoing_receiver"
+                  options={[
+                    ...parentContacts.map((p) => ({ value: `parent:${p.id}`, label: `Parent: ${p.full_name || 'Unknown'}` })),
+                    ...employees.map((e) => ({ value: `employee:${e.id}`, label: `Employee: ${e.full_name || 'Unknown'}` })),
+                  ]}
+                  value={formData.outgoing_receiver}
+                  onChange={(v) => setFormData({ ...formData, outgoing_receiver: v })}
+                  placeholder="Search parent or employee..."
+                  emptyLabel="None"
+                />
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="call_type" className="text-xs font-medium text-slate-600">Call Type *</Label>
                 <Select id="call_type" required value={formData.call_type} onChange={(e) => setFormData({ ...formData, call_type: e.target.value })} className="h-9">
@@ -263,31 +292,47 @@ export default function CreateCallLogPage() {
           <div className="grid gap-3 md:grid-cols-5">
             <div className="space-y-1">
               <Label htmlFor="related_passenger_id" className="text-xs font-medium text-slate-600">Passenger</Label>
-              <Select id="related_passenger_id" value={formData.related_passenger_id} onChange={(e) => setFormData({ ...formData, related_passenger_id: e.target.value })} className="h-9">
-                <option value="">None</option>
-                {passengers.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-              </Select>
+              <SearchableSelect
+                id="related_passenger_id"
+                options={passengers.map((p) => ({ value: String(p.id), label: p.full_name || 'Unknown' }))}
+                value={formData.related_passenger_id}
+                onChange={(v) => setFormData({ ...formData, related_passenger_id: v })}
+                placeholder="Search passengers..."
+                emptyLabel="None"
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_driver_id" className="text-xs font-medium text-slate-600">Driver</Label>
-              <Select id="related_driver_id" value={formData.related_driver_id} onChange={(e) => setFormData({ ...formData, related_driver_id: e.target.value })} className="h-9">
-                <option value="">None</option>
-                {drivers.map((d) => <option key={d.employee_id} value={d.employee_id}>{d.full_name}</option>)}
-              </Select>
+              <SearchableSelect
+                id="related_driver_id"
+                options={drivers.map((d) => ({ value: String(d.employee_id), label: d.full_name }))}
+                value={formData.related_driver_id}
+                onChange={(v) => setFormData({ ...formData, related_driver_id: v })}
+                placeholder="Search drivers..."
+                emptyLabel="None"
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_assistant_id" className="text-xs font-medium text-slate-600">Assistant (PA)</Label>
-              <Select id="related_assistant_id" value={formData.related_assistant_id} onChange={(e) => setFormData({ ...formData, related_assistant_id: e.target.value })} className="h-9">
-                <option value="">None</option>
-                {assistants.map((a) => <option key={a.employee_id} value={a.employee_id}>{a.full_name}</option>)}
-              </Select>
+              <SearchableSelect
+                id="related_assistant_id"
+                options={assistants.map((a) => ({ value: String(a.employee_id), label: a.full_name }))}
+                value={formData.related_assistant_id}
+                onChange={(v) => setFormData({ ...formData, related_assistant_id: v })}
+                placeholder="Search assistants..."
+                emptyLabel="None"
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_employee_id" className="text-xs font-medium text-slate-600">Other Employee</Label>
-              <Select id="related_employee_id" value={formData.related_employee_id} onChange={(e) => setFormData({ ...formData, related_employee_id: e.target.value })} className="h-9">
-                <option value="">None</option>
-                {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-              </Select>
+              <SearchableSelect
+                id="related_employee_id"
+                options={employees.map((e) => ({ value: String(e.id), label: e.full_name || 'Unknown' }))}
+                value={formData.related_employee_id}
+                onChange={(v) => setFormData({ ...formData, related_employee_id: v })}
+                placeholder="Search employees..."
+                emptyLabel="None"
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_route_id" className="text-xs font-medium text-slate-600">Route</Label>

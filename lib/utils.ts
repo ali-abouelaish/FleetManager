@@ -50,6 +50,18 @@ export function formatDateForInput(date: string | Date | null): string {
   return `${year}-${month}-${day}`
 }
 
+/** Format for input[type="datetime-local"]: YYYY-MM-DDThh:mm */
+export function formatDateTimeForInput(date: string | Date | null): string {
+  if (!date) return ''
+  const d = new Date(date)
+  const y = d.getFullYear()
+  const M = String(d.getMonth() + 1).padStart(2, '0')
+  const D = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${M}-${D}T${h}:${m}`
+}
+
 /**
  * Parses a date input value (YYYY-MM-DD) to ensure correct date handling
  */

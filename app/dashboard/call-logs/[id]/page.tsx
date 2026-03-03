@@ -43,7 +43,26 @@ async function getCallLog(id: string) {
     assistant = assistantData
   }
 
-  return { ...data, driver, assistant }
+  let outgoingReceiverParent = null
+  let outgoingReceiverEmployee = null
+  if (data.outgoing_receiver_parent_contact_id) {
+    const { data: parentData } = await supabase
+      .from('parent_contacts')
+      .select('id, full_name')
+      .eq('id', data.outgoing_receiver_parent_contact_id)
+      .maybeSingle()
+    outgoingReceiverParent = parentData
+  }
+  if (data.outgoing_receiver_employee_id) {
+    const { data: empData } = await supabase
+      .from('employees')
+      .select('id, full_name')
+      .eq('id', data.outgoing_receiver_employee_id)
+      .maybeSingle()
+    outgoingReceiverEmployee = empData
+  }
+
+  return { ...data, driver, assistant, outgoingReceiverParent, outgoingReceiverEmployee }
 }
 
 export default async function ViewCallLogPage({ params }: { params: { id: string } }) {
@@ -94,6 +113,18 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
               <div>
                 <dt className="text-sm font-medium text-gray-500">Call To/From</dt>
                 <dd className="mt-1 text-sm text-gray-900">{callLog.call_to_type}</dd>
+              </div>
+            )}
+            {(callLog.outgoingReceiverParent || callLog.outgoingReceiverEmployee) && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Outgoing call receiver</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {callLog.outgoingReceiverParent
+                    ? `Parent: ${callLog.outgoingReceiverParent.full_name || 'Unknown'}`
+                    : callLog.outgoingReceiverEmployee
+                      ? `Employee: ${callLog.outgoingReceiverEmployee.full_name || 'Unknown'}`
+                      : 'N/A'}
+                </dd>
               </div>
             )}
           </CardContent>

@@ -904,40 +904,6 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   </div>
                 </div>
 
-                {/* PHV: Taxi Badge */}
-                {formData.vehicle_type === 'PHV' && (
-                <div className="space-y-4 p-4 border-2 border-red-200 rounded-lg bg-red-50">
-                  <h3 className="font-semibold text-navy flex items-center">
-                    Taxi Badge
-                  </h3>
-                  <div>
-                    <Label htmlFor="taxi_badge_file">Upload Certificate(s)</Label>
-                    <input
-                      type="file"
-                      id="taxi_badge_file"
-                      multiple
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('taxi_badge_file', e.target.files)}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm"
-                    />
-                    <FileListSummary files={fileUploads.taxi_badge_file} onClear={() => handleFileChange('taxi_badge_file', null)} />
-                  </div>
-                  <div className="pt-2">
-                    <SearchableSelect
-                      id="taxi_licence_holder_id"
-                      label="Taxi Licence Holder"
-                      value={formData.taxi_licence_holder_id}
-                      onChange={(value) => setFormData({ ...formData, taxi_licence_holder_id: value })}
-                      options={drivers.map(driver => ({
-                        value: driver.id.toString(),
-                        label: driver.name,
-                      }))}
-                      placeholder="Search and select driver..."
-                    />
-                  </div>
-                </div>
-                )}
-
                 {/* N1: IVA Certificate */}
                 {formData.vehicle_category === 'N1' && (
                 <div className="space-y-3 p-3 border rounded-lg">
@@ -1426,13 +1392,15 @@ function EditVehiclePageClient({ id }: { id: string }) {
                   </div>
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="assigned_to" className="text-xs font-medium text-slate-600">
+                    Assigned To (MOT & Service Follow-up)
+                  </Label>
                   <SearchableSelect
                     id="assigned_to"
-                    label="Assigned To (MOT & Service Follow-up)"
                     value={formData.assigned_to}
                     onChange={(value) => setFormData({ ...formData, assigned_to: value })}
-                    options={drivers.map(driver => ({
+                    options={drivers.map((driver) => ({
                       value: driver.id.toString(),
                       label: driver.name,
                     }))}
