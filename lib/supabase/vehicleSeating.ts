@@ -22,14 +22,14 @@ export async function getVehicleSeatingPlan(
     .select('*')
     .eq('vehicle_id', vehicleId)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error('Error fetching seating plan:', error)
     return null
   }
 
-  return data
+  return data ?? null
 }
 
 /**

@@ -52,11 +52,10 @@ export default function VehicleLogbook({ vehicleId }: { vehicleId: number }) {
     loadLogbooks()
   }, [vehicleId])
 
-  const getPublicUrl = (path: string | null, fallback: string | null) => {
-    if (fallback) return fallback
-    if (!path) return null
-    const { data } = supabase.storage.from('VEHICLE_DOCUMENTS').getPublicUrl(path)
-    return data.publicUrl
+  /** View URL on our domain; requires auth. Only when file_path is set. */
+  const getDocumentViewUrl = (path: string | null) => {
+    if (!path || path.includes('..')) return null
+    return `/api/documents/view?bucket=VEHICLE_DOCUMENTS&path=${encodeURIComponent(path)}`
   }
 
   const handleUpload = async () => {
@@ -143,7 +142,7 @@ export default function VehicleLogbook({ vehicleId }: { vehicleId: number }) {
         ) : (
           <ul className="space-y-2 border rounded-lg divide-y divide-slate-100">
             {docs.map((doc) => {
-              const url = getPublicUrl(doc.file_path, doc.file_url)
+              const url = getDocumentViewUrl(doc.file_path)
               return (
                 <li key={doc.id} className="flex items-center justify-between p-3 hover:bg-slate-50">
                   <div className="flex items-center gap-2 min-w-0">
@@ -157,7 +156,7 @@ export default function VehicleLogbook({ vehicleId }: { vehicleId: number }) {
                     <a
                       href={url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline flex items-center gap-1 shrink-0"
                     >
                       View <ExternalLink className="h-3 w-3" />

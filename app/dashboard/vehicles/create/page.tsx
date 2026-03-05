@@ -59,6 +59,14 @@ export default function CreateVehiclePage() {
   }
   const [requirementDrafts, setRequirementDrafts] = useState<Record<string, RequirementDraft>>({})
   const [activeTab, setActiveTab] = useState<TabType>('basic')
+  const [existingSeatingPlans, setExistingSeatingPlans] = useState<Array<{
+    id: number
+    name: string
+    total_capacity: number
+    vehicle_id: number
+    vehicles: { vehicle_identifier: string | null; registration: string | null } | null
+  }>>([])
+  const [copyFromPlanId, setCopyFromPlanId] = useState<string>('')
 
   // File uploads state – each field holds an array to allow multiple files (e.g. policy + schedule for insurance)
   const [fileUploads, setFileUploads] = useState<{ [key: string]: File[] }>({
@@ -152,6 +160,36 @@ export default function CreateVehiclePage() {
     }
     loadVehicleDocRequirements()
   }, [])
+
+  useEffect(() => {
+    async function loadExistingSeatingPlans() {
+      const { data, error } = await supabase
+        .from('vehicle_seating_plans')
+        .select('id, name, total_capacity, vehicle_id, vehicles(vehicle_identifier, registration)')
+        .eq('is_active', true)
+        .order('name')
+      if (!error && data) {
+        const list = (data as Array<{
+          id: number
+          name: string
+          total_capacity: number
+          vehicle_id: number
+          vehicles: { vehicle_identifier: string | null; registration: string | null } | Array<{ vehicle_identifier: string | null; registration: string | null }> | null
+        }>).map((p) => ({
+          ...p,
+          vehicles: Array.isArray(p.vehicles) ? p.vehicles[0] ?? null : p.vehicles
+        })) as Array<{
+          id: number
+          name: string
+          total_capacity: number
+          vehicle_id: number
+          vehicles: { vehicle_identifier: string | null; registration: string | null } | null
+        }>
+        setExistingSeatingPlans(list)
+      }
+    }
+    loadExistingSeatingPlans()
+  }, [supabase])
 
   const handleFileChange = (fieldName: string, files: FileList | null) => {
     setFileUploads(prev => ({
@@ -429,8 +467,22 @@ export default function CreateVehiclePage() {
           }
         }
 
-        // Create seating plan if provided
-        if (formData.seating_plan_name && formData.total_capacity && formData.rows && formData.seats_per_row) {
+        // Seating plan: clone from existing or create new
+        if (copyFromPlanId) {
+          try {
+            const cloneRes = await fetch(`/api/vehicles/${vehicleId}/seating/clone`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ source_plan_id: parseInt(copyFromPlanId, 10) }),
+            })
+            if (!cloneRes.ok) {
+              const err = await cloneRes.json().catch(() => ({}))
+              console.error('Error cloning seating plan:', err?.error ?? cloneRes.statusText)
+            }
+          } catch (seatingError) {
+            console.error('Error cloning seating plan:', seatingError)
+          }
+        } else if (formData.seating_plan_name && formData.total_capacity && formData.rows && formData.seats_per_row) {
           try {
             await fetch(`/api/vehicles/${vehicleId}/seating`, {
               method: 'POST',
@@ -639,8 +691,9 @@ export default function CreateVehiclePage() {
                     <option value="">Select category</option>
                     <option value="M1">M1 (Passenger Vehicles)</option>
                     <option value="N1">N1 (Goods Vehicles)</option>
+                    <option value="Jackeny">Jackeny</option>
                   </Select>
-                  <p className="text-xs text-slate-500">M1: Passenger vehicles. N1: Goods vehicles.</p>
+                  <p className="text-xs text-slate-500">M1: Passenger vehicles. N1: Goods vehicles. Jackeny: internal custom category.</p>
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
@@ -1444,8 +1497,33 @@ export default function CreateVehiclePage() {
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
               <p className="text-sm text-gray-600">
-                Configure the seating layout for this vehicle. You can also add this later from the vehicle detail page.
+                Configure the seating layout for this vehicle. Copy from an existing plan or enter details manually. You can also add this later from the vehicle detail page.
               </p>
+
+              {existingSeatingPlans.length > 0 && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="copy_from_plan">Copy from existing plan</Label>
+                  <Select
+                    id="copy_from_plan"
+                    value={copyFromPlanId}
+                    onChange={(e) => setCopyFromPlanId(e.target.value)}
+                  >
+                    <option value="">None – create new or skip</option>
+                    {existingSeatingPlans.map((p) => {
+                      const v = p.vehicles
+                      const label = v?.registration || v?.vehicle_identifier || `Vehicle ${p.vehicle_id}`
+                      return (
+                        <option key={p.id} value={String(p.id)}>
+                          {p.name} ({p.total_capacity} seats) – {label}
+                        </option>
+                      )
+                    })}
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    Selecting a plan will copy it to this vehicle when you save. Manual fields below are ignored when a plan is selected.
+                  </p>
+                </div>
+              )}
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">

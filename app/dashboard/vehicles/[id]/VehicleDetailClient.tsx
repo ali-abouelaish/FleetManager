@@ -106,12 +106,11 @@ export default function VehicleDetailClient({ vehicle, vehicleId }: VehicleDetai
     async function fetchSeatingPlan() {
       try {
         const response = await fetch(`/api/vehicles/${vehicleId}/seating-plan`)
-        if (response.ok) {
-          const data = await response.json()
-          setSeatingPlan(data.seatingPlan || null)
-        }
+        const data = await response.json().catch(() => ({ seatingPlan: null }))
+        setSeatingPlan(data?.seatingPlan ?? null)
       } catch (error) {
         console.error('Error fetching seating plan:', error)
+        setSeatingPlan(null)
       } finally {
         setLoadingSeating(false)
       }

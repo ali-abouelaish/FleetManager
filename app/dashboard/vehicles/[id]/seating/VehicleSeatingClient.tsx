@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { VehicleSeatingPlan, SubstitutionVehicle } from '@/lib/types'
 import VisualSeatingGrid from './visual-grid'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import Link from 'next/link'
-import { Pencil, X, Save } from 'lucide-react'
+import { Pencil, X, Save, Copy } from 'lucide-react'
 
 interface VehicleSeatingClientProps {
   vehicleId: string
@@ -34,6 +35,15 @@ export default function VehicleSeatingClient({
   const [success, setSuccess] = useState<string | null>(null)
   const [substitutionVehicles, setSubstitutionVehicles] = useState<SubstitutionVehicle[]>([])
   const [isLoadingSubstitutes, setIsLoadingSubstitutes] = useState(false)
+  const [existingSeatingPlans, setExistingSeatingPlans] = useState<Array<{
+    id: number
+    name: string
+    total_capacity: number
+    vehicle_id: number
+    vehicles: { vehicle_identifier: string | null; registration: string | null } | null
+  }>>([])
+  const [copySourcePlanId, setCopySourcePlanId] = useState<string>('')
+  const [isLoadingClone, setIsLoadingClone] = useState(false)
 
   // Form data
   const [formData, setFormData] = useState({
@@ -44,6 +54,40 @@ export default function VehicleSeatingClient({
     wheelchair_spaces: '',
     notes: ''
   })
+
+  const supabase = createClient()
+  const vehicleIdNum = parseInt(vehicleId, 10)
+
+  // Load existing seating plans from other vehicles (for "Apply existing plan")
+  useEffect(() => {
+    async function loadExistingPlans() {
+      const { data, error } = await supabase
+        .from('vehicle_seating_plans')
+        .select('id, name, total_capacity, vehicle_id, vehicles(vehicle_identifier, registration)')
+        .eq('is_active', true)
+        .order('name')
+      if (!error && data) {
+        const list = (data as Array<{
+          id: number
+          name: string
+          total_capacity: number
+          vehicle_id: number
+          vehicles: { vehicle_identifier: string | null; registration: string | null } | Array<{ vehicle_identifier: string | null; registration: string | null }> | null
+        }>).filter((p) => p.vehicle_id !== vehicleIdNum).map((p) => ({
+          ...p,
+          vehicles: Array.isArray(p.vehicles) ? p.vehicles[0] ?? null : p.vehicles
+        })) as Array<{
+          id: number
+          name: string
+          total_capacity: number
+          vehicle_id: number
+          vehicles: { vehicle_identifier: string | null; registration: string | null } | null
+        }>
+        setExistingSeatingPlans(list)
+      }
+    }
+    loadExistingPlans()
+  }, [vehicleIdNum, supabase])
 
   // Initialize form when seating plan loads
   useEffect(() => {
@@ -143,6 +187,32 @@ export default function VehicleSeatingClient({
     }
   }
 
+  const handleApplyExistingPlan = async () => {
+    if (!copySourcePlanId) return
+    setIsLoadingClone(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}/seating/clone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_plan_id: parseInt(copySourcePlanId, 10) }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to apply seating plan')
+      }
+      setSeatingPlan(result.data)
+      setCopySourcePlanId('')
+      setSuccess('Seating plan applied from existing plan.')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setIsLoadingClone(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Success Message */}
@@ -162,6 +232,62 @@ export default function VehicleSeatingClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Seating Plan Display/Editor */}
         <div className="space-y-6">
+          {/* Apply existing plan from another vehicle */}
+          {existingSeatingPlans.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Apply existing seating plan</CardTitle>
+                <p className="text-sm text-slate-500 mt-1">
+                  Copy a seating plan from another vehicle to this one. This replaces the current plan if any.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label htmlFor="copy_source_plan" className="text-slate-600">Select plan</Label>
+                  <select
+                    id="copy_source_plan"
+                    value={copySourcePlanId}
+                    onChange={(e) => setCopySourcePlanId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Choose a plan…</option>
+                    {existingSeatingPlans.map((p) => {
+                      const v = p.vehicles
+                      const label = v?.registration || v?.vehicle_identifier || `Vehicle ${p.vehicle_id}`
+                      return (
+                        <option key={p.id} value={String(p.id)}>
+                          {p.name} ({p.total_capacity} seats) – {label}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleApplyExistingPlan}
+                  disabled={!copySourcePlanId || isLoadingClone}
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary/10"
+                >
+                  {isLoadingClone ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Applying…
+                    </span>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Apply plan
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Current Seating Plan Card */}
           {seatingPlan && !isEditing ? (
             <Card>

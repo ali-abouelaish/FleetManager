@@ -105,10 +105,6 @@ export default async function ViewCallLogPage({ params }: { params: { id: string
               <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
               <dd className="mt-1 text-sm text-gray-900">{callLog.caller_phone || 'N/A'}</dd>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Caller Type</dt>
-              <dd className="mt-1 text-sm text-gray-900">{callLog.caller_type || 'N/A'}</dd>
-            </div>
             {callLog.call_to_type && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Call To/From</dt>

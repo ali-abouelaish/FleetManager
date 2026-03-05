@@ -706,8 +706,9 @@ function EditVehiclePageClient({ id }: { id: string }) {
                     <option value="">Select category</option>
                     <option value="M1">M1 (Passenger Vehicles)</option>
                     <option value="N1">N1 (Goods Vehicles)</option>
+                    <option value="Jackeny">Jackeny</option>
                   </Select>
-                  <p className="text-xs text-slate-500">M1: Passenger vehicles. N1: Goods vehicles.</p>
+                  <p className="text-xs text-slate-500">M1: Passenger vehicles. N1: Goods vehicles. Jackeny: internal custom category.</p>
                 </div>
 
                 <div className="space-y-2 md:col-span-2">

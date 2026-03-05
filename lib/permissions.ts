@@ -9,6 +9,7 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   '/dashboard': 'reports.read',
   '/dashboard/calendar': 'reports.read',
   '/dashboard/compliance': 'compliance.read',
+  '/dashboard/compliance/vehicles/calendar': ['compliance.read', 'vehicle_documents.read'],
   '/dashboard/route-activity': 'reports.read',
   '/dashboard/school-overview': 'reports.read',
   '/dashboard/spares': 'routes.write',

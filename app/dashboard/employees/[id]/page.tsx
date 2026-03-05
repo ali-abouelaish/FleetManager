@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, UserCog, UserCheck } from 'lucide-react'
+import { ArrowLeft, Pencil, AlertTriangle, CheckCircle, Clock, XCircle, UserCog, UserCheck, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 import nextDynamic from 'next/dynamic'
@@ -94,28 +94,29 @@ function getDaysRemaining(expiryDate: string | null): number | null {
 // Helper to get status badge
 function getStatusBadge(daysRemaining: number | null) {
   if (daysRemaining === null) {
-    return { icon: null, label: 'Not Set', color: 'bg-gray-100 text-gray-600' }
+    return { icon: null, label: 'Not Set', color: 'bg-slate-100 text-slate-600 border-slate-200' }
   }
   if (daysRemaining < 0) {
-    return { icon: XCircle, label: `${Math.abs(daysRemaining)} days overdue`, color: 'bg-red-100 text-red-800' }
+    return { icon: XCircle, label: `${Math.abs(daysRemaining)} days overdue`, color: 'bg-red-50 text-red-700 border-red-200' }
   }
   if (daysRemaining <= 14) {
-    return { icon: AlertTriangle, label: `${daysRemaining} days remaining`, color: 'bg-orange-100 text-orange-800' }
+    return { icon: AlertTriangle, label: `${daysRemaining} days remaining`, color: 'bg-amber-50 text-amber-700 border-amber-200' }
   }
   if (daysRemaining <= 30) {
-    return { icon: Clock, label: `${daysRemaining} days remaining`, color: 'bg-yellow-100 text-yellow-800' }
+    return { icon: Clock, label: `${daysRemaining} days remaining`, color: 'bg-yellow-50 text-yellow-700 border-yellow-200' }
   }
-  return { icon: CheckCircle, label: `${daysRemaining} days remaining`, color: 'bg-green-100 text-green-800' }
+  return { icon: CheckCircle, label: `${daysRemaining} days remaining`, color: 'bg-green-50 text-green-700 border-green-200' }
 }
 
 export default async function ViewEmployeePage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params
   let employee: Awaited<ReturnType<typeof getEmployee>>
   try {
-    employee = await getEmployee(params.id)
+    employee = await getEmployee(id)
   } catch {
     notFound()
   }
@@ -125,8 +126,9 @@ export default async function ViewEmployeePage({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="max-w-[1600px] mx-auto p-4 space-y-6">
+      {/* Header Row - match driver profile */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/employees">
             <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-slate-600 border-slate-300 hover:bg-slate-50">
@@ -134,69 +136,67 @@ export default async function ViewEmployeePage({
               Back
             </Button>
           </Link>
-          <EmployeeBadgePhoto
-            employeeId={employee.id}
-            employeeName={employee.full_name}
-            badgeNumber={
-              // Get TAS badge number from driver or PA record
-              (employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers[0]?.tas_badge_number : employee.drivers.tas_badge_number)) ||
-              (employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0]?.tas_badge_number : employee.passenger_assistants.tas_badge_number)) ||
-              null
-            }
-          />
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
-            <p className="text-sm text-slate-500">Employee Details</p>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <EmployeeBadgePhoto
+                employeeId={employee.id}
+                employeeName={employee.full_name}
+                badgeNumber={
+                  (employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers[0]?.tas_badge_number : employee.drivers.tas_badge_number)) ||
+                  (employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0]?.tas_badge_number : employee.passenger_assistants.tas_badge_number)) ||
+                  null
+                }
+                size="sm"
+              />
+              <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${employee.can_work === false ? 'bg-red-500' : 'bg-green-500'}`} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">{employee.full_name}</h1>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1"><User className="h-3 w-3" /> {employee.role}</span>
+                <span>•</span>
+                <span>ID: {employee.id}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Driver Profile Link */}
+        <div className="flex items-center gap-2 flex-wrap">
           {employee.drivers && (Array.isArray(employee.drivers) ? employee.drivers.length > 0 : employee.drivers) && (
             <Link href={`/dashboard/drivers/${employee.id}`}>
-              <Button variant="secondary" className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg shadow-indigo-500/25">
-                <UserCog className="mr-2 h-4 w-4" />
-                View Driver Profile
+              <Button size="sm" variant="outline" className="h-8 text-xs">
+                <UserCog className="h-3 w-3 mr-1.5" />
+                Driver Profile
               </Button>
             </Link>
           )}
-          {/* Passenger Assistant Profile Link - not shown for coordinators */}
           {employee.role !== 'Coordinator' && employee.passenger_assistants && (Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants.length > 0 : employee.passenger_assistants) && (
             <Link href={`/dashboard/assistants/${Array.isArray(employee.passenger_assistants) ? employee.passenger_assistants[0].id : employee.passenger_assistants.id}`}>
-              <Button variant="secondary" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25">
-                <UserCheck className="mr-2 h-4 w-4" />
-                View PA Profile
+              <Button size="sm" variant="outline" className="h-8 text-xs">
+                <UserCheck className="h-3 w-3 mr-1.5" />
+                PA Profile
               </Button>
             </Link>
           )}
+          <div className={`px-3 py-1.5 text-xs font-medium rounded-full flex items-center gap-1.5 ${employee.can_work === false ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+            {employee.can_work === false ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+            {employee.can_work === false ? 'Cannot Work' : 'Authorized to Work'}
+          </div>
           <Link href={`/dashboard/employees/${employee.id}/edit`}>
-            <Button>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
+            <Button size="sm" variant="outline" className="h-8 text-xs">
+              <Pencil className="h-3 w-3 mr-1.5" /> Edit Profile
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Certificate Status Warning Banner */}
       {employee.can_work === false && (
-        <Card className="border-l-4 border-red-500 bg-red-50">
-          <CardContent className="py-4">
-            <div className="flex items-center">
-              <AlertTriangle className="h-6 w-6 text-red-600 mr-3" />
-              <div>
-                <h3 className="text-sm font-medium text-red-800">
-                  Employee Cannot Work
-                </h3>
-                <p className="text-sm text-red-700 mt-1">
-                  This employee has expired certificates and is flagged as unable to work. Please renew certificates below.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <p><span className="font-semibold">Note:</span> This employee has expired or missing certificates and is flagged as unable to work. Renew certificates below.</p>
+        </div>
       )}
 
-      {/* Expired & Expiring Certificates Summary */}
+      <div className="space-y-6">
       {(() => {
         const expiredCerts: Array<{ type: string; expiryDate: string; daysOverdue: number; badge?: string }> = []
         const expiringCerts: Array<{ type: string; expiryDate: string; daysRemaining: number; badge?: string }> = []
@@ -249,74 +249,58 @@ export default async function ViewEmployeePage({
           <div className="space-y-4">
             {/* Expired Certificates */}
             {expiredCerts.length > 0 && (
-              <Card className="border-l-4 border-red-500">
-                <CardHeader className="bg-red-50">
-                  <CardTitle className="flex items-center text-red-800">
-                    <XCircle className="mr-2 h-5 w-5" />
+              <Card className="overflow-hidden">
+                <div className="p-3 border-b bg-red-50/80">
+                  <h3 className="text-xs font-semibold text-red-800 uppercase tracking-wider flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
                     Expired Certificates ({expiredCerts.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-3">
-                    {expiredCerts.map((cert, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-red-900">{cert.type}</p>
-                          {cert.badge && (
-                            <p className="text-xs text-red-700 mt-1">Badge: {cert.badge}</p>
-                          )}
-                          <p className="text-xs text-red-600 mt-1">Expired: {formatDate(cert.expiryDate)}</p>
-                        </div>
-                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-red-200 text-red-900">
-                          {cert.daysOverdue} days overdue
-                        </span>
+                  </h3>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {expiredCerts.map((cert, idx) => (
+                    <div key={idx} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-700">{cert.type}</span>
+                        {cert.badge && <span className="text-xs text-slate-500 font-mono">{cert.badge}</span>}
+                        <span className="text-xs text-slate-500 mt-0.5">Expired: {formatDate(cert.expiryDate)}</span>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200">
+                        <XCircle className="h-3 w-3" />
+                        {cert.daysOverdue} days overdue
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </Card>
             )}
 
             {/* Expiring Certificates */}
             {expiringCerts.length > 0 && (
-              <Card className="border-l-4 border-orange-500">
-                <CardHeader className="bg-orange-50">
-                  <CardTitle className="flex items-center text-orange-800">
-                    <AlertTriangle className="mr-2 h-5 w-5" />
+              <Card className="overflow-hidden">
+                <div className="p-3 border-b bg-amber-50/80">
+                  <h3 className="text-xs font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
                     Expiring Certificates ({expiringCerts.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-3">
-                    {expiringCerts.map((cert, idx) => {
-                      const isCritical = cert.daysRemaining <= 14
-                      return (
-                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${isCritical ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
-                          }`}>
-                          <div className="flex-1">
-                            <p className={`text-sm font-semibold ${isCritical ? 'text-orange-900' : 'text-yellow-900'}`}>
-                              {cert.type}
-                            </p>
-                            {cert.badge && (
-                              <p className={`text-xs mt-1 ${isCritical ? 'text-orange-700' : 'text-yellow-700'}`}>
-                                Badge: {cert.badge}
-                              </p>
-                            )}
-                            <p className={`text-xs mt-1 ${isCritical ? 'text-orange-600' : 'text-yellow-600'}`}>
-                              Expires: {formatDate(cert.expiryDate)}
-                            </p>
-                          </div>
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${isCritical
-                            ? 'bg-orange-200 text-orange-900'
-                            : 'bg-yellow-200 text-yellow-900'
-                            }`}>
-                            {cert.daysRemaining} days remaining
-                          </span>
+                  </h3>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {expiringCerts.map((cert, idx) => {
+                    const isCritical = cert.daysRemaining <= 14
+                    return (
+                      <div key={idx} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-slate-700">{cert.type}</span>
+                          {cert.badge && <span className="text-xs text-slate-500 font-mono">{cert.badge}</span>}
+                          <span className="text-xs text-slate-500 mt-0.5">Expires: {formatDate(cert.expiryDate)}</span>
                         </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${isCritical ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                          <Clock className="h-3 w-3" />
+                          {cert.daysRemaining} days remaining
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
               </Card>
             )}
           </div>
@@ -344,9 +328,6 @@ export default async function ViewEmployeePage({
         employeeId={String(employee.id)}
       />
 
-      {/* Documents & Certificates (dynamic requirements from Admin > Document Requirements) */}
-      <SubjectDocumentsChecklist subjectType="employee" subjectId={Number(employee.id)} />
-
       {/* Driver Certificates - Comprehensive View */}
       {employee.drivers && Array.isArray(employee.drivers) && employee.drivers.length > 0 && (
         <>
@@ -354,20 +335,18 @@ export default async function ViewEmployeePage({
             <div key={idx} className="space-y-6 md:col-span-2">
               {/* All Driver Certificates with Expiry Dates */}
               <Card>
-                <CardHeader className="bg-navy text-white">
-                  <CardTitle className="flex items-center">
-                    🚗 Driver Certificates & Expiry Dates
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-3 border-b bg-slate-50/50">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver Certificates & Expiry Dates</h3>
+                  </div>
+                  <div className="rounded-b-lg border border-t-0 border-slate-200 overflow-hidden">
                     <table className="w-full">
-                      <thead className="bg-navy">
+                      <thead className="bg-slate-100">
                         <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Certificate Type</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Badge/Reference</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Expiry Date</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Certificate Type</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Badge/Reference</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Expiry Date</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -386,13 +365,13 @@ export default async function ViewEmployeePage({
                           const daysRemaining = getDaysRemaining(item.date)
                           const badge = getStatusBadge(daysRemaining)
                           return (
-                            <tr key={itemIdx} className={`border-b ${itemIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.label}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{item.ref || '—'}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{item.date ? formatDate(item.date) : 'Not set'}</td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${badge.color}`}>
-                                  {badge.icon && <badge.icon className="mr-1 h-3 w-3" />}
+                            <tr key={itemIdx} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                              <td className="px-4 py-2.5 text-sm font-medium text-slate-700">{item.label}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-600">{item.ref || '—'}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-900">{item.date ? formatDate(item.date) : 'Not set'}</td>
+                              <td className="px-4 py-2.5">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${badge.color}`}>
+                                  {badge.icon && <badge.icon className="h-3 w-3" />}
                                   {badge.label}
                                 </span>
                               </td>
@@ -403,23 +382,18 @@ export default async function ViewEmployeePage({
                     </table>
                   </div>
 
-                  {/* PSV License & Self Employed */}
-                  <div className="mt-4 space-y-3">
-                    <div className="p-4 rounded-lg border bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">PSV License</span>
-                        <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${driver.psv_license ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {driver.psv_license ? 'Yes' : 'No'}
-                        </span>
-                      </div>
+                  <div className="p-4 pt-3 space-y-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm font-medium text-slate-700">PSV License</span>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium border ${driver.psv_license ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        {driver.psv_license ? 'Yes' : 'No'}
+                      </span>
                     </div>
-                    <div className="p-4 rounded-lg border bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Self Employed</span>
-                        <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${driver.self_employed ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {driver.self_employed ? 'Yes' : 'No'}
-                        </span>
-                      </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm font-medium text-slate-700">Self Employed</span>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium border ${driver.self_employed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        {driver.self_employed ? 'Yes' : 'No'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -427,142 +401,83 @@ export default async function ViewEmployeePage({
 
               {/* Document Checklist */}
               <Card>
-                <CardHeader className="bg-navy text-white">
-                  <CardTitle className="flex items-center">
-                    ✅ Driver Document Checklist
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {[
-                      { label: 'Birth Certificate', value: driver.birth_certificate },
-                      { label: 'Marriage Certificate', value: driver.marriage_certificate },
-                      { label: 'Photo Taken', value: driver.photo_taken },
-                      { label: 'Private Hire Badge', value: driver.private_hire_badge },
-                      { label: 'Paper Licence', value: driver.paper_licence },
-                      { label: 'Taxi Plate Photo', value: driver.taxi_plate_photo },
-                      { label: 'Logbook', value: driver.logbook },
-                    ].map((item, itemIdx) => (
-                      <div key={itemIdx} className="flex items-center justify-between rounded-lg border p-4">
-                        <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${item.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                            }`}
-                        >
-                          {item.value ? '✓ Yes' : '✗ No'}
-                        </span>
-                      </div>
-                    ))}
+                <CardContent className="p-0">
+                  <div className="p-3 border-b bg-slate-50/50">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver Document Checklist</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {[
+                        { label: 'Birth Certificate', value: driver.birth_certificate },
+                        { label: 'Marriage Certificate', value: driver.marriage_certificate },
+                        { label: 'Photo Taken', value: driver.photo_taken },
+                        { label: 'Private Hire Badge', value: driver.private_hire_badge },
+                        { label: 'Paper Licence', value: driver.paper_licence },
+                        { label: 'Taxi Plate Photo', value: driver.taxi_plate_photo },
+                        { label: 'Logbook', value: driver.logbook },
+                      ].map((item, itemIdx) => (
+                        <div key={itemIdx} className="flex items-center justify-between py-2 px-3 rounded-lg border border-slate-100 bg-slate-50/30">
+                          <span className="text-sm font-medium text-slate-700">{item.label}</span>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border ${item.value ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                            {item.value ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Training & Checks */}
               <Card>
-                <CardHeader className="bg-navy text-white">
-                  <CardTitle className="flex items-center">
-                    🎓 Driver Training & Compliance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
+                <CardContent className="p-0">
+                  <div className="p-3 border-b bg-slate-50/50">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver Training & Compliance</h3>
+                  </div>
+                  <div className="divide-y divide-slate-100">
                     {/* Safeguarding Training */}
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-900">Safeguarding Training</h3>
-                          <p className="text-xs text-gray-500">Mandatory child protection training</p>
-                          {driver.safeguarding_training_date && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              Completed: {formatDate(driver.safeguarding_training_date)}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${driver.safeguarding_training_completed
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                            }`}
-                        >
-                          {driver.safeguarding_training_completed ? (
-                            <>
-                              <CheckCircle className="mr-1 h-4 w-4" />
-                              Completed
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="mr-1 h-4 w-4" />
-                              Not Completed
-                            </>
-                          )}
-                        </span>
+                    <div className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-700">Safeguarding Training</h3>
+                        <p className="text-xs text-slate-500">Mandatory child protection training</p>
+                        {driver.safeguarding_training_date && (
+                          <p className="text-xs text-slate-600 mt-0.5">Completed: {formatDate(driver.safeguarding_training_date)}</p>
+                        )}
                       </div>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${driver.safeguarding_training_completed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        {driver.safeguarding_training_completed ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        {driver.safeguarding_training_completed ? 'Completed' : 'Not Completed'}
+                      </span>
                     </div>
 
                     {/* TAS PATS Training */}
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-900">TAS PATS Training</h3>
-                          <p className="text-xs text-gray-500">Passenger Assistant Training Scheme</p>
-                          {driver.tas_pats_training_date && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              Completed: {formatDate(driver.tas_pats_training_date)}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${driver.tas_pats_training_completed
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                            }`}
-                        >
-                          {driver.tas_pats_training_completed ? (
-                            <>
-                              <CheckCircle className="mr-1 h-4 w-4" />
-                              Completed
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="mr-1 h-4 w-4" />
-                              Not Completed
-                            </>
-                          )}
-                        </span>
+                    <div className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-700">TAS PATS Training</h3>
+                        <p className="text-xs text-slate-500">Passenger Assistant Training Scheme</p>
+                        {driver.tas_pats_training_date && (
+                          <p className="text-xs text-slate-600 mt-0.5">Completed: {formatDate(driver.tas_pats_training_date)}</p>
+                        )}
                       </div>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${driver.tas_pats_training_completed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        {driver.tas_pats_training_completed ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        {driver.tas_pats_training_completed ? 'Completed' : 'Not Completed'}
+                      </span>
                     </div>
 
                     {/* PSA Training */}
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-900">PSA Training</h3>
-                          <p className="text-xs text-gray-500">Passenger Safety & Assistance</p>
-                          {driver.psa_training_date && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              Completed: {formatDate(driver.psa_training_date)}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${driver.psa_training_completed
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                            }`}
-                        >
-                          {driver.psa_training_completed ? (
-                            <>
-                              <CheckCircle className="mr-1 h-4 w-4" />
-                              Completed
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="mr-1 h-4 w-4" />
-                              Not Completed
-                            </>
-                          )}
-                        </span>
+                    <div className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-700">PSA Training</h3>
+                        <p className="text-xs text-slate-500">Passenger Safety & Assistance</p>
+                        {driver.psa_training_date && (
+                          <p className="text-xs text-slate-600 mt-0.5">Completed: {formatDate(driver.psa_training_date)}</p>
+                        )}
                       </div>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${driver.psa_training_completed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        {driver.psa_training_completed ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        {driver.psa_training_completed ? 'Completed' : 'Not Completed'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -570,12 +485,14 @@ export default async function ViewEmployeePage({
 
               {/* Additional Notes */}
               {driver.additional_notes && (
-                <Card className="border-l-4 border-navy">
-                  <CardHeader>
-                    <CardTitle className="text-navy">📝 Driver Notes (HR Comments)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{driver.additional_notes}</p>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="p-3 border-b bg-slate-50/50">
+                      <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver Notes (HR Comments)</h3>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{driver.additional_notes}</p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -589,21 +506,19 @@ export default async function ViewEmployeePage({
         <>
           {employee.passenger_assistants.map((pa: any, idx: number) => (
             <div key={idx} className="md:col-span-2 space-y-6">
-              <Card className="md:col-span-2">
-                <CardHeader className="bg-navy text-white">
-                  <CardTitle className="flex items-center">
-                    👥 Passenger Assistant Certificates & Expiry Dates
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+              <Card>
+                <CardContent className="p-0">
+                  <div className="p-3 border-b bg-slate-50/50">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Passenger Assistant Certificates & Expiry Dates</h3>
+                  </div>
+                  <div className="rounded-b-lg border border-t-0 border-slate-200 overflow-hidden">
                     <table className="w-full">
-                      <thead className="bg-navy">
+                      <thead className="bg-slate-100">
                         <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Certificate Type</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Badge/Reference</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Expiry Date</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-white">Status</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Certificate Type</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Badge/Reference</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Expiry Date</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -614,13 +529,13 @@ export default async function ViewEmployeePage({
                           const daysRemaining = getDaysRemaining(item.date)
                           const badge = getStatusBadge(daysRemaining)
                           return (
-                            <tr key={itemIdx} className={`border-b ${itemIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.label}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{item.ref || '—'}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{item.date ? formatDate(item.date) : 'Not set'}</td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${badge.color}`}>
-                                  {badge.icon && <badge.icon className="mr-1 h-3 w-3" />}
+                            <tr key={itemIdx} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                              <td className="px-4 py-2.5 text-sm font-medium text-slate-700">{item.label}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-600">{item.ref || '—'}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-900">{item.date ? formatDate(item.date) : 'Not set'}</td>
+                              <td className="px-4 py-2.5">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${badge.color}`}>
+                                  {badge.icon && <badge.icon className="h-3 w-3" />}
                                   {badge.label}
                                 </span>
                               </td>
@@ -636,6 +551,10 @@ export default async function ViewEmployeePage({
           ))}
         </>
       )}
+
+      </div>
+
+      <SubjectDocumentsChecklist subjectType="employee" subjectId={Number(employee.id)} />
 
     </div>
   )

@@ -53,11 +53,10 @@ export default function VehicleDocuments({ vehicleId }: { vehicleId: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId])
 
-  const getPublicUrl = (path: string | null, fallback: string | null) => {
-    if (fallback) return fallback
-    if (!path) return null
-    const { data } = supabase.storage.from('VEHICLE_DOCUMENTS').getPublicUrl(path)
-    return data.publicUrl
+  /** View URL on our domain; requires auth. Only when file_path is set. */
+  const getDocumentViewUrl = (path: string | null) => {
+    if (!path || path.includes('..')) return null
+    return `/api/documents/view?bucket=VEHICLE_DOCUMENTS&path=${encodeURIComponent(path)}`
   }
 
   const handleUpload = async () => {
@@ -189,7 +188,7 @@ export default function VehicleDocuments({ vehicleId }: { vehicleId: number }) {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {documents.map((doc) => {
-                  const url = getPublicUrl(doc.file_path, doc.file_url)
+                  const url = getDocumentViewUrl(doc.file_path)
                   return (
                     <tr key={doc.id}>
                       <td className="px-4 py-2 text-sm text-gray-900">{doc.file_name || 'File'}</td>
@@ -200,7 +199,12 @@ export default function VehicleDocuments({ vehicleId }: { vehicleId: number }) {
                       <td className="px-4 py-2 text-sm text-gray-500">{doc.doc_type || '-'}</td>
                       <td className="px-4 py-2 text-sm">
                         {url ? (
-                          <a className="text-blue-600 hover:underline" href={url} target="_blank" rel="noreferrer">
+                          <a
+                            className="text-blue-600 hover:underline"
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             View
                           </a>
                         ) : (

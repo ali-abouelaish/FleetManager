@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { SearchableMultiSelect } from '@/components/ui/SearchableMultiSelect'
 import { ArrowLeft, AlertCircle, Phone, Users, FileText } from 'lucide-react'
 import Link from 'next/link'
 
@@ -15,6 +16,7 @@ export default function CreateCallLogPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const [dataLoaded, setDataLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [passengers, setPassengers] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
@@ -27,14 +29,14 @@ export default function CreateCallLogPage() {
     call_date: new Date().toISOString().slice(0, 16),
     caller_name: '',
     caller_phone: '',
-    caller_type: 'Parent',
     call_type: 'Inquiry',
     call_to_type: '',
     outgoing_receiver: '',
-    related_passenger_id: '',
-    related_driver_id: '',
-    related_assistant_id: '',
-    related_employee_id: '',
+    outgoing_receiver_other_name: '',
+    related_passenger_ids: [] as string[],
+    related_driver_ids: [] as string[],
+    related_assistant_ids: [] as string[],
+    related_employee_ids: [] as string[],
     related_route_id: '',
     subject: '',
     notes: '',
@@ -57,22 +59,27 @@ export default function CreateCallLogPage() {
         supabase.from('routes').select('id, route_number').order('route_number')
       ])
 
-      if (passengersResult.data) setPassengers(passengersResult.data)
-      if (employeesResult.data) setEmployees(employeesResult.data)
-      if (parentContactsResult.data) setParentContacts(parentContactsResult.data)
-      if (routesResult.data) setRoutes(routesResult.data)
+      if (passengersResult.data) setPassengers(Array.isArray(passengersResult.data) ? passengersResult.data : [])
+      if (employeesResult.data) setEmployees(Array.isArray(employeesResult.data) ? employeesResult.data : [])
+      if (parentContactsResult.data) setParentContacts(Array.isArray(parentContactsResult.data) ? parentContactsResult.data : [])
+      if (routesResult.data) setRoutes(Array.isArray(routesResult.data) ? routesResult.data : [])
       if (driversResult.data) {
-        setDrivers(driversResult.data.map((d: any) => ({
-          employee_id: d.employee_id,
-          full_name: d.employees?.full_name || 'Unknown'
-        })))
+        const list = Array.isArray(driversResult.data) ? driversResult.data : []
+        setDrivers(list.map((d: any) => {
+          const emp = d.employees
+          const name = Array.isArray(emp) ? emp[0]?.full_name : emp?.full_name
+          return { employee_id: d.employee_id, full_name: name || 'Unknown' }
+        }))
       }
       if (assistantsResult.data) {
-        setAssistants(assistantsResult.data.map((a: any) => ({
-          employee_id: a.employee_id,
-          full_name: a.employees?.full_name || 'Unknown'
-        })))
+        const list = Array.isArray(assistantsResult.data) ? assistantsResult.data : []
+        setAssistants(list.map((a: any) => {
+          const emp = a.employees
+          const name = Array.isArray(emp) ? emp[0]?.full_name : emp?.full_name
+          return { employee_id: a.employee_id, full_name: name || 'Unknown' }
+        }))
       }
+      setDataLoaded(true)
     }
     loadData()
   }, [supabase])
@@ -94,15 +101,23 @@ export default function CreateCallLogPage() {
         ...formData,
         outgoing_receiver_parent_contact_id: receiverParentId,
         outgoing_receiver_employee_id: receiverEmployeeId,
-        related_passenger_id: formData.related_passenger_id === '' ? null : (formData.related_passenger_id ? parseInt(formData.related_passenger_id) : null),
-        related_driver_id: formData.related_driver_id === '' ? null : (formData.related_driver_id ? parseInt(formData.related_driver_id) : null),
-        related_assistant_id: formData.related_assistant_id === '' ? null : (formData.related_assistant_id ? parseInt(formData.related_assistant_id) : null),
-        related_employee_id: formData.related_employee_id === '' ? null : (formData.related_employee_id ? parseInt(formData.related_employee_id) : null),
+        outgoing_receiver_other_name:
+          formData.outgoing_receiver === 'other'
+            ? (formData.outgoing_receiver_other_name.trim() || null)
+            : null,
+        related_passenger_id: formData.related_passenger_ids.length > 0 ? parseInt(formData.related_passenger_ids[0], 10) : null,
+        related_driver_id: formData.related_driver_ids.length > 0 ? parseInt(formData.related_driver_ids[0], 10) : null,
+        related_assistant_id: formData.related_assistant_ids.length > 0 ? parseInt(formData.related_assistant_ids[0], 10) : null,
+        related_employee_id: formData.related_employee_ids.length > 0 ? parseInt(formData.related_employee_ids[0], 10) : null,
         related_route_id: formData.related_route_id === '' ? null : (formData.related_route_id ? parseInt(formData.related_route_id) : null),
         call_to_type: formData.call_to_type === '' ? null : formData.call_to_type,
         follow_up_date: formData.follow_up_date === '' ? null : (formData.follow_up_date.includes('T') ? formData.follow_up_date.replace('T', ' ') : formData.follow_up_date),
       }
       delete (cleanedData as any).outgoing_receiver
+      delete (cleanedData as any).related_passenger_ids
+      delete (cleanedData as any).related_driver_ids
+      delete (cleanedData as any).related_assistant_ids
+      delete (cleanedData as any).related_employee_ids
 
       const { data, error } = await supabase.from('call_logs').insert([cleanedData]).select()
       if (error) throw error
@@ -170,15 +185,6 @@ export default function CreateCallLogPage() {
               <Label htmlFor="caller_phone" className="text-xs font-medium text-slate-600">Phone</Label>
               <Input id="caller_phone" type="tel" value={formData.caller_phone} onChange={(e) => setFormData({ ...formData, caller_phone: e.target.value })} placeholder="Phone number" className="h-9" />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="caller_type" className="text-xs font-medium text-slate-600">Caller Type</Label>
-              <Select id="caller_type" value={formData.caller_type} onChange={(e) => setFormData({ ...formData, caller_type: e.target.value })} className="h-9">
-                <option value="Parent">Parent</option>
-                <option value="School">School</option>
-                <option value="Employee">Employee</option>
-                <option value="Other">Other</option>
-              </Select>
-            </div>
           </div>
         </div>
 
@@ -208,12 +214,29 @@ export default function CreateCallLogPage() {
                   options={[
                     ...parentContacts.map((p) => ({ value: `parent:${p.id}`, label: `Parent: ${p.full_name || 'Unknown'}` })),
                     ...employees.map((e) => ({ value: `employee:${e.id}`, label: `Employee: ${e.full_name || 'Unknown'}` })),
+                    { value: 'other', label: 'Other (not in system)' },
                   ]}
                   value={formData.outgoing_receiver}
                   onChange={(v) => setFormData({ ...formData, outgoing_receiver: v })}
-                  placeholder="Search parent or employee..."
+                  placeholder="Search parent or employee, or choose Other..."
                   emptyLabel="None"
                 />
+                {formData.outgoing_receiver === 'other' && (
+                  <div className="mt-1">
+                    <Label htmlFor="outgoing_receiver_other_name" className="text-xs font-medium text-slate-600">
+                      Other person&apos;s name
+                    </Label>
+                    <Input
+                      id="outgoing_receiver_other_name"
+                      value={formData.outgoing_receiver_other_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, outgoing_receiver_other_name: e.target.value })
+                      }
+                      placeholder="Name of the person you called"
+                      className="h-9 mt-0.5"
+                    />
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="call_type" className="text-xs font-medium text-slate-600">Call Type *</Label>
@@ -292,47 +315,63 @@ export default function CreateCallLogPage() {
           <div className="grid gap-3 md:grid-cols-5">
             <div className="space-y-1">
               <Label htmlFor="related_passenger_id" className="text-xs font-medium text-slate-600">Passenger</Label>
-              <SearchableSelect
-                id="related_passenger_id"
-                options={passengers.map((p) => ({ value: String(p.id), label: p.full_name || 'Unknown' }))}
-                value={formData.related_passenger_id}
-                onChange={(v) => setFormData({ ...formData, related_passenger_id: v })}
-                placeholder="Search passengers..."
-                emptyLabel="None"
-              />
+              {!dataLoaded ? (
+                <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">Loading...</div>
+              ) : (
+                <SearchableMultiSelect
+                  id="related_passenger_id"
+                  options={passengers.map((p) => ({ value: String(p.id), label: String(p.full_name || 'Unknown') }))}
+                  value={formData.related_passenger_ids}
+                  onChange={(v) => setFormData({ ...formData, related_passenger_ids: v })}
+                  placeholder="Search passengers..."
+                  emptyLabel="None"
+                />
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_driver_id" className="text-xs font-medium text-slate-600">Driver</Label>
-              <SearchableSelect
-                id="related_driver_id"
-                options={drivers.map((d) => ({ value: String(d.employee_id), label: d.full_name }))}
-                value={formData.related_driver_id}
-                onChange={(v) => setFormData({ ...formData, related_driver_id: v })}
-                placeholder="Search drivers..."
-                emptyLabel="None"
-              />
+              {!dataLoaded ? (
+                <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">Loading...</div>
+              ) : (
+                <SearchableMultiSelect
+                  id="related_driver_id"
+                  options={drivers.map((d) => ({ value: String(d.employee_id), label: String(d.full_name || 'Unknown') }))}
+                  value={formData.related_driver_ids}
+                  onChange={(v) => setFormData({ ...formData, related_driver_ids: v })}
+                  placeholder="Search drivers..."
+                  emptyLabel="None"
+                />
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_assistant_id" className="text-xs font-medium text-slate-600">Assistant (PA)</Label>
-              <SearchableSelect
-                id="related_assistant_id"
-                options={assistants.map((a) => ({ value: String(a.employee_id), label: a.full_name }))}
-                value={formData.related_assistant_id}
-                onChange={(v) => setFormData({ ...formData, related_assistant_id: v })}
-                placeholder="Search assistants..."
-                emptyLabel="None"
-              />
+              {!dataLoaded ? (
+                <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">Loading...</div>
+              ) : (
+                <SearchableMultiSelect
+                  id="related_assistant_id"
+                  options={assistants.map((a) => ({ value: String(a.employee_id), label: String(a.full_name || 'Unknown') }))}
+                  value={formData.related_assistant_ids}
+                  onChange={(v) => setFormData({ ...formData, related_assistant_ids: v })}
+                  placeholder="Search assistants..."
+                  emptyLabel="None"
+                />
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_employee_id" className="text-xs font-medium text-slate-600">Other Employee</Label>
-              <SearchableSelect
-                id="related_employee_id"
-                options={employees.map((e) => ({ value: String(e.id), label: e.full_name || 'Unknown' }))}
-                value={formData.related_employee_id}
-                onChange={(v) => setFormData({ ...formData, related_employee_id: v })}
-                placeholder="Search employees..."
-                emptyLabel="None"
-              />
+              {!dataLoaded ? (
+                <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">Loading...</div>
+              ) : (
+                <SearchableMultiSelect
+                  id="related_employee_id"
+                  options={employees.map((e) => ({ value: String(e.id), label: String(e.full_name || 'Unknown') }))}
+                  value={formData.related_employee_ids}
+                  onChange={(v) => setFormData({ ...formData, related_employee_ids: v })}
+                  placeholder="Search employees..."
+                  emptyLabel="None"
+                />
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="related_route_id" className="text-xs font-medium text-slate-600">Route</Label>

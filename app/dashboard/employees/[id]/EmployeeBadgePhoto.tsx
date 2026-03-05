@@ -7,11 +7,16 @@ interface EmployeeBadgePhotoProps {
   employeeId: number
   employeeName: string
   badgeNumber?: string | null
+  size?: 'default' | 'sm'
 }
 
-export default function EmployeeBadgePhoto({ employeeId, employeeName, badgeNumber }: EmployeeBadgePhotoProps) {
+export default function EmployeeBadgePhoto({ employeeId, employeeName, badgeNumber, size = 'default' }: EmployeeBadgePhotoProps) {
   const [badgePhotoUrl, setBadgePhotoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const isSm = size === 'sm'
+  const sizeClass = isSm ? 'h-12 w-12' : 'h-24 w-24'
+  const textSizeClass = isSm ? 'text-sm' : 'text-2xl'
+  const borderClass = isSm ? 'border-2 border-white shadow-sm' : 'border-4 border-primary shadow-lg shadow-primary/25'
 
   useEffect(() => {
     async function fetchBadgePhoto() {
@@ -49,8 +54,8 @@ export default function EmployeeBadgePhoto({ employeeId, employeeName, badgeNumb
   if (loading) {
     return (
       <div className="relative">
-        <div className="h-24 w-24 rounded-full bg-slate-200 flex items-center justify-center border-4 border-slate-300 shadow-lg animate-pulse">
-          <span className="text-slate-400 text-2xl font-bold">...</span>
+        <div className={`${sizeClass} rounded-full bg-slate-200 flex items-center justify-center border-slate-300 animate-pulse ${isSm ? 'border-2' : 'border-4'}`}>
+          <span className="text-slate-400 font-bold">...</span>
         </div>
       </div>
     )
@@ -62,20 +67,19 @@ export default function EmployeeBadgePhoto({ employeeId, employeeName, badgeNumb
         <img
           src={badgePhotoUrl}
           alt={`${employeeName} - ID Badge`}
-          className="h-24 w-24 rounded-full object-cover border-4 border-primary shadow-lg shadow-primary/25"
+          className={`${sizeClass} rounded-full object-cover bg-slate-100 ${borderClass}`}
           onError={(e) => {
-            // Fallback if image fails to load
             e.currentTarget.style.display = 'none'
           }}
         />
       ) : (
-        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center border-4 border-primary shadow-lg shadow-primary/25">
-          <span className="text-white text-2xl font-bold">
+        <div className={`${sizeClass} rounded-full flex items-center justify-center ${borderClass} ${isSm ? 'bg-slate-200' : 'bg-gradient-to-br from-primary to-blue-600'}`}>
+          <span className={`font-bold ${isSm ? 'text-slate-500' : 'text-white'} ${textSizeClass}`}>
             {initials}
           </span>
         </div>
       )}
-      {badgeNumber && (
+      {badgeNumber && !isSm && (
         <div className="absolute -bottom-1 -right-1 bg-primary text-white text-xs font-semibold px-2 py-1 rounded-full border-2 border-white shadow-md shadow-primary/25">
           {badgeNumber}
         </div>

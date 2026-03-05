@@ -66,7 +66,6 @@ async function CallLogsTable() {
                   <div>
                     <div className="font-semibold text-slate-800">{log.caller_name || 'Unknown'}</div>
                     <div className="text-xs text-slate-500">{log.caller_phone || 'No phone'}</div>
-                    <div className="text-xs text-slate-400">{log.caller_type || 'N/A'}</div>
                   </div>
                 </TableCell>
                 <TableCell>

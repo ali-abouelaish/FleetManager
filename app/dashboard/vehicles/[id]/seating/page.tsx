@@ -7,9 +7,7 @@ import VehicleSeatingClient from './VehicleSeatingClient'
 import { getVehicleSeatingPlan } from '@/lib/supabase/vehicleSeating'
 
 interface VehicleSeatingPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{ id: string }>
 }
 
 async function getVehicle(id: string) {
@@ -29,6 +27,7 @@ async function getVehicle(id: string) {
 }
 
 export default async function VehicleSeatingPage({ params }: VehicleSeatingPageProps) {
+  const { id } = await params
   const supabase = await createClient()
 
   // Check authentication
@@ -38,19 +37,19 @@ export default async function VehicleSeatingPage({ params }: VehicleSeatingPageP
   }
 
   // Get vehicle details
-  const vehicle = await getVehicle(params.id)
+  const vehicle = await getVehicle(id)
   if (!vehicle) {
     notFound()
   }
 
-  // Get seating plan
-  const seatingPlan = await getVehicleSeatingPlan(params.id)
+  // Get seating plan (null if none - no error)
+  const seatingPlan = await getVehicleSeatingPlan(id)
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/dashboard/vehicles/${params.id}`}>
+          <Link href={`/dashboard/vehicles/${id}`}>
             <Button variant="ghost" size="sm" className="text-slate-500 hover:text-primary hover:bg-primary/10">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -72,7 +71,7 @@ export default async function VehicleSeatingPage({ params }: VehicleSeatingPageP
 
       {/* Client component for interactive features */}
       <VehicleSeatingClient
-        vehicleId={params.id}
+        vehicleId={id}
         vehicle={vehicle}
         initialSeatingPlan={seatingPlan}
       />

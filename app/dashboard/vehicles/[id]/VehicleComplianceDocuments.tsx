@@ -108,6 +108,45 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
 
   const REPAIR_DOC_TYPES = ['Repair Invoice', 'Repair Document']
 
+  // Alternate doc_type values (from Documents tab) that should match each certificate type. Case-insensitive.
+  const certTypeAlternates: { [key: string]: string[] } = {
+    'registration_expiry_date': ['Vehicle Plate Certificate', 'Vehicle Plate', 'Registration', 'Plate Certificate'],
+    'insurance_expiry_date': ['Vehicle Insurance Certificate', 'Vehicle Insurance', 'Insurance'],
+    'mot_date': ['MOT Certificate', 'MOT', 'Mot'],
+    'tax_date': ['Vehicle Tax Certificate', 'Vehicle Tax', 'Tax'],
+    'loler_expiry_date': ['LOLER Certificate', 'LOLER'],
+    'first_aid_expiry': ['First Aid Kit Certificate', 'First Aid', 'First Aid Certificate'],
+    'fire_extinguisher_expiry': ['Fire Extinguisher Certificate', 'Fire Extinguisher', 'Fire Ext'],
+    'iva': ['IVA Certificate', 'IVA'],
+    'lpg_safety_check': ['LPG Safety Check', 'LPG'],
+    'interim_service_certificate': ['Interim Service Certificate', 'Interim Service', 'Interim'],
+    'pmi_document': ['PMI Document', 'PMI'],
+    'repair_invoice': ['Repair Invoice', 'Repair Document', 'Repair', 'Parts', 'Repair Invoice / Parts'],
+  }
+
+  const docMatchesCertType = (doc: Document, certType: string) => {
+    const docType = (doc.doc_type || '').trim()
+    if (!docType) return false
+    const canonical = certKeyToDocType[certType] || certType
+    if (docType === canonical) return true
+    const alternates = certTypeAlternates[certType]
+    if (!alternates) return false
+    const lower = docType.toLowerCase()
+    return alternates.some(alt => alt.toLowerCase() === lower)
+  }
+
+  // Resolve doc_type (e.g. "MOT Certificate") to cert key (e.g. "mot_date") for dropdown value
+  const getCertKeyForDocType = (docType: string | null) => {
+    if (!docType) return ''
+    const d = docType.trim()
+    const found = Object.entries(certKeyToDocType).find(([, name]) => name === d)
+    if (found) return found[0]
+    const altFound = Object.entries(certTypeAlternates).find(([, alts]) =>
+      alts.some(a => a.toLowerCase() === d.toLowerCase())
+    )
+    return altFound ? altFound[0] : ''
+  }
+
   // Get certificate types to display (IVA only if N1; LPG only if lpg_fuelled; PHV/PSV maintenance docs by type; Repair always)
   const getCertificateTypes = () => {
     let types = CERTIFICATE_TYPES.filter(cert =>
@@ -123,18 +162,33 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
   }
 
   const getDocumentsByType = (certType: string) => {
-    const docTypeName = certKeyToDocType[certType] || certType
     if (certType === 'repair_invoice') {
-      return documents.filter(doc => doc.doc_type && REPAIR_DOC_TYPES.includes(doc.doc_type))
+      return documents.filter(doc =>
+        doc.doc_type && (
+          REPAIR_DOC_TYPES.includes(doc.doc_type) ||
+          certTypeAlternates['repair_invoice'].some(alt => alt.toLowerCase() === (doc.doc_type || '').toLowerCase())
+        )
+      )
     }
-    return documents.filter(doc => doc.doc_type === docTypeName)
+    const docTypeName = certKeyToDocType[certType] || certType
+    return documents.filter(doc => doc.doc_type === docTypeName || docMatchesCertType(doc, certType))
   }
 
-  const getPublicUrl = (path: string | null, fallback: string | null) => {
-    if (fallback) return fallback
-    if (!path) return null
-    const { data } = supabase.storage.from('VEHICLE_DOCUMENTS').getPublicUrl(path)
-    return data.publicUrl
+  // Documents that don't match any certificate type (e.g. uploaded in Documents tab with different/empty type)
+  const getUnassignedDocuments = () => {
+    const certTypes = getCertificateTypes()
+    return documents.filter(doc => {
+      const dt = (doc.doc_type || '').trim()
+      if (!dt) return true
+      const matchesAny = certTypes.some(cert => docMatchesCertType(doc, cert.key))
+      return !matchesAny
+    })
+  }
+
+  /** View URL on our domain; requires auth. Only when file_path is set. */
+  const getDocumentViewUrl = (path: string | null) => {
+    if (!path || path.includes('..')) return null
+    return `/api/documents/view?bucket=VEHICLE_DOCUMENTS&path=${encodeURIComponent(path)}`
   }
 
   const handleUpload = async () => {
@@ -363,7 +417,7 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                     ) : (
                       <div className="space-y-2">
                         {certDocs.map(doc => {
-                          const url = getPublicUrl(doc.file_path, doc.file_url)
+                          const url = getDocumentViewUrl(doc.file_path)
                           return (
                             <div
                               key={doc.id}
@@ -398,7 +452,7 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                                     <Button
                                       size="sm"
                                       variant="secondary"
-                                      onClick={() => handleEditDocType(doc.id, editingDocType)}
+                                      onClick={() => handleEditDocType(doc.id, certKeyToDocType[editingDocType] || editingDocType)}
                                     >
                                       Save
                                     </Button>
@@ -419,7 +473,7 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                                       <a
                                         href={url}
                                         target="_blank"
-                                        rel="noreferrer"
+                                        rel="noopener noreferrer"
                                         className="text-blue-600 hover:text-blue-800"
                                         title="View/Download"
                                       >
@@ -431,7 +485,7 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                                       variant="ghost"
                                       onClick={() => {
                                         setEditingDoc(doc)
-                                        setEditingDocType(doc.doc_type || '')
+                                        setEditingDocType(getCertKeyForDocType(doc.doc_type))
                                       }}
                                       title="Edit document type"
                                     >
@@ -457,6 +511,115 @@ export default function VehicleComplianceDocuments({ vehicleId }: { vehicleId: n
                   </div>
                 )
               })}
+
+              {/* Other documents: from Documents tab that don't match a certificate type */}
+              {getUnassignedDocuments().length > 0 && (
+                <div className="border rounded-lg p-4 border-amber-200 bg-amber-50/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Other documents</h4>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Uploaded in Documents tab or with a different type. Assign a certificate type below to move them into the right section.
+                      </p>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {getUnassignedDocuments().length} document{getUnassignedDocuments().length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {getUnassignedDocuments().map(doc => {
+                      const url = getDocumentViewUrl(doc.file_path)
+                      return (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-2 bg-white rounded border border-amber-100"
+                        >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {doc.file_name || 'File'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {doc.doc_type ? `${doc.doc_type} · ` : ''}{new Date(doc.uploaded_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            {editingDoc?.id === doc.id ? (
+                              <>
+                                <Select
+                                  value={editingDocType}
+                                  onChange={(e) => setEditingDocType(e.target.value)}
+                                  className="text-xs"
+                                >
+                                  <option value="">None</option>
+                                  {getCertificateTypes().map(c => (
+                                    <option key={c.key} value={c.key}>
+                                      {c.name}
+                                    </option>
+                                  ))}
+                                </Select>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleEditDocType(doc.id, editingDocType ? (certKeyToDocType[editingDocType] || editingDocType) : '')}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingDoc(null)
+                                    setEditingDocType('')
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                {url && (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800"
+                                    title="View/Download"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </a>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingDoc(doc)
+                                    setEditingDocType(getCertKeyForDocType(doc.doc_type))
+                                  }}
+                                  title="Assign certificate type"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDelete(doc.id)}
+                                  title="Delete"
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

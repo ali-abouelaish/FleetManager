@@ -5,22 +5,22 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { ChevronDown, Search, X } from 'lucide-react'
 
-export interface SearchableSelectOption {
+export interface SearchableMultiSelectOption {
   value: string
   label: string
 }
 
-interface SearchableSelectProps {
-  options: SearchableSelectOption[]
-  value: string
-  onChange: (value: string) => void
+interface SearchableMultiSelectProps {
+  options: SearchableMultiSelectOption[]
+  value: string[]
+  onChange: (value: string[]) => void
   placeholder?: string
   id?: string
   className?: string
   emptyLabel?: string
 }
 
-export function SearchableSelect({
+export function SearchableMultiSelect({
   options,
   value,
   onChange,
@@ -28,29 +28,28 @@ export function SearchableSelect({
   id,
   className,
   emptyLabel = 'None',
-}: SearchableSelectProps) {
+}: SearchableMultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const selected = value ? options.find((o) => o.value === value) : null
-  const displayValue = selected ? selected.label : ''
-  const filtered = search.trim()
-    ? options.filter((o) =>
-        String(o.label).toLowerCase().includes(search.toLowerCase())
-      )
-    : options
+  const selectedOptions = value
+    .map((v) => options.find((o) => o.value === v))
+    .filter(Boolean) as SearchableMultiSelectOption[]
+  const displaySummary =
+    selectedOptions.length === 0
+      ? ''
+      : selectedOptions.length === 1
+        ? selectedOptions[0].label
+        : `${selectedOptions.length} selected`
 
-  const optionsWithEmpty = [
-    { value: '', label: emptyLabel },
-    ...options,
-  ]
-  const filteredWithEmpty = search.trim()
-    ? filtered.length
-      ? [{ value: '', label: emptyLabel }, ...filtered]
-      : filtered
-    : optionsWithEmpty
+  const filtered =
+    search.trim()
+      ? options.filter((o) =>
+          String(o.label).toLowerCase().includes(search.toLowerCase())
+        )
+      : options
 
   useEffect(() => {
     if (!open) setSearch('')
@@ -62,7 +61,7 @@ export function SearchableSelect({
       setPosition({
         top: rect.bottom + 4,
         left: rect.left,
-        width: rect.width,
+        width: Math.max(rect.width, 200),
       })
     }
   }, [open])
@@ -71,7 +70,7 @@ export function SearchableSelect({
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         const target = e.target as HTMLElement
-        if (!target.closest('[data-searchable-select-dropdown]')) setOpen(false)
+        if (!target.closest('[data-multi-select-dropdown]')) setOpen(false)
       }
     }
     if (open) {
@@ -80,9 +79,21 @@ export function SearchableSelect({
     }
   }, [open])
 
+  const toggleOption = (optValue: string) => {
+    if (optValue === '') {
+      onChange([])
+      return
+    }
+    if (value.includes(optValue)) {
+      onChange(value.filter((v) => v !== optValue))
+    } else {
+      onChange([...value, optValue])
+    }
+  }
+
   const dropdownContent = open && typeof document !== 'undefined' && (
     <div
-      data-searchable-select-dropdown
+      data-multi-select-dropdown
       className="fixed z-[9999] rounded-lg border border-slate-200 bg-white shadow-lg"
       style={{
         top: position.top,
@@ -114,20 +125,29 @@ export function SearchableSelect({
         </div>
       </div>
       <div className="max-h-48 overflow-y-auto p-1">
-        {filteredWithEmpty.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => toggleOption('')}
+          className={cn(
+            'w-full rounded-md px-2.5 py-1.5 text-left text-sm',
+            value.length === 0
+              ? 'bg-[#023E8A]/10 text-[#023E8A] font-medium'
+              : 'text-slate-700 hover:bg-slate-100'
+          )}
+        >
+          {emptyLabel}
+        </button>
+        {filtered.length === 0 ? (
           <div className="py-4 text-center text-sm text-slate-500">No matches</div>
         ) : (
-          filteredWithEmpty.map((opt) => (
+          filtered.map((opt) => (
             <button
-              key={opt.value === '' ? '__none__' : opt.value}
+              key={opt.value}
               type="button"
-              onClick={() => {
-                onChange(opt.value)
-                setOpen(false)
-              }}
+              onClick={() => toggleOption(opt.value)}
               className={cn(
                 'w-full rounded-md px-2.5 py-1.5 text-left text-sm',
-                opt.value === value
+                value.includes(opt.value)
                   ? 'bg-[#023E8A]/10 text-[#023E8A] font-medium'
                   : 'text-slate-700 hover:bg-slate-100'
               )}
@@ -147,16 +167,37 @@ export function SearchableSelect({
         id={id}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-left',
-          'focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:ring-offset-2 focus:border-transparent',
-          'h-9 min-h-9'
+          'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-left',
+          'focus:outline-none focus:ring-2 focus:ring-[#023E8A] focus:ring-offset-2 focus:border-transparent'
         )}
       >
-        <span className={displayValue ? 'text-slate-900' : 'text-slate-500'}>
-          {displayValue || placeholder}
-        </span>
+        {selectedOptions.length > 0 ? (
+          <>
+            {selectedOptions.map((opt) => (
+              <span
+                key={opt.value}
+                className="inline-flex items-center gap-1 rounded-md bg-[#023E8A]/10 px-2 py-0.5 text-xs font-medium text-[#023E8A]"
+              >
+                {opt.label}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onChange(value.filter((v) => v !== opt.value))
+                  }}
+                  className="hover:bg-[#023E8A]/20 rounded p-0.5"
+                  aria-label={`Remove ${opt.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </>
+        ) : (
+          <span className="text-slate-500">{placeholder}</span>
+        )}
         <ChevronDown
-          className={cn('h-4 w-4 text-slate-400 flex-shrink-0', open && 'rotate-180')}
+          className={cn('ml-auto h-4 w-4 flex-shrink-0 text-slate-400', open && 'rotate-180')}
         />
       </button>
       {typeof document !== 'undefined' && dropdownContent && createPortal(dropdownContent, document.body)}
